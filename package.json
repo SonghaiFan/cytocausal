@@ -1,0 +1,14 @@
+{
+  "name": "cytocausal",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "engines": { "node": ">=22.12" },
+  "scripts": {
+    "dev": "npm run dev -w @cytocausal/docs",
+    "build": "npm run build -w @cytocausal/docs",
+    "typecheck": "npm run typecheck -w @cytocausal/docs",
+    "check:content": "npm run check:content -w @cytocausal/docs"
+  }
+}
