@@ -2,7 +2,7 @@
 
 Cytoscape.js tutorials in English and Chinese, with React playgrounds and vanilla JavaScript demos. Built with [Nextra](https://nextra.site) on Next.js.
 
-Run the scripts from the repository root, using Node.js 22.12 or later:
+Run the scripts from the repository root, using Node.js 22.18 or later:
 
 ```sh
 npm run dev

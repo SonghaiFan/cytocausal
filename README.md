@@ -13,7 +13,7 @@ Perspectiva and Causal Explorer will become the two demo apps under `apps/`, bot
 
 ## Run locally
 
-Use Node.js 22.12 or later.
+Use Node.js 22.18 or later.
 
 ```sh
 npm install
@@ -23,10 +23,13 @@ npm run dev
 Before committing, run:
 
 ```sh
+npm test
 npm run typecheck
 npm run check:content
 npm run build
 ```
+
+`npm test` also checks results against the real Perspectiva and Causal Explorer datasets when they are on disk. Those datasets aren't in this repo, so set `CYTOCAUSAL_PERSPECTIVA` and `CYTOCAUSAL_EXPLORER` to their project folders, or those tests are skipped.
 
 ## License
 
