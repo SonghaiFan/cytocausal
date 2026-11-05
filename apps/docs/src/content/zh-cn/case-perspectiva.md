@@ -51,6 +51,10 @@ Perspectiva 用于比较参与式工作坊中不同版本的因果回路图。�
 
 验证还发现了一张图中的重复连接。它没有造成影响，现在导入器会合并完全重复的连接。
 
+## 论文
+
+Perspectiva 发表于 *Out of the Loop: Enhancing Documentation and Transparency in Causal Loop Diagrams to Capture Multiple Perspectives*（IEEE VIS 2025，最佳短论文），作者为 Jessica Bou Nassar、Yu Xuan Yio、Nethara Athukorala、Simran、Songhai Fan、Cynthia Huang、Lyn Bartram、Tim Dwyer 和 Sarah Goodwin。在用户研究中，领域专家和可视化专家认为，与静态图相比，它改善了导航、比较和来源追溯。
+
 ## 运行
 
 ```sh

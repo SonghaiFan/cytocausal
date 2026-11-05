@@ -32,4 +32,4 @@ Build interfaces for causal graphs with Next.js and Cytoscape.js.
 ## Case studies
 
 - [Perspectiva](/en/case-perspectiva/): compares versions of causal loop diagrams.
-- [Causal Explorer](/en/case-explorer/): explores a large network extracted from text.
+- [Causal Explorer](/en/case-explorer/): explores a large causal network of everyday events.

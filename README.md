@@ -38,4 +38,4 @@ npm run build
 
 ## License
 
-[MIT](LICENSE)
+The code and documentation are under the [MIT license](LICENSE). The datasets and logo are not: see [DATA.md](DATA.md).

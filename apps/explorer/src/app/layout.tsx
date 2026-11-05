@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Causal Discovery for Event Flows Playground",
-  description: "Explore a network of causal relationships between clusters of sentences.",
+  description: "Explore a causal graph of abstract everyday events from the ACCESS benchmark.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

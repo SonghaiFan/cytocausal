@@ -43,7 +43,7 @@ The rank correlation between the two scores was 0.74, so they're related but not
 
 A causal network with feedback isn't a chain of causes. `feedbackGroups` lists strongly connected components with more than one node: sets of nodes that can all reach each other, so each set contains at least one loop. It uses Cytoscape's `tarjanStronglyConnected`.
 
-Explorer's network has one such group with 213 of its 725 nodes, about 29% of the graph, and matches the result from NetworkX. The app can isolate it with "Show only feedback loops".
+Explorer's network has one such group with 213 of its 725 nodes, about 29% of the graph, and matches the result from NetworkX. The app can isolate loops with "Show only feedback loops".
 
 A group tells you loops exist, but not what each loop is or how it behaves. For that, list the loops themselves.
 

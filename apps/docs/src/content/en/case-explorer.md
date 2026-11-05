@@ -4,7 +4,7 @@ title: "Case study: Causal Explorer"
 
 # Case study: Causal Explorer
 
-Causal Explorer shows a network of cause and effect extracted from text. Sentences are clustered with natural language processing, and links between clusters come from causal cues in the source material. The question is how events connect at scale.
+Causal Explorer shows the causal graph from the ACCESS benchmark, which covers abstract events in everyday life. Generalised event descriptions from the GLUCOSE dataset were clustered into abstract events, and annotators judged the causal links between them. The question is how events connect at scale.
 
 ![Causal Explorer showing the causes and effects of a selected node](/images/explorer-selection.png)
 
@@ -13,8 +13,10 @@ Causal Explorer shows a network of cause and effect extracted from text. Sentenc
 | Data | One network, in one snapshot |
 | Size | 725 nodes and 1,494 edges |
 | Links | Directed, without polarity |
-| Evidence | 4,708 source sentences |
+| Evidence | 4,708 generalised event descriptions |
 | Positions | Precomputed |
+
+The figures above describe the full benchmark. The public demo shows a sample of its 100 most central events, and the full benchmark is [available on request](https://github.com/isVy08/ACCESS).
 
 ## What it needed
 
@@ -53,7 +55,11 @@ The harder problem was keeping labels readable, which took collision handling.
 
 ## Result
 
-Search now finds words anywhere in labels and sentences. Clicking a node keeps its sentences, causes and effects in a side panel, and a second click compares two nodes. The analysis also found something new: 213 of the 725 nodes form a single set of feedback loops, so the network isn't a simple chain of causes.
+Search now finds words anywhere in labels and sentences. Clicking a node keeps its sentences, causes and effects in a side panel, and a second click compares two nodes. The analysis of the full graph also found something new: 213 of the 725 nodes form a single set of feedback loops, so the network isn't a simple chain of causes.
+
+## Publication
+
+The graph comes from [ACCESS: A Benchmark for Abstract Causal Event Discovery and Reasoning](https://arxiv.org/abs/2502.08148) (NAACL 2025), which is built on [GLUCOSE](https://arxiv.org/abs/2009.07758). GLUCOSE's license limits this data to non-commercial use.
 
 ## Run it
 

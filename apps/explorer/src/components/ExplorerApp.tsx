@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NodePanel } from "@/components/NodePanel";
 import { Search } from "@/components/Search";
 import { CAUSE_COLOR, EFFECT_COLOR, graphStyles } from "@/graph-style";
-import { keepLabelsReadable } from "@/labels";
+import { fitNodes, keepLabelsReadable } from "@/labels";
 
 const MAX_SELECTED = 2;
 // The largest group of loops is too big to list, so panels show the shortest ones
@@ -38,7 +38,7 @@ export function ExplorerApp() {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    fetch("/dataset.json")
+    fetch(process.env.NEXT_PUBLIC_EXPLORER_DATA ?? "/dataset.json")
       .then((response) => response.json())
       .then(setDataset)
       .catch(() => setFailed(true));
@@ -102,6 +102,7 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
   const onReady = useCallback(
     (instance: Core) => {
       cy.current = instance;
+      fitNodes(instance);
       keepLabelsReadable(instance);
       instance.on("tap", "node", (event) => toggle(event.target.id()));
       instance.on("tap", (event) => {
@@ -148,7 +149,7 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
         instance.nodes().filter((node) => !node.data("inFeedbackLoop")).addClass("outside-loops");
       }
     });
-    instance.animate({ fit: { eles: instance.elements(":visible"), padding: 30 } }, { duration: 400 });
+    fitNodes(instance, 400);
     setSelected((current) => current.filter((id) => inScope(nodeById.get(id)!)));
   }, [loopsOnly, inScope, nodeById]);
 
@@ -202,12 +203,7 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
             type="button"
             aria-label="Fit graph"
             className={control}
-            onClick={() =>
-              cy.current?.animate(
-                { fit: { eles: cy.current.elements(":visible"), padding: 30 } },
-                { duration: 300 },
-              )
-            }
+            onClick={() => cy.current && fitNodes(cy.current, 300)}
           >
             ⤢
           </button>
@@ -250,9 +246,26 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
         <details className="bg-white border rounded-md shadow p-3 text-sm" open={selected.length === 0}>
           <summary className="font-semibold cursor-pointer">Description</summary>
           <p className="mt-2">
-            This map shows a network of causal relationships. Each node is a cluster of sentences, and
-            each edge a detected causal relation between clusters.
+            This map shows the causal graph from the{" "}
+            <a className="underline" href="https://arxiv.org/abs/2502.08148">
+              ACCESS benchmark
+            </a>
+            , built on{" "}
+            <a className="underline" href="https://arxiv.org/abs/2009.07758">
+              GLUCOSE
+            </a>
+            . Each node is an abstract event, and each edge a causal relation judged by annotators.
           </p>
+          {dataset.id === "access-sample" && (
+            <p className="mt-2">
+              This is a sample of the most central events, with up to five descriptions each. The full
+              benchmark is{" "}
+              <a className="underline" href="https://github.com/isVy08/ACCESS">
+                available on request
+              </a>
+              .
+            </p>
+          )}
           <p className="mt-2">
             Node size shows directed betweenness centrality: bigger nodes sit on more of the causal
             paths through the network. Click a node to read its sentences, and click a second node to

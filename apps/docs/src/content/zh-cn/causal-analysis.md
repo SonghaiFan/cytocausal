@@ -43,7 +43,7 @@ Causal Explorer 原来的节点大小忽略了方向。按边的方向重新计�
 
 带有反馈的因果网络不是一条因果链。`feedbackGroups` 列出节点数大于 1 的强连通分量，也就是一组能够互相到达的节点，因此每组至少包含一个回路。它使用 Cytoscape 的 `tarjanStronglyConnected`。
 
-Explorer 的网络中有一个这样的分组，包含 725 个节点中的 213 个，约占 29%，与 NetworkX 的结果一致。应用中可以通过 “Show only feedback loops” 单独查看。
+Explorer 的网络中有一个这样的分组，包含 725 个节点中的 213 个，约占 29%，与 NetworkX 的结果一致。应用中可以通过 “Show only feedback loops” 单独查看回路。
 
 分组能说明回路存在，但不能说明每个回路是什么，也不能说明它的行为。要了解这些，请列出回路本身。
 

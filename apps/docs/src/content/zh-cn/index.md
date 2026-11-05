@@ -32,4 +32,4 @@ title: "学习 Cytoscape.js"
 ## 案例
 
 - [Perspectiva](/zh-cn/case-perspectiva/)：比较不同版本的因果回路图。
-- [Causal Explorer](/zh-cn/case-explorer/)：探索从文本中抽取的大型网络。
+- [Causal Explorer](/zh-cn/case-explorer/)：探索日常事件的大型因果网络。

@@ -51,6 +51,10 @@ The app also lists each diagram's feedback loops, 89 in total, and highlights th
 
 Validation also found a duplicate link in one diagram. It was harmless, and the importer now merges exact repeats.
 
+## Publication
+
+Perspectiva was published as *Out of the Loop: Enhancing Documentation and Transparency in Causal Loop Diagrams to Capture Multiple Perspectives* (IEEE VIS 2025, Best Short Paper), by Jessica Bou Nassar, Yu Xuan Yio, Nethara Athukorala, Simran, Songhai Fan, Cynthia Huang, Lyn Bartram, Tim Dwyer and Sarah Goodwin. In its user studies, domain and visualisation experts reported better navigation, comparison and provenance tracking than with static diagrams.
+
 ## Run it
 
 ```sh
