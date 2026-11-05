@@ -41,10 +41,13 @@ Rewriting the ids wasn't an option, because merged nodes would collide. The mapp
 | Side-by-side comparison | `CompareView` | [Stable layouts](/en/stable-layouts/) |
 | Moving between versions | `animateSnapshots` | [Version transitions](/en/version-transitions/) |
 | Original terms on hover | `Evidence`, `renderTooltip` | [React lifecycle](/en/react-lifecycle/) |
+| Reinforcing and balancing loops | `findFeedbackLoops` | [Causal analysis](/en/causal-analysis/) |
 
 ## Result
 
 Alignment offsets are now 0 for every anchored node in all 8 datasets with fcose, and on `expert_9` with cola. Switching versions keeps one graph, and positions match between the two views. Playwright tests check this for every dataset, including rapid switching.
+
+The app also lists each diagram's feedback loops, 89 in total, and highlights the one you choose. Two participants' diagrams have no loops in either version.
 
 Validation also found a duplicate link in one diagram. It was harmless, and the importer now merges exact repeats.
 

@@ -146,6 +146,30 @@ test("feedback loops can be isolated", async ({ page }) => {
   await expect.poll(() => withCy<number>(page, 'return cy.nodes(":visible").length;')).toBe(725);
 });
 
+test("a node lists its short feedback loops, and choosing one highlights it", async ({ page }) => {
+  await ready(page);
+  await clickNode(page, "622");
+  await expect(page.getByText("Short feedback loops (19+)")).toBeVisible();
+
+  const panel = page.getByLabel("Node 622");
+  const loop = panel.getByRole("button", { pressed: false }).filter({ hasText: "→" }).first();
+  await loop.click();
+  const counts = () =>
+    withCy<{ nodes: number; links: number; causes: number }>(
+      page,
+      `return { nodes: cy.nodes(".loop-node").length, links: cy.edges(".loop-link").length,
+                causes: cy.nodes(".cause").length };`,
+    );
+  await expect.poll(async () => (await counts()).nodes).toBeGreaterThan(1);
+  const { nodes, links, causes } = await counts();
+  expect(links).toBe(nodes);
+  expect(causes).toBe(0);
+
+  await panel.getByRole("button", { pressed: true }).click();
+  await expect.poll(async () => (await counts()).nodes).toBe(0);
+  expect((await counts()).causes).toBeGreaterThan(0);
+});
+
 test("hovering shows a preview", async ({ page }) => {
   await ready(page);
   const { x, y } = await pointOf(page, "622");

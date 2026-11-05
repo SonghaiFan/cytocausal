@@ -45,7 +45,55 @@ Causal Explorer 原来的节点大小忽略了方向。按边的方向重新计�
 
 Explorer 的网络中有一个这样的分组，包含 725 个节点中的 213 个，约占 29%，与 NetworkX 的结果一致。应用中可以通过 “Show only feedback loops” 单独查看。
 
-分组能说明回路存在，但不能说明每个回路是什么，也不能说明它的行为。列出单个回路，并根据连接极性标记为增强回路或平衡回路，计划在后续阶段实现。
+分组能说明回路存在，但不能说明每个回路是什么，也不能说明它的行为。要了解这些，请列出回路本身。
+
+## 单个回路
+
+`findFeedbackLoops` 按从短到长列出每个回路，每个回路只列一次，并根据连接极性分类：
+
+```ts
+import { findFeedbackLoops, type Snapshot } from "@cytocausal/core";
+
+const snapshot: Snapshot = {
+  id: "demo",
+  nodes: [
+    { id: "trust", label: "Trust" },
+    { id: "use", label: "Use" },
+  ],
+  edges: [
+    { id: "trust-use", source: "trust", target: "use", polarity: "positive" },
+    { id: "use-trust", source: "use", target: "trust", polarity: "negative" },
+  ],
+};
+
+const { loops, complete } = findFeedbackLoops(snapshot);
+console.log(loops[0].nodes); // ["trust", "use"]
+console.log(loops[0].type); // "balancing"
+console.log(complete); // true
+```
+
+| 负向连接 | 类型 | 行为 |
+| :--- | :--- | :--- |
+| 偶数条 | `reinforcing` | 变化不断自我增强 |
+| 奇数条 | `balancing` | 变化受到抑制 |
+| 缺少极性 | `unknown` | 无法分类 |
+
+在 Perspectiva 的 16 张图中，它找到 89 个回路：59 个增强回路和 30 个平衡回路。有两位参与者的图在两个版本中都没有回路，所以要处理空列表。
+
+### 大型图
+
+回路数量会随图的规模迅速增长。在大型图上请设置 `maxLength`，并用 `through` 围绕单个节点搜索。如果 `maxLength` 或 `limit` 可能隐藏了回路，`complete` 为 `false`，所以不要把截断后的列表当作完整数量。
+
+| Explorer 中的最大长度 | 回路数 |
+| :--- | :--- |
+| 3 | 18 |
+| 4 | 57 |
+| 5 | 159 |
+| 6 | 463 |
+
+这些数量，以及 Perspectiva 的每个回路及其类型，都与 NetworkX 的 `simple_cycles` 一致。
+
+要显示回路，请把它传给 `highlightLoop(cy, loop)`。它会添加 `loop-node` 和 `loop-link` 类并淡化其他元素。传入 `null` 可清除高亮。
 
 ## 原因和结果
 

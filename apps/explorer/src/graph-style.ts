@@ -52,4 +52,12 @@ export const graphStyles = [
     selector: "edge.effect-link",
     style: { width: 2, "line-color": EFFECT_COLOR, "target-arrow-color": EFFECT_COLOR },
   },
+  {
+    selector: "node.loop-node",
+    style: { label: "data(label)", "border-width": 2, "border-color": "#111", "z-index": 9 },
+  },
+  {
+    selector: "edge.loop-link",
+    style: { width: 3, "line-color": "#111", "target-arrow-color": "#111", "z-index": 9 },
+  },
 ] as unknown as Stylesheet[];

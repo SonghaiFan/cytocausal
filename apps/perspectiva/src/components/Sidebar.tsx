@@ -1,4 +1,5 @@
 import type { CausalNode } from "@cytocausal/core";
+import type { ReactNode } from "react";
 import { colorSchema } from "@/graph-style";
 
 export type ViewMode = "1 Graph" | "2 Graphs";
@@ -26,6 +27,7 @@ export function Sidebar({
   version,
   onVersionChange,
   terms,
+  children,
 }: {
   debug: boolean;
   datasetIds: string[];
@@ -40,6 +42,7 @@ export function Sidebar({
   version: string;
   onVersionChange: (version: string) => void;
   terms: CausalNode[];
+  children: ReactNode;
 }) {
   return (
     <div className="w-[15%] min-w-48 p-4 h-full overflow-auto">
@@ -129,6 +132,8 @@ export function Sidebar({
           ))}
         </div>
       )}
+
+      {children}
 
       <div className={panel}>
         <h4 className={heading}>Term List</h4>

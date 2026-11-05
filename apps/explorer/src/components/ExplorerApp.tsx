@@ -1,6 +1,12 @@
 "use client";
-import type { CausalDataset, CausalNode } from "@cytocausal/core";
-import { highlightCausalNeighbours, type Positions } from "@cytocausal/cytoscape";
+import {
+  findFeedbackLoops,
+  type CausalDataset,
+  type CausalNode,
+  type FeedbackLoop,
+  type LoopSearch,
+} from "@cytocausal/core";
+import { highlightCausalNeighbours, highlightLoop, type Positions } from "@cytocausal/cytoscape";
 import { GraphView } from "@cytocausal/react";
 import type { Core, LayoutOptions } from "cytoscape";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,6 +16,8 @@ import { CAUSE_COLOR, EFFECT_COLOR, graphStyles } from "@/graph-style";
 import { keepLabelsReadable } from "@/labels";
 
 const MAX_SELECTED = 2;
+// The largest group of loops is too big to list, so panels show the shortest ones
+const LOOP_SEARCH = { maxLength: 4, limit: 30 };
 const savedLayout = { name: "preset", fit: true, padding: 30 } as LayoutOptions;
 
 const renderTooltip = (node: CausalNode) => (
@@ -48,6 +56,7 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [hovered, setHovered] = useState<string | null>(null);
   const [loopsOnly, setLoopsOnly] = useState(false);
+  const [activeLoop, setActiveLoop] = useState<FeedbackLoop | null>(null);
 
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const links = useMemo(() => {
@@ -61,6 +70,14 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
     }
     return { causes, effects };
   }, [edges, nodeById]);
+
+  const loopsThrough = useMemo(() => {
+    const searches = new Map<string, LoopSearch>();
+    for (const id of selected) {
+      searches.set(id, findFeedbackLoops(dataset.snapshots[0], { ...LOOP_SEARCH, through: id }));
+    }
+    return searches;
+  }, [dataset, selected]);
 
   const inScope = useCallback(
     (node: CausalNode) => !loopsOnly || Boolean(node.metadata?.inFeedbackLoop),
@@ -105,10 +122,22 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
   }, []);
 
   useEffect(() => {
-    if (cy.current) {
+    if (!cy.current) return;
+    if (activeLoop) {
+      highlightCausalNeighbours(cy.current, []);
+      highlightLoop(cy.current, activeLoop);
+    } else {
+      highlightLoop(cy.current, null);
       highlightCausalNeighbours(cy.current, selected.length ? selected : hovered ? [hovered] : []);
     }
-  }, [selected, hovered]);
+  }, [selected, hovered, activeLoop]);
+
+  // A loop is only listed while one of its nodes is selected
+  useEffect(() => {
+    setActiveLoop((loop) =>
+      loop && [...loopsThrough.values()].some(({ loops }) => loops.includes(loop)) ? loop : null,
+    );
+  }, [loopsThrough]);
 
   useEffect(() => {
     if (!cy.current) return;
@@ -209,6 +238,10 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
             node={nodeById.get(id)!}
             causes={links.causes.get(id) ?? []}
             effects={links.effects.get(id) ?? []}
+            loops={loopsThrough.get(id)!}
+            labelOf={(nodeId) => nodeById.get(nodeId)!.label}
+            activeLoop={activeLoop}
+            onToggleLoop={(loop) => setActiveLoop(activeLoop === loop ? null : loop)}
             onSelect={focus}
             onClose={() => toggle(id)}
           />

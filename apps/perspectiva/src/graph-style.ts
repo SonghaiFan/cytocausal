@@ -58,4 +58,10 @@ export const graphStyles = [
       "control-point-weights": [0.5],
     },
   },
+  { selector: ".dimmed", style: { opacity: 0.15 } },
+  { selector: "node.loop-node", style: { "border-color": "#111", "border-width": "2px" } },
+  {
+    selector: "edge.loop-link",
+    style: { width: 3, "line-color": "#111", "target-arrow-color": "#111" },
+  },
 ] as unknown as Stylesheet[];

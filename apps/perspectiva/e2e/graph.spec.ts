@@ -188,6 +188,55 @@ test("graphs appear in place on first load", async ({ page }) => {
   expect(wrong(1)).toBeLessThanOrEqual(2);
 });
 
+const highlighted = (page: Page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll<any>("div")]
+      .filter((div) => div._cyreg?.cy)
+      .map((div) => {
+        const cy = div._cyreg.cy;
+        return { nodes: cy.nodes(".loop-node").length, links: cy.edges(".loop-link").length };
+      }),
+  );
+
+test("both versions list their loops, and a chosen loop is highlighted in its own graph", async ({ page }) => {
+  await page.goto("/?dataset=citizen_3");
+  await settled(page, 2);
+  await expect(page.getByLabel("Loops in V1").getByText("7 reinforcing, 0 balancing")).toBeVisible();
+  await expect(page.getByLabel("Loops in final").getByText("14 reinforcing, 10 balancing")).toBeVisible();
+
+  const loop = page.getByLabel("Loops in final").getByRole("button").first();
+  await loop.click();
+  await expect(loop).toHaveAttribute("aria-pressed", "true");
+  const [left, right] = await highlighted(page);
+  expect(left).toEqual({ nodes: 0, links: 0 });
+  expect(right.nodes).toBeGreaterThan(0);
+  expect(right.links).toBe(right.nodes);
+
+  await loop.click();
+  expect((await highlighted(page))[1]).toEqual({ nodes: 0, links: 0 });
+});
+
+test("a diagram without loops says so", async ({ page }) => {
+  await page.goto("/?dataset=advocate_7");
+  await settled(page, 2);
+  await expect(page.getByText("No feedback loops")).toHaveCount(2);
+});
+
+test("changing version clears the highlighted loop", async ({ page }) => {
+  await page.goto("/?dataset=citizen_1");
+  await settled(page, 2);
+  await page.getByLabel("View Mode").selectOption("1 Graph");
+  await settled(page, 1);
+  await page.getByLabel("Loops in V1").getByRole("button").first().click();
+  expect((await highlighted(page))[0].nodes).toBeGreaterThan(0);
+
+  await version(page, "Final").click();
+  await page.waitForTimeout(150);
+  await settled(page, 1);
+  expect(await highlighted(page)).toEqual([{ nodes: 0, links: 0 }]);
+  await expect(page.getByLabel("Loops in final").getByRole("button")).toHaveCount(11);
+});
+
 test("hovering a node shows its terms", async ({ page }) => {
   await page.goto("/?dataset=expert_9");
   await settled(page, 2);

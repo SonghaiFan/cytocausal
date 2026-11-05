@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { analyzeSnapshot, importExplorer, importPerspectiva, validateDataset } from "../src/index.ts";
+import {
+  analyzeSnapshot,
+  findFeedbackLoops,
+  importExplorer,
+  importPerspectiva,
+  validateDataset,
+} from "../src/index.ts";
 
 // The real datasets stay outside this repo. These tests run when they are on disk.
 const projects = path.resolve(import.meta.dirname, "../../../../causal");
@@ -37,6 +43,14 @@ test(
       dataset.correspondences!.flatMap(({ nodes }) => Object.keys(nodes)),
     );
     assert.equal(anchors.length, 129);
+
+    // Counts match NetworkX's simple_cycles on every snapshot
+    const searches = datasets.flatMap(({ snapshots }) => snapshots.map((s) => findFeedbackLoops(s)));
+    const loops = searches.flatMap((search) => search.loops);
+    assert.ok(searches.every((search) => search.complete));
+    assert.equal(loops.length, 89);
+    assert.equal(loops.filter(({ type }) => type === "reinforcing").length, 59);
+    assert.equal(loops.filter(({ type }) => type === "balancing").length, 30);
   },
 );
 
@@ -52,4 +66,10 @@ test("Explorer imports and matches the known analysis", { skip: !existsSync(expl
   assert.equal(feedbackGroups[0].length, 213);
   assert.equal(feedbackGroups.length, 1);
   assert.equal(Object.values(betweenness).filter((score) => score === 0).length, 400);
+
+  // Counts match NetworkX's simple_cycles with the same length bound
+  const { loops, complete } = findFeedbackLoops(graph, { maxLength: 6, limit: Infinity });
+  assert.equal(loops.length, 463);
+  assert.equal(complete, false);
+  assert.ok(loops.every(({ type }) => type === "unknown"));
 });

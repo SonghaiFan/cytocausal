@@ -36,7 +36,7 @@ Done when it matches the current app and fixes search, the sentence panel, cause
 Add chapters on the data model, React lifecycle, stable layouts and anchoring, version transitions, causal analysis, and scale and performance, in English and Chinese. Add a case study for each demo.
 
 ### 5. New capabilities and cutover
-Add loop detection to both demos, labelling loops as reinforcing or balancing where polarity exists. Add version comparison to Explorer only if its older data can be matched up.
+Loop detection is done in both demos, with loops labelled as reinforcing or balancing where polarity exists. Add version comparison to Explorer only if its older data can be matched up.
 
 Switch each live site over only once the new app matches the old one.
 

@@ -41,10 +41,13 @@ Perspectiva 用于比较参与式工作坊中不同版本的因果回路图。�
 | 并排比较 | `CompareView` | [稳定布局](/zh-cn/stable-layouts/) |
 | 在版本之间移动 | `animateSnapshots` | [版本过渡](/zh-cn/version-transitions/) |
 | 悬停显示原始术语 | `Evidence`、`renderTooltip` | [React 生命周期](/zh-cn/react-lifecycle/) |
+| 增强回路和平衡回路 | `findFeedbackLoops` | [因果分析](/zh-cn/causal-analysis/) |
 
 ## 结果
 
 使用 fcose 时，全部 8 个数据集的每个锚定节点偏移都为 0；`expert_9` 使用 cola 时也是如此。切换版本时保留同一张图，两种视图中的位置一致。Playwright 测试会对每个数据集检查这些内容，包括快速切换。
+
+应用还会列出每张图的反馈回路，共 89 个，并高亮你选择的回路。有两位参与者的图在两个版本中都没有回路。
 
 验证还发现了一张图中的重复连接。它没有造成影响，现在导入器会合并完全重复的连接。
 

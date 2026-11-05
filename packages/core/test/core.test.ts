@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { analyzeSnapshot, importExplorer, importPerspectiva, validateDataset } from "../src/index.ts";
+import {
+  analyzeSnapshot,
+  findFeedbackLoops,
+  importExplorer,
+  importPerspectiva,
+  validateDataset,
+} from "../src/index.ts";
 import type { CausalDataset, Snapshot } from "../src/index.ts";
 
 const node = (id: string) => ({ id, label: id });
@@ -58,6 +64,60 @@ test("betweenness follows edge direction", () => {
 test("repeated links do not break analysis", () => {
   const graph = snapshot("s", ["a", "b"], [["a", "b"], ["a", "b"]]);
   assert.deepEqual(analyzeSnapshot(graph).feedbackGroups, []);
+});
+
+const signed = (links: [string, string, "positive" | "negative"][]): Snapshot => ({
+  id: "s",
+  nodes: [...new Set(links.flatMap(([source, target]) => [source, target]))].map(node),
+  edges: links.map(([source, target, polarity]) => ({ ...edge(source, target), polarity })),
+});
+
+test("each loop is found once, shortest first", () => {
+  const { loops, complete } = findFeedbackLoops(
+    snapshot("s", ["a", "b", "c"], [["a", "b"], ["b", "a"], ["b", "c"], ["c", "a"]]),
+  );
+  assert.deepEqual(loops.map((loop) => loop.nodes), [["a", "b"], ["a", "b", "c"]]);
+  assert.deepEqual(loops[1].edges, ["a-b", "b-c", "c-a"]);
+  assert.equal(complete, true);
+});
+
+test("graphs without cycles have no loops", () => {
+  assert.deepEqual(findFeedbackLoops(snapshot("s", ["a", "b"], [["a", "b"]])).loops, []);
+});
+
+test("a link from a node to itself is a loop", () => {
+  const { loops } = findFeedbackLoops(signed([["a", "a", "negative"]]));
+  assert.deepEqual(loops.map(({ nodes, type }) => [nodes, type]), [[["a"], "balancing"]]);
+});
+
+test("loop type follows the number of negative links", () => {
+  const typeOf = (links: [string, string, "positive" | "negative"][]) =>
+    findFeedbackLoops(signed(links)).loops[0].type;
+  assert.equal(typeOf([["a", "b", "positive"], ["b", "a", "positive"]]), "reinforcing");
+  assert.equal(typeOf([["a", "b", "negative"], ["b", "a", "positive"]]), "balancing");
+  assert.equal(typeOf([["a", "b", "negative"], ["b", "a", "negative"]]), "reinforcing");
+});
+
+test("loops without polarity are unknown", () => {
+  const { loops } = findFeedbackLoops(snapshot("s", ["a", "b"], [["a", "b"], ["b", "a"]]));
+  assert.equal(loops[0].type, "unknown");
+});
+
+test("searching through a node finds only its loops", () => {
+  const graph = snapshot("s", ["a", "b", "c", "d"], [["a", "b"], ["b", "a"], ["c", "d"], ["d", "c"]]);
+  assert.deepEqual(findFeedbackLoops(graph, { through: "d" }).loops[0].nodes, ["d", "c"]);
+  assert.equal(findFeedbackLoops(graph, { through: "d" }).loops.length, 1);
+});
+
+test("limits are reported instead of hiding loops silently", () => {
+  const graph = snapshot("s", ["a", "b", "c"], [["a", "b"], ["b", "a"], ["b", "c"], ["c", "a"]]);
+  const short = findFeedbackLoops(graph, { maxLength: 2 });
+  assert.equal(short.loops.length, 1);
+  assert.equal(short.complete, false);
+  const capped = findFeedbackLoops(graph, { limit: 1 });
+  assert.equal(capped.loops.length, 1);
+  assert.equal(capped.complete, false);
+  assert.equal(findFeedbackLoops(graph, { maxLength: 3 }).complete, true);
 });
 
 test("Perspectiva data keeps polarity, evidence and anchors", () => {

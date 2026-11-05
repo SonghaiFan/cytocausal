@@ -45,7 +45,55 @@ A causal network with feedback isn't a chain of causes. `feedbackGroups` lists s
 
 Explorer's network has one such group with 213 of its 725 nodes, about 29% of the graph, and matches the result from NetworkX. The app can isolate it with "Show only feedback loops".
 
-A group tells you loops exist, but not what each loop is or how it behaves. Listing individual loops, and labelling them as reinforcing or balancing from link polarity, is planned for a later phase.
+A group tells you loops exist, but not what each loop is or how it behaves. For that, list the loops themselves.
+
+## Individual loops
+
+`findFeedbackLoops` lists each loop once, shortest first, and classifies it from link polarity:
+
+```ts
+import { findFeedbackLoops, type Snapshot } from "@cytocausal/core";
+
+const snapshot: Snapshot = {
+  id: "demo",
+  nodes: [
+    { id: "trust", label: "Trust" },
+    { id: "use", label: "Use" },
+  ],
+  edges: [
+    { id: "trust-use", source: "trust", target: "use", polarity: "positive" },
+    { id: "use-trust", source: "use", target: "trust", polarity: "negative" },
+  ],
+};
+
+const { loops, complete } = findFeedbackLoops(snapshot);
+console.log(loops[0].nodes); // ["trust", "use"]
+console.log(loops[0].type); // "balancing"
+console.log(complete); // true
+```
+
+| Negative links | Type | Behaviour |
+| :--- | :--- | :--- |
+| An even number | `reinforcing` | Change builds on itself |
+| An odd number | `balancing` | Change pushes back |
+| Polarity missing | `unknown` | Can't be classified |
+
+Across Perspectiva's 16 diagrams, it finds 89 loops: 59 reinforcing and 30 balancing. Two participants' diagrams have none in either version, so handle an empty list.
+
+### Large graphs
+
+The number of loops can grow very quickly with graph size. Set `maxLength` on large graphs, and use `through` to search around one node. `complete` is `false` when `maxLength` or `limit` may have hidden loops, so don't present a capped list as the full count.
+
+| Maximum length in Explorer | Loops |
+| :--- | :--- |
+| 3 | 18 |
+| 4 | 57 |
+| 5 | 159 |
+| 6 | 463 |
+
+These counts, and every Perspectiva loop and type, match NetworkX's `simple_cycles`.
+
+To show a loop, pass it to `highlightLoop(cy, loop)`, which adds `loop-node` and `loop-link` classes and dims everything else. Pass `null` to clear it.
 
 ## Causes and effects
 

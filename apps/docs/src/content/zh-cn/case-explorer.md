@@ -45,6 +45,7 @@ Causal Explorer 展示从文本中抽取的因果网络。句子通过自然语�
 | :--- | :--- | :--- |
 | 有向节点大小 | `analyzeSnapshot` | [因果分析](/zh-cn/causal-analysis/) |
 | 反馈回路开关 | `feedbackGroups` | [因果分析](/zh-cn/causal-analysis/) |
+| 经过节点的短回路 | `findFeedbackLoops` | [因果分析](/zh-cn/causal-analysis/) |
 | 原因和结果 | `highlightCausalNeighbours` | [因果分析](/zh-cn/causal-analysis/) |
 | 快速首次渲染 | 已保存的位置 | [规模与性能](/zh-cn/scale-performance/) |
 | 可读的标签 | 碰撞处理 | [规模与性能](/zh-cn/scale-performance/) |
