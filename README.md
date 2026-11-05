@@ -27,3 +27,7 @@ npm run typecheck
 npm run check:content
 npm run build
 ```
+
+## License
+
+[MIT](LICENSE)
