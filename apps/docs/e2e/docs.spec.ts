@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 const languages = ["en", "zh-cn"];
 const guides = [
   "getting-started",
+  "components",
   "theming",
   "interactions",
   "data-model",

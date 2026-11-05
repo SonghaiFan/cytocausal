@@ -70,7 +70,7 @@ const clickNode = async (page: Page, id: string) => {
   await page.mouse.click(x, y);
 };
 
-const search = (page: Page) => page.getByLabel("Search nodes and sentences");
+const search = (page: Page) => page.getByLabel("Search events and descriptions");
 const panels = (page: Page) => page.locator('section[aria-label^="Node "]');
 
 test("the published data stays a sample", () => {
@@ -109,7 +109,7 @@ test("choosing a search result opens its sentences and zooms to it", async ({ pa
   await search(page).fill(first.id);
   await page.getByRole("button", { name: first.label, exact: true }).click();
   await expect(panels(page)).toHaveCount(1);
-  await expect(page.getByText(`Sentences (${first.evidence.length})`)).toBeVisible();
+  await expect(page.getByText(`Descriptions (${first.evidence.length})`)).toBeVisible();
   await expect.poll(() => withCy<number>(page, "return cy.zoom();")).toBeGreaterThan(before);
 });
 
@@ -118,7 +118,7 @@ test("sentences stay open after the mouse leaves", async ({ page }) => {
   await clickNode(page, first.id);
   await page.mouse.move(5, 5);
   await page.waitForTimeout(300);
-  await expect(page.getByText(`Sentences (${first.evidence.length})`)).toBeVisible();
+  await expect(page.getByText(`Descriptions (${first.evidence.length})`)).toBeVisible();
 });
 
 test("two nodes can be compared, and clicking the background clears them", async ({ page }) => {

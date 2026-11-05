@@ -2,6 +2,7 @@ export default {
   index: "Overview",
   "getting-started": "Getting started",
   "--guides": { type: "separator", title: "Guides" },
+  "components": "Components",
   "theming": "Themes and styles",
   "interactions": "Interactions",
   "data-model": "Data model",

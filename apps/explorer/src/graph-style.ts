@@ -15,9 +15,6 @@ export const theme: CausalTheme = {
   },
 };
 
-export const CAUSE_COLOR = theme.colors.cause;
-export const EFFECT_COLOR = theme.colors.effect;
-
 export const graphStyles = createCausalStyle(theme, {
   link: "straight",
   sizeByScore: true,

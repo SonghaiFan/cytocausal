@@ -1,6 +1,7 @@
 "use client";
 import { searchNodes, type CausalNode } from "@cytocausal/core";
 import { useMemo, useState } from "react";
+import { useCausalLabels } from "./labels.tsx";
 
 export interface NodeSearchProps {
   nodes: CausalNode[];
@@ -11,63 +12,34 @@ export interface NodeSearchProps {
   className?: string;
 }
 
-const resultStyle = {
-  display: "block",
-  width: "100%",
-  padding: "0.25rem",
-  border: 0,
-  background: "none",
-  color: "inherit",
-  font: "inherit",
-  fontSize: "0.875rem",
-  textAlign: "left",
-  cursor: "pointer",
-} as const;
-
 /** A search box for node ids, labels and evidence, with a list of results to choose from. */
-export function NodeSearch({
-  nodes,
-  onSelect,
-  placeholder = "Search nodes…",
-  limit = 30,
-  className,
-}: NodeSearchProps) {
+export function NodeSearch({ nodes, onSelect, placeholder, limit = 30, className = "" }: NodeSearchProps) {
+  const labels = useCausalLabels();
+  const prompt = placeholder ?? labels.search;
   const [text, setText] = useState("");
   const results = useMemo(() => searchNodes(nodes, text), [nodes, text]);
 
   return (
-    <section className={className}>
+    <section className={`cc-panel cc-search ${className}`}>
       <input
         type="search"
-        aria-label={placeholder.replace(/…$/, "")}
-        placeholder={placeholder}
+        className="cc-input"
+        aria-label={prompt.replace(/…$/, "")}
+        placeholder={prompt}
         value={text}
         onChange={(event) => setText(event.target.value)}
-        style={{
-          width: "100%",
-          padding: "0.25rem 0.5rem",
-          border: "1px solid var(--cc-border, #cbd5e1)",
-          borderRadius: "0.25rem",
-          background: "var(--cc-background, #fff)",
-          color: "inherit",
-          font: "inherit",
-        }}
       />
       {text.trim() && (
         <>
-          <p role="status" style={{ margin: "0.5rem 0 0.25rem", fontSize: "0.75rem", opacity: 0.7 }}>
-            {results.length} {results.length === 1 ? "match" : "matches"}
+          <p role="status" className="cc-muted">
+            {labels.matches(results.length)}
           </p>
-          <ul style={{ maxHeight: "14rem", margin: 0, padding: 0, overflow: "auto", listStyle: "none" }}>
+          <ul className="cc-list">
             {results.slice(0, limit).map(({ node, evidence }) => (
               <li key={node.id}>
-                <button type="button" onClick={() => onSelect(node.id)} style={resultStyle}>
+                <button type="button" className="cc-row" onClick={() => onSelect(node.id)}>
                   {node.label}
-                  {evidence && (
-                    <span style={{ display: "block", fontSize: "0.75rem", opacity: 0.7 }}>
-                      “{evidence}”
-                    </span>
-                  )}
+                  {evidence && <span className="cc-muted cc-quote">“{evidence}”</span>}
                 </button>
               </li>
             ))}

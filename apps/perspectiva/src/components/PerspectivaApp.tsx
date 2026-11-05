@@ -1,10 +1,9 @@
 "use client";
 import { findFeedbackLoops, type CausalDataset, type CausalNode, type FeedbackLoop } from "@cytocausal/core";
 import { layouts, type Positions } from "@cytocausal/cytoscape";
-import { CompareView, GraphView, useCausalGraph } from "@cytocausal/react";
+import { CompareView, GraphView, LoopList, useCausalGraph } from "@cytocausal/react";
 import { useMemo, useRef, useState } from "react";
 import datasetsJson from "../../data/datasets.json";
-import { LoopPanel } from "@/components/LoopPanel";
 import { NodeTooltip } from "@/components/NodeTooltip";
 import { Sidebar, type ViewMode } from "@/components/Sidebar";
 import { graphStyles } from "@/graph-style";
@@ -111,11 +110,17 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
         onVersionChange={clearing(setVersion)}
         terms={selected.snapshots.find(({ id }) => id === listed)!.nodes}
       >
-        <LoopPanel
-          groups={loopGroups}
-          active={main.activeLoop ?? right.activeLoop}
-          onToggle={toggleLoop}
-        />
+        {loopGroups.map(({ snapshot, loops }) => (
+          <LoopList
+            key={snapshot.id}
+            className="mb-8 shadow-lg"
+            title={loopGroups.length > 1 ? `Feedback loops: ${snapshot.id}` : undefined}
+            snapshot={snapshot}
+            loops={loops}
+            active={main.activeLoop ?? right.activeLoop}
+            onToggle={(loop) => toggleLoop(snapshot.id, loop)}
+          />
+        ))}
       </Sidebar>
     </main>
   );

@@ -62,7 +62,7 @@ test("search finds nodes by label and evidence, and highlights the choice", asyn
   // Only the evidence says this, not the label
   await search.fill("people leave");
   await expect(page.getByText("“People leave when the line is long”")).toBeVisible();
-  await page.getByRole("button", { name: /^Satisfaction/ }).click();
+  await page.locator(".cc-search").getByRole("button", { name: /^Satisfaction/ }).click();
 
   const classes = () =>
     page.evaluate(() => {
@@ -75,10 +75,10 @@ test("search finds nodes by label and evidence, and highlights the choice", asyn
     .toEqual({ focus: ["satisfaction"], causes: ["queue"], effects: ["customers"] });
 
   // Choosing a node replaces a highlighted loop, and the other way round
-  await page.getByRole("button", { name: /^balancing:/ }).click();
+  await page.getByRole("button", { name: /^Balancing/ }).click();
   await expect.poll(async () => (await graph(page))?.loopNodes).toBe(3);
   await search.fill("queue");
-  await page.getByRole("button", { name: "Queue length", exact: true }).click();
+  await page.locator(".cc-search").getByRole("button", { name: "Queue length" }).click();
   await expect.poll(async () => (await graph(page))?.loopNodes).toBe(0);
   await expect.poll(async () => (await classes()).focus).toEqual(["queue"]);
 
@@ -176,6 +176,61 @@ test("nodes respond to hover and click, and the background clears them", async (
   await expect.poll(state).toEqual(none);
 });
 
+test("selecting a node shows its details, and they link to its neighbours", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  await page.getByLabel("Search nodes").fill("satisfaction");
+  await page.locator(".cc-search").getByRole("button", { name: /^Satisfaction/ }).click();
+
+  const details = page.getByLabel("Node satisfaction");
+  await expect(details.getByText("Caused by (1)")).toBeVisible();
+  await expect(details.getByText("Leads to (1)")).toBeVisible();
+  await expect(details.getByText("People leave when the line is long")).toBeVisible();
+
+  await details.getByRole("button", { name: "Customers", exact: true }).click();
+  await expect(page.getByLabel("Node customers")).toBeVisible();
+  await expect(details).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Close customers" }).click();
+  await expect(page.getByLabel("Node customers")).toHaveCount(0);
+});
+
+const nodesInView = (page: Page) =>
+  page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    const cy = div._cyreg.cy;
+    const { width, height } = div.getBoundingClientRect();
+    const inside = cy.nodes().filter((node: any) => {
+      const { x, y } = node.renderedPosition();
+      return x >= 0 && y >= 0 && x <= width && y <= height;
+    });
+    return { height: Math.round(height), inside: inside.length, total: cy.nodes().length };
+  });
+
+test("the graph shows on a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+
+  const view = await nodesInView(page);
+  expect(view.height).toBeGreaterThan(300);
+  expect(view.inside).toBe(view.total);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  await expect(page.getByLabel("Search nodes")).toBeAttached();
+});
+
+test("the graph stays in view when the window changes size", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  await expect.poll(async () => (await nodesInView(page)).inside).toBe(3);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect.poll(async () => (await nodesInView(page)).inside).toBe(3);
+});
+
 test("the starter runs out of the box", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -183,15 +238,16 @@ test("the starter runs out of the box", async ({ page }) => {
 
   await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
   await expect(page.getByText("Feedback loops (1)")).toBeVisible();
-  await expect(page.getByRole("button", { name: /^balancing:/ })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /^Balancing/ })).toHaveCount(1);
   await expect(page.locator("aside [role=alert]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Fit graph" })).toBeVisible();
 
   await page.getByRole("button", { name: "final", exact: true }).click();
   await expect(page.getByText("Feedback loops (2)")).toBeVisible();
-  await expect(page.getByRole("button", { name: /^reinforcing:/ })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /^Reinforcing/ })).toHaveCount(1);
   await expect.poll(async () => await graph(page)).toMatchObject({ nodes: 5, animating: 0 });
 
-  await page.getByRole("button", { name: /^reinforcing:/ }).click();
+  await page.getByRole("button", { name: /^Reinforcing/ }).click();
   await expect.poll(async () => (await graph(page))?.loopNodes).toBe(5);
   expect(errors).toEqual([]);
 });

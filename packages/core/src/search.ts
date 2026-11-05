@@ -1,4 +1,4 @@
-import type { CausalNode } from "./types.ts";
+import type { CausalNode, Snapshot } from "./types.ts";
 
 export interface SearchResult {
   node: CausalNode;
@@ -30,3 +30,15 @@ export function searchNodes(nodes: CausalNode[], text: string): SearchResult[] {
   }
   return [...inLabels, ...inEvidence];
 }
+
+/** Lists the nodes that directly cause a node. */
+export const causesOf = ({ nodes, edges }: Snapshot, id: string) =>
+  edges
+    .filter(({ target }) => target === id)
+    .map(({ source }) => nodes.find((node) => node.id === source)!);
+
+/** Lists the nodes a node directly leads to. */
+export const effectsOf = ({ nodes, edges }: Snapshot, id: string) =>
+  edges
+    .filter(({ source }) => source === id)
+    .map(({ target }) => nodes.find((node) => node.id === target)!);

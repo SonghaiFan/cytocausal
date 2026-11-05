@@ -22,14 +22,13 @@ Everything you need to change is in `apps/starter/src`:
 | File | What it does |
 | :--- | :--- |
 | `data.ts` | Your graph. Start by replacing this |
-| `graph-style.ts` | Colours, node shapes and link shapes |
-| `components/App.tsx` | The page: graph, search, version buttons and loop list |
+| `components/App.tsx` | The page, which is one `CausalWorkspace` |
 
 To keep the starter as a reference, copy `apps/starter` to `apps/your-app` and change `name` in its `package.json`.
 
 ## Add your data
 
-To change colours or shapes, see [Themes and styles](/en/theming/).
+To go further, see [Components](/en/components/) and [Themes and styles](/en/theming/).
 
 Your data needs to fit the [data model](/en/data-model/). Only ids and labels are required, so a graph can be as simple as:
 
@@ -63,7 +62,7 @@ The starter shows any problems `validateDataset` finds at the top of the sidebar
 | `apps/docs` | This site |
 | `packages/core` | Data model, validation and analysis |
 | `packages/cytoscape` | Themes, styles, layouts, transitions and highlighting |
-| `packages/react` | `GraphView`, `CompareView`, `NodeSearch` and `useCausalGraph` |
+| `packages/react` | `CausalWorkspace`, its components and `useCausalGraph` |
 
 Run the examples with `npm run dev:perspectiva` and `npm run dev:explorer`.
 

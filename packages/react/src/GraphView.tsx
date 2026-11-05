@@ -1,6 +1,7 @@
 "use client";
 import type { CausalDataset, CausalNode } from "@cytocausal/core";
 import {
+  fitNodes,
   getCounterparts,
   isTransitioning,
   placeAround,
@@ -182,6 +183,21 @@ export function GraphView({
   useEffect(() => {
     cy.current?.style(stylesheet as unknown as Stylesheet);
   }, [stylesheet]);
+
+  // Keeps the graph in view when its space changes, such as on rotating a phone
+  useEffect(() => {
+    let previous = "";
+    const observer = new ResizeObserver(([{ contentRect }]) => {
+      const size = `${contentRect.width}x${contentRect.height}`;
+      if (previous && previous !== size && cy.current && !cy.current.destroyed()) {
+        cy.current.resize();
+        fitNodes(cy.current);
+      }
+      previous = size;
+    });
+    observer.observe(container.current!);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!waitForAnchors || !anchorPositions || !cy.current) return;

@@ -25,7 +25,7 @@ export const stylesheet = createCausalStyle(theme, {
 });
 ```
 
-把 `stylesheet` 传给 `GraphView`。修改它时图会就地更新样式，节点不会移动。
+把 `stylesheet` 传给 `GraphView`。修改它时图会就地更新样式，节点不会移动。使用 `CausalWorkspace` 时，用 `themes` 传入主题，用 `styleOptions` 传入这些选项。
 
 ## 选择形状
 

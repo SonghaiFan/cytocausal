@@ -25,7 +25,7 @@ export const stylesheet = createCausalStyle(theme, {
 });
 ```
 
-Pass `stylesheet` to `GraphView`. Changing it restyles the graph in place, so nodes stay where they are.
+Pass `stylesheet` to `GraphView`. Changing it restyles the graph in place, so nodes stay where they are. With `CausalWorkspace`, pass your themes as `themes` and these options as `styleOptions`.
 
 ## Choose shapes
 

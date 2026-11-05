@@ -1,34 +1,34 @@
 "use client";
-import {
-  findFeedbackLoops,
-  type CausalDataset,
-  type CausalNode,
-  type LoopSearch,
-} from "@cytocausal/core";
+import type { CausalDataset, CausalNode } from "@cytocausal/core";
 import type { Positions } from "@cytocausal/cytoscape";
-import { GraphView, NodeSearch, useCausalGraph } from "@cytocausal/react";
+import {
+  CausalLabelsProvider,
+  CausalRoot,
+  GraphView,
+  Legend,
+  NodeDetails,
+  NodeSearch,
+  NodeTooltip,
+  useCausalGraph,
+  ZoomControls,
+} from "@cytocausal/react";
 import type { LayoutOptions } from "cytoscape";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { NodePanel } from "@/components/NodePanel";
-import { CAUSE_COLOR, EFFECT_COLOR, graphStyles, theme } from "@/graph-style";
+import { graphStyles, theme } from "@/graph-style";
 
 const MAX_SELECTED = 2;
 // The largest group of loops is too big to list, so panels show the shortest ones
 const LOOP_SEARCH = { maxLength: 4, limit: 30 };
 const savedLayout = { name: "preset", fit: true, padding: 30 } as LayoutOptions;
 
-const renderTooltip = (node: CausalNode) => (
-  <div className="bg-white border rounded shadow px-3 py-2 text-sm max-w-sm">
-    <p className="text-xs text-gray-500">{node.id}</p>
-    <p className="font-semibold">{node.label}</p>
-    <ul className="text-gray-600">
-      {node.evidence?.slice(0, 3).map(({ text }, index) => <li key={index}>{text}</li>)}
-    </ul>
-    {(node.evidence?.length ?? 0) > 3 && (
-      <p className="text-xs text-gray-500 mt-1">Click to see all {node.evidence!.length}</p>
-    )}
-  </div>
-);
+const labels = {
+  search: "Search events and descriptions…",
+  node: "Cluster",
+  evidence: "Descriptions",
+  loops: "Short feedback loops",
+};
+
+const renderTooltip = (node: CausalNode) => <NodeTooltip node={node} />;
 
 export function ExplorerApp() {
   const [dataset, setDataset] = useState<CausalDataset | null>(null);
@@ -43,7 +43,13 @@ export function ExplorerApp() {
 
   if (failed) return <p className="p-4">The graph could not be loaded.</p>;
   if (!dataset) return <p className="p-4">Loading…</p>;
-  return <Explorer dataset={dataset} />;
+  return (
+    <CausalLabelsProvider labels={labels}>
+      <CausalRoot theme={theme}>
+        <Explorer dataset={dataset} />
+      </CausalRoot>
+    </CausalLabelsProvider>
+  );
 }
 
 function Explorer({ dataset }: { dataset: CausalDataset }) {
@@ -59,26 +65,6 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
   const [loopsOnly, setLoopsOnly] = useState(false);
 
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
-  const links = useMemo(() => {
-    const causes = new Map<string, CausalNode[]>();
-    const effects = new Map<string, CausalNode[]>();
-    for (const { source, target } of edges) {
-      if (!causes.has(target)) causes.set(target, []);
-      if (!effects.has(source)) effects.set(source, []);
-      causes.get(target)!.push(nodeById.get(source)!);
-      effects.get(source)!.push(nodeById.get(target)!);
-    }
-    return { causes, effects };
-  }, [edges, nodeById]);
-
-  const loopsThrough = useMemo(() => {
-    const searches = new Map<string, LoopSearch>();
-    for (const id of selected) {
-      searches.set(id, findFeedbackLoops(dataset.snapshots[0], { ...LOOP_SEARCH, through: id }));
-    }
-    return searches;
-  }, [dataset, selected]);
-
   const inScope = useCallback(
     (node: CausalNode) => !loopsOnly || Boolean(node.metadata?.inFeedbackLoop),
     [loopsOnly],
@@ -101,8 +87,6 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
     fit();
     keepSelected((id) => inScope(nodeById.get(id)!));
   }, [loopsOnly, inScope, nodeById, cy, fit, keepSelected]);
-
-  const control = "w-9 h-9 bg-white border rounded shadow hover:bg-gray-100";
 
   return (
     <main className="flex flex-col md:flex-row w-screen h-screen overflow-hidden">
@@ -127,33 +111,13 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
             </p>
           </div>
         </header>
-        <div className="absolute bottom-3 left-3 flex flex-col gap-2">
-          <button type="button" aria-label="Zoom in" className={control} onClick={graph.zoomIn}>
-            +
-          </button>
-          <button type="button" aria-label="Zoom out" className={control} onClick={graph.zoomOut}>
-            −
-          </button>
-          <button
-            type="button"
-            aria-label="Fit graph"
-            className={control}
-            onClick={fit}
-          >
-            ⤢
-          </button>
-        </div>
+        <ZoomControls graph={graph} />
       </div>
 
       <aside className="w-full md:w-96 shrink-0 h-[45vh] md:h-full overflow-auto bg-gray-50 border-l p-3 space-y-3">
-        <NodeSearch
-          nodes={visibleNodes}
-          onSelect={graph.focus}
-          placeholder="Search nodes and sentences…"
-          className="bg-white border rounded-md shadow p-3"
-        />
+        <NodeSearch nodes={visibleNodes} onSelect={graph.focus} />
 
-        <section className="bg-white border rounded-md shadow p-3 text-sm space-y-2">
+        <section className="cc-panel space-y-2">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -162,20 +126,16 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
             />
             Show only feedback loops
           </label>
-          <div className="flex gap-4">
-            <span style={{ color: CAUSE_COLOR }}>● Causes</span>
-            <span style={{ color: EFFECT_COLOR }}>● Effects</span>
-          </div>
         </section>
 
+        <Legend />
+
         {selected.map((id) => (
-          <NodePanel
+          <NodeDetails
             key={id}
-            node={nodeById.get(id)!}
-            causes={links.causes.get(id) ?? []}
-            effects={links.effects.get(id) ?? []}
-            loops={loopsThrough.get(id)!}
-            labelOf={(nodeId) => nodeById.get(nodeId)!.label}
+            snapshot={dataset.snapshots[0]}
+            nodeId={id}
+            loopOptions={LOOP_SEARCH}
             activeLoop={graph.activeLoop}
             onToggleLoop={graph.toggleLoop}
             onSelect={graph.focus}
@@ -183,7 +143,7 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
           />
         ))}
 
-        <details className="bg-white border rounded-md shadow p-3 text-sm" open={selected.length === 0}>
+        <details className="cc-panel" open={selected.length === 0}>
           <summary className="font-semibold cursor-pointer">Description</summary>
           <p className="mt-2">
             This map shows the causal graph from the{" "}
@@ -208,7 +168,7 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
           )}
           <p className="mt-2">
             Node size shows directed betweenness centrality: bigger nodes sit on more of the causal
-            paths through the network. Click a node to read its sentences, and click a second node to
+            paths through the network. Click a node to read its descriptions, and click a second node to
             compare them.
           </p>
         </details>

@@ -1,4 +1,5 @@
 import type { CausalNode } from "@cytocausal/core";
+import { Legend, VersionSwitcher } from "@cytocausal/react";
 import type { ReactNode } from "react";
 import { colorSchema } from "@/graph-style";
 
@@ -46,17 +47,11 @@ export function Sidebar({
 }) {
   return (
     <div className="w-[15%] min-w-48 p-4 h-full overflow-auto">
-      <div className={panel}>
-        <h4 className={heading}>Legend</h4>
-        <div className="space-y-4">
-          {colorSchema.map(({ index, label, color }) => (
-            <div key={index} className="flex items-center space-x-3">
-              <div className="w-5 h-5 rounded-sm shrink-0" style={{ backgroundColor: color }} />
-              <span className="text-gray-600 text-sm">{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <Legend
+        title="Legend"
+        className="mb-8 shadow-lg"
+        items={colorSchema.map(({ label, color }) => ({ label, color }))}
+      />
 
       {debug && (
         <div className={panel}>
@@ -114,23 +109,13 @@ export function Sidebar({
       </div>
 
       {viewMode === "1 Graph" && (
-        <div className={panel}>
-          <h4 className={heading}>Perspectiva</h4>
-          {versions.map((name) => (
-            <button
-              key={name}
-              type="button"
-              aria-pressed={version === name}
-              onClick={() => onVersionChange(name)}
-              className="flex w-full items-center space-x-2 hover:bg-gray-100 p-1 rounded-md"
-            >
-              <span
-                className={`w-4 h-4 rounded-full ${version === name ? "bg-yellow-400" : "bg-gray-400"}`}
-              />
-              <span className={name === "final" ? "font-bold" : undefined}>{titleCase(name)}</span>
-            </button>
-          ))}
-        </div>
+        <VersionSwitcher
+          className="mb-8 shadow-lg"
+          versions={versions}
+          value={version}
+          onChange={onVersionChange}
+          format={titleCase}
+        />
       )}
 
       {children}
