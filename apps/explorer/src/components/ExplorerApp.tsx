@@ -180,6 +180,7 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
           layout={savedLayout}
           stylesheet={graphStyles}
           positionCache={positionCache}
+          maxZoom={10}
           onReady={onReady}
           renderTooltip={renderTooltip}
         />

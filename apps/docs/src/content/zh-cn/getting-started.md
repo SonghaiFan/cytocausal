@@ -22,12 +22,14 @@ npm run dev
 | 文件 | 作用 |
 | :--- | :--- |
 | `data.ts` | 你的图，从替换这个文件开始 |
-| `graph-style.ts` | 节点和连接的外观 |
+| `graph-style.ts` | 颜色、节点形状和连接形状 |
 | `components/App.tsx` | 页面：图、搜索、版本按钮和回路列表 |
 
 如果想保留 starter 作为参考，请把 `apps/starter` 复制为 `apps/your-app`，并修改其 `package.json` 中的 `name`。
 
 ## 添加数据
+
+要修改颜色或形状，请参阅[主题与样式](/zh-cn/theming/)。
 
 数据需要符合[数据模型](/zh-cn/data-model/)。只有 ID 和标签是必需的，所以一张图可以很简单：
 
@@ -60,7 +62,7 @@ export const dataset: CausalDataset = {
 | `apps/explorer` | 示例：探索大型网络 |
 | `apps/docs` | 本站 |
 | `packages/core` | 数据模型、验证和分析 |
-| `packages/cytoscape` | 布局、过渡和高亮 |
+| `packages/cytoscape` | 主题、样式、布局、过渡和高亮 |
 | `packages/react` | `GraphView`、`CompareView` 和 `NodeSearch` |
 
 运行示例：`npm run dev:perspectiva` 和 `npm run dev:explorer`。

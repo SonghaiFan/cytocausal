@@ -7,6 +7,7 @@ import {
   snapshotPositions,
   toElements,
   transitionToSnapshot,
+  type CausalMotion,
   type Positions,
 } from "@cytocausal/cytoscape";
 import cytoscape, { type Core, type LayoutOptions, type Layouts, type Stylesheet } from "cytoscape";
@@ -26,7 +27,11 @@ export interface GraphViewProps {
   dataset: CausalDataset;
   snapshotId: string;
   layout: LayoutOptions;
+  /** Changing this restyles the graph in place, so nodes stay where they are. */
   stylesheet: Stylesheet[];
+  motion?: CausalMotion;
+  /** Stops small graphs being blown up to fill the screen. */
+  maxZoom?: number;
   /** Shared between views, so every view of a snapshot agrees. */
   positionCache: PositionCache;
   /** Animate between snapshots of a dataset instead of rebuilding the graph. */
@@ -49,6 +54,8 @@ export function GraphView({
   snapshotId,
   layout,
   stylesheet,
+  motion,
+  maxZoom = 2,
   positionCache,
   animateSnapshots = false,
   waitForAnchors = false,
@@ -71,9 +78,9 @@ export function GraphView({
   const cacheKey = cacheKeyOf(dataset.id, layout, snapshotId);
 
   // Listeners outlive a snapshot change, so they read the latest values
-  const latest = useRef({ cacheKey, snapshot, onLayoutComplete, onReady });
+  const latest = useRef({ cacheKey, snapshot, stylesheet, motion, onLayoutComplete, onReady });
   useEffect(() => {
-    latest.current = { cacheKey, snapshot, onLayoutComplete, onReady };
+    latest.current = { cacheKey, snapshot, stylesheet, motion, onLayoutComplete, onReady };
   });
 
   const rememberPositions = useCallback(() => {
@@ -98,6 +105,7 @@ export function GraphView({
       transitionToSnapshot(cy.current, snapshot, {
         counterparts: getCounterparts(dataset, current.snapshot, snapshotId),
         positions: positionCache.current[cacheKey],
+        motion: latest.current.motion,
         onSettled: rememberPositions,
       });
       shown.current = { dataset: dataset.id, layout, snapshot: snapshotId };
@@ -121,8 +129,9 @@ export function GraphView({
     const instance = cytoscape({
       container: container.current,
       elements: [...nodes, ...edges],
-      style: stylesheet,
+      style: latest.current.stylesheet,
       layout: { name: "preset" },
+      maxZoom,
     });
     cy.current = instance;
 
@@ -163,12 +172,16 @@ export function GraphView({
     snapshot,
     snapshotId,
     layout,
-    stylesheet,
+    maxZoom,
     animateSnapshots,
     waitForAnchors,
     positionCache,
     rememberPositions,
   ]);
+
+  useEffect(() => {
+    cy.current?.style(stylesheet as unknown as Stylesheet);
+  }, [stylesheet]);
 
   useEffect(() => {
     if (!waitForAnchors || !anchorPositions || !cy.current) return;

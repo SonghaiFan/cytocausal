@@ -2,10 +2,10 @@ import type { Snapshot } from "@cytocausal/core";
 import type { Collection, Core, ElementDefinition, LayoutOptions, Layouts } from "cytoscape";
 import { toElements } from "./elements.ts";
 import { fcoseLayout } from "./layouts.ts";
+import { resolveMotion } from "./motion.ts";
 import { centre, type Position, type Positions } from "./positions.ts";
+import type { CausalMotion } from "./theme.ts";
 
-const FADE_MS = 400;
-const MOVE_MS = 800;
 const SCRATCH_KEY = "cytocausalTransition";
 
 interface Transition {
@@ -14,9 +14,9 @@ interface Transition {
 
 export const isTransitioning = (cy: Core) => Boolean(cy.scratch(SCRATCH_KEY));
 
-const fadeTo = (eles: Collection, opacity: number) =>
+const fadeTo = (eles: Collection, opacity: number, duration: number) =>
   eles.forEach((ele) => {
-    ele.animate({ style: { opacity } }, { duration: FADE_MS });
+    ele.animate({ style: { opacity } }, { duration });
   });
 
 /**
@@ -31,13 +31,16 @@ export function transitionToSnapshot(
   {
     counterparts,
     positions,
+    motion,
     onSettled,
   }: {
     counterparts: Record<string, string[]>;
     positions?: Positions;
+    motion?: CausalMotion;
     onSettled: () => void;
   },
 ) {
+  const { fade, move } = resolveMotion(motion);
   const transition: Transition = {};
   const previous: Transition | undefined = cy.scratch(SCRATCH_KEY);
   // Stopping fires layoutstop, which must not count as that transition settling
@@ -105,8 +108,8 @@ export function transitionToSnapshot(
     });
   }
 
-  fadeTo(outgoing, 0);
-  fadeTo(faded, 1);
+  fadeTo(outgoing, 0, fade);
+  fadeTo(faded, 1, fade);
 
   // Interrupted animations never complete, so cleaning up cannot rely on them
   setTimeout(() => {
@@ -114,7 +117,7 @@ export function transitionToSnapshot(
       outgoing.remove();
       faded.removeStyle("opacity");
     }
-  }, FADE_MS + 50);
+  }, fade + 50);
 
   const pinned = new Map<string, { nodeId: string; position: Position }>();
   Object.entries(sources).forEach(([nodeId, points]) => {
@@ -129,15 +132,16 @@ export function transitionToSnapshot(
       ? {
           name: "preset",
           positions,
-          animate: true,
-          animationDuration: MOVE_MS,
+          animate: move > 0,
+          animationDuration: move,
           animationEasing: "ease-in-out",
           fit: true,
           padding: 30,
         }
       : {
           ...fcoseLayout,
-          animationDuration: MOVE_MS,
+          animate: move > 0,
+          animationDuration: move,
           fixedNodeConstraint: [...pinned.values()],
         }) as unknown as LayoutOptions,
   );

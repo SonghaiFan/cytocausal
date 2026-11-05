@@ -17,6 +17,7 @@ const resultStyle = {
   padding: "0.25rem",
   border: 0,
   background: "none",
+  color: "inherit",
   font: "inherit",
   fontSize: "0.875rem",
   textAlign: "left",
@@ -42,7 +43,15 @@ export function NodeSearch({
         placeholder={placeholder}
         value={text}
         onChange={(event) => setText(event.target.value)}
-        style={{ width: "100%", padding: "0.25rem 0.5rem", font: "inherit" }}
+        style={{
+          width: "100%",
+          padding: "0.25rem 0.5rem",
+          border: "1px solid var(--cc-border, #cbd5e1)",
+          borderRadius: "0.25rem",
+          background: "var(--cc-background, #fff)",
+          color: "inherit",
+          font: "inherit",
+        }}
       />
       {text.trim() && (
         <>

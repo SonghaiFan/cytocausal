@@ -17,7 +17,7 @@
     "start": "npm run start -w @cytocausal/starter",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "check:content": "npm run check:content -w @cytocausal/docs",
-    "test": "npm run test -w @cytocausal/core",
+    "test": "npm run test --workspaces --if-present",
     "dev:perspectiva": "npm run dev -w @cytocausal/perspectiva",
     "test:e2e": "npm run test:e2e --workspaces --if-present",
     "dev:explorer": "npm run dev -w @cytocausal/explorer",

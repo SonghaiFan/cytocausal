@@ -7,11 +7,17 @@ import {
   highlightLoop,
   type Positions,
 } from "@cytocausal/cytoscape";
-import { GraphView, NodeSearch } from "@cytocausal/react";
+import {
+  CausalRoot,
+  GraphView,
+  NodeSearch,
+  themeForScheme,
+  useColorScheme,
+} from "@cytocausal/react";
 import type { Core, LayoutOptions } from "cytoscape";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { dataset } from "@/data";
-import { graphStyles } from "@/graph-style";
+import { styles } from "@/graph-style";
 
 // Random starting positions and long links suit small graphs. Any data gets laid out
 // automatically, so there are no coordinates to write.
@@ -30,6 +36,8 @@ const renderTooltip = (node: CausalNode) => (
 );
 
 export function App() {
+  const { scheme, setScheme } = useColorScheme();
+  const theme = themeForScheme(scheme);
   const [version, setVersion] = useState("V1");
   const [activeLoop, setActiveLoop] = useState<FeedbackLoop | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -53,75 +61,86 @@ export function App() {
   }, [activeLoop, selected]);
 
   return (
-    <main>
-      <div className="graph">
-        <GraphView
-          dataset={dataset}
-          snapshotId={version}
-          layout={layout}
-          stylesheet={graphStyles}
-          positionCache={positionCache}
-          animateSnapshots
-          renderTooltip={renderTooltip}
-          onReady={(instance) => {
-            cy.current = instance;
-            instance.on("tap", (event) => {
-              if (event.target === instance) setSelected(null);
-            });
-          }}
-        />
-      </div>
-
-      <aside>
-        <h1>cytocausal starter</h1>
-        {issues.length > 0 && <pre role="alert">{issues.join("\n")}</pre>}
-
-        <NodeSearch
-          nodes={snapshot.nodes}
-          onSelect={(id) => {
-            setActiveLoop(null);
-            setSelected(id);
-            if (cy.current) focusNode(cy.current, id, { zoom: cy.current.zoom() });
-          }}
-        />
-
-        <h2>Version</h2>
-        <div className="versions">
-          {dataset.snapshots.map(({ id }) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={version === id}
-              onClick={() => {
-                setActiveLoop(null);
-                setSelected(null);
-                setVersion(id);
-              }}
-            >
-              {id}
-            </button>
-          ))}
+    <CausalRoot theme={theme}>
+      <main>
+        <div className="graph">
+          <GraphView
+            dataset={dataset}
+            snapshotId={version}
+            layout={layout}
+            stylesheet={styles[scheme]}
+            motion={theme.motion}
+            maxZoom={1.8}
+            positionCache={positionCache}
+            animateSnapshots
+            renderTooltip={renderTooltip}
+            onReady={(instance) => {
+              cy.current = instance;
+              instance.on("tap", (event) => {
+                if (event.target === instance) setSelected(null);
+              });
+            }}
+          />
         </div>
 
-        <h2>Feedback loops ({loops.length})</h2>
-        <ul>
-          {loops.map((loop) => (
-            <li key={loop.edges.join()}>
+        <aside>
+          <div className="header">
+            <h1>cytocausal starter</h1>
+            <button type="button" onClick={() => setScheme(scheme === "dark" ? "light" : "dark")}>
+              {scheme === "dark" ? "Light mode" : "Dark mode"}
+            </button>
+          </div>
+          {issues.length > 0 && <pre role="alert">{issues.join("\n")}</pre>}
+
+          <NodeSearch
+            nodes={snapshot.nodes}
+            onSelect={(id) => {
+              setActiveLoop(null);
+              setSelected(id);
+              if (cy.current) {
+                focusNode(cy.current, id, { zoom: cy.current.zoom(), motion: theme.motion });
+              }
+            }}
+          />
+
+          <h2>Version</h2>
+          <div className="versions">
+            {dataset.snapshots.map(({ id }) => (
               <button
+                key={id}
                 type="button"
-                className="loop"
-                aria-pressed={activeLoop === loop}
+                aria-pressed={version === id}
                 onClick={() => {
+                  setActiveLoop(null);
                   setSelected(null);
-                  setActiveLoop(activeLoop === loop ? null : loop);
+                  setVersion(id);
                 }}
               >
-                {loop.type}: {[...loop.nodes, loop.nodes[0]].map(labelOf).join(" → ")}
+                {id}
               </button>
-            </li>
-          ))}
-        </ul>
-      </aside>
-    </main>
+            ))}
+          </div>
+
+          <h2>Feedback loops ({loops.length})</h2>
+          <ul>
+            {loops.map((loop) => (
+              <li key={loop.edges.join()}>
+                <button
+                  type="button"
+                  className="loop"
+                  aria-pressed={activeLoop === loop}
+                  onClick={() => {
+                    setSelected(null);
+                    setActiveLoop(activeLoop === loop ? null : loop);
+                  }}
+                >
+                  {loop.type}: {[...loop.nodes, loop.nodes[0]].map(labelOf).join(" → ")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      </main>
+    </CausalRoot>
   );
 }

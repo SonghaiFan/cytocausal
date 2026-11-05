@@ -24,7 +24,7 @@ Open `http://localhost:3102`, then edit `apps/starter/src/data.ts` to use your o
 | `apps/explorer` | Example: explores a large causal network |
 | `apps/docs` | Guides, in English and Chinese |
 | `packages/core` | Data model, validation and analysis |
-| `packages/cytoscape` | Layouts, transitions and highlighting |
+| `packages/cytoscape` | Themes, styles, layouts, transitions and highlighting |
 | `packages/react` | `GraphView`, `CompareView` and `NodeSearch` |
 
 ## Commands

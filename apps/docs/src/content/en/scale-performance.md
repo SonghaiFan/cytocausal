@@ -42,7 +42,7 @@ Cytoscape's `min-zoomed-font-size` looks like the right tool for hiding labels, 
 3. Set the font size to a constant divided by zoom, so text stays readable.
 4. Repeat only after zooming stops, because restyling every frame is slow.
 
-Node positions and sizes are known, but label widths are estimated from text length. Add a margin for that.
+Label sizes are first estimated from text length, because that's fast. Wrapped text can't be estimated exactly, so the labels chosen are then checked against the boxes Cytoscape actually drew.
 
 ## Look at the result
 

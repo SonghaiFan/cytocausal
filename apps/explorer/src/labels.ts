@@ -56,6 +56,22 @@ export function keepLabelsReadable(cy: Core) {
       cy.nodes().removeClass("labelled");
       labelled.forEach((node) => node.addClass("labelled"));
     });
+
+    // Text wrapping can't be estimated exactly, so check the labels as Cytoscape drew them
+    const drawn: { x1: number; x2: number; y1: number; y2: number }[] = [];
+    for (const node of labelled) {
+      const box = node.boundingBox({
+        includeNodes: false,
+        includeEdges: false,
+        includeOverlays: false,
+      });
+      const clashes = drawn.some(
+        (other) =>
+          box.x1 < other.x2 && other.x1 < box.x2 && box.y1 < other.y2 && other.y1 < box.y2,
+      );
+      if (clashes) node.removeClass("labelled");
+      else drawn.push(box);
+    }
   };
 
   let timer: ReturnType<typeof setTimeout>;

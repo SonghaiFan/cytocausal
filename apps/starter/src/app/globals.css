@@ -1,13 +1,14 @@
 * { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, sans-serif; color: #1f2937; }
+body { margin: 0; }
 main { display: flex; flex-wrap: wrap; min-height: 100vh; }
 .graph { flex: 1 1 500px; min-height: 60vh; }
-aside { flex: 0 1 320px; padding: 1rem; border-left: 1px solid #e5e7eb; background: #f9fafb; }
+aside { flex: 0 1 320px; padding: 1rem; border-left: 1px solid var(--cc-border); background: var(--cc-surface); }
 h1 { font-size: 1.25rem; margin: 0 0 1rem; }
 h2 { font-size: 1rem; margin: 1.5rem 0 .5rem; }
 ul { list-style: none; margin: 0; padding: 0; }
-button { font: inherit; padding: .35rem .6rem; border: 1px solid #d1d5db; border-radius: .25rem; background: #fff; cursor: pointer; }
-button[aria-pressed="true"] { background: #1f2937; color: #fff; }
+button { font: inherit; padding: .35rem .6rem; border: 1px solid var(--cc-border); border-radius: .25rem; background: var(--cc-background); color: var(--cc-text); cursor: pointer; }
+button[aria-pressed="true"] { background: var(--cc-text); color: var(--cc-background); }
+.header { display: flex; align-items: start; justify-content: space-between; gap: .5rem; }
 .versions { display: flex; gap: .5rem; }
 .loop { width: 100%; margin-bottom: .35rem; text-align: left; font-size: .85rem; }
-.tooltip { max-width: 18rem; padding: .5rem .75rem; border: 1px solid #d1d5db; border-radius: .25rem; background: #fff; font-size: .85rem; }
+.tooltip { max-width: 18rem; padding: .5rem .75rem; border: 1px solid var(--cc-border); border-radius: .25rem; background: var(--cc-surface); font-size: .85rem; }

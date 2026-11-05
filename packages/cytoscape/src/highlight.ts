@@ -1,5 +1,12 @@
 import type { FeedbackLoop } from "@cytocausal/core";
 import type { Core } from "cytoscape";
+import { resolveMotion } from "./motion.ts";
+import type { CausalMotion } from "./theme.ts";
+
+export interface FocusOptions {
+  zoom?: number;
+  motion?: CausalMotion;
+}
 
 const CLASSES = "dimmed focus cause effect cause-link effect-link";
 
@@ -36,7 +43,9 @@ export function highlightLoop(cy: Core, loop: FeedbackLoop | null) {
 }
 
 /** Moves the view to a node. */
-export function focusNode(cy: Core, id: string, { zoom = 2, duration = 600 } = {}) {
+export function focusNode(cy: Core, id: string, { zoom = 2, motion }: FocusOptions = {}) {
   const node = cy.getElementById(id);
-  if (node.length > 0) cy.animate({ center: { eles: node }, zoom }, { duration });
+  if (node.length > 0) {
+    cy.animate({ center: { eles: node }, zoom }, { duration: resolveMotion(motion).focus });
+  }
 }

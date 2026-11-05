@@ -86,6 +86,59 @@ test("search finds nodes by label and evidence, and highlights the choice", asyn
   await expect(page.getByRole("status").filter({ hasText: "0 matches" })).toBeVisible();
 });
 
+test("changing theme restyles the same graph without moving it", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+
+  const read = () =>
+    page.evaluate(() => {
+      const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+      const cy = div._cyreg.cy;
+      return {
+        positions: JSON.stringify(cy.nodes().map((node: any) => node.position())),
+        nodeColor: cy.nodes()[0].style("background-color"),
+        marked: cy.scratch("marked") ?? false,
+        pageColor: getComputedStyle(document.querySelector("aside")!).backgroundColor,
+      };
+    });
+  await page.evaluate(() => {
+    [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy)._cyreg.cy.scratch("marked", true);
+  });
+
+  const light = await read();
+  await page.getByRole("button", { name: "Dark mode" }).click();
+  await expect.poll(async () => (await read()).nodeColor).not.toBe(light.nodeColor);
+  const dark = await read();
+  expect(dark.positions).toBe(light.positions);
+  expect(dark.marked).toBe(true);
+  expect(dark.pageColor).not.toBe(light.pageColor);
+});
+
+test("the system colour scheme is followed", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Light mode" })).toBeVisible();
+});
+
+test("reduced motion skips animation", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  await page.waitForTimeout(500);
+
+  await page.getByRole("button", { name: "final", exact: true }).click();
+  await page.waitForTimeout(150);
+  const state = await page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    const cy = div._cyreg.cy;
+    return { moving: cy.nodes().filter((node: any) => node.animated()).length };
+  });
+  expect(state.moving).toBe(0);
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(5);
+});
+
 test("the starter runs out of the box", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
