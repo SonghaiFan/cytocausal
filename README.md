@@ -1,15 +1,15 @@
 # cytocausal
 
-A framework for exploring causal graphs with Cytoscape.js. It covers the shared data model, causal analysis, stable layouts, version transitions and the React views.
+A Next.js and Cytoscape.js interface for exploring causal graphs. It provides the data model, causal analysis, stable layouts, version transitions and React views.
 
 | Path | Contents |
 | --- | --- |
 | `packages/core` | Schema, validation and analysis, with no UI dependencies |
 | `packages/cytoscape` | Layouts, anchoring, transitions and highlighting |
 | `packages/react` | Graph views, search and the evidence panel |
-| `apps/docs` | Cytoscape.js tutorials and framework guides |
+| `apps/docs` | Cytoscape.js tutorials and framework guides, built with Nextra |
 
-Perspectiva and Causal Explorer will become the two demo apps under `apps/`. See [the plan](docs/PLAN.md).
+Perspectiva and Causal Explorer will become the two demo apps under `apps/`, both on Next.js. See [the plan](docs/PLAN.md).
 
 ## Run locally
 

@@ -4,7 +4,7 @@ const chapters = JSON.parse((await readFile('src/lib/chapters.ts', 'utf8')).spli
 let count = 0;
 for (const lang of ['en', 'zh-cn']) {
   for (const c of chapters) {
-    const file = `src/content/docs/${lang}/${c.topic}.md`;
+    const file = `src/content/${lang}/${c.topic}.md`;
     const text = await readFile(file, 'utf8');
     assert(text.startsWith('---\ntitle:'), `${file}: missing title`);
     assert(!text.includes('raw.githack.com'), `${file}: stale remote preview`);
