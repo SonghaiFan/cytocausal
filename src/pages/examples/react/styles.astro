@@ -1,0 +1,8 @@
+---
+import DemoLayout from '../../../layouts/DemoLayout.astro';
+import Example from '../../../examples/4-style/page';
+import '../../../styles/playground.css';
+---
+<DemoLayout topic="styles" mode="react" lang="zh-cn">
+  <div class="react-demo"><Example client:only="react"><p slot="fallback">Loading interactive graph…</p></Example></div>
+</DemoLayout>

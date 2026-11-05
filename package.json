@@ -1,0 +1,37 @@
+{
+  "name": "learning-cytoscape",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "astro preview",
+    "typecheck": "astro check",
+    "check:content": "node scripts/check-content.mjs"
+  },
+  "dependencies": {
+    "cytoscape": "^3.31.0",
+    "cytoscape-cise": "^2.0.0",
+    "cytoscape-cola": "^2.5.1",
+    "cytoscape-cose-bilkent": "^4.1.0",
+    "cytoscape-dagre": "^2.5.0",
+    "cytoscape-elk": "^2.3.0",
+    "cytoscape-fcose": "^2.2.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "astro": "^7.4.5",
+    "@astrojs/starlight": "^0.42.9",
+    "@astrojs/react": "^7.1.2",
+    "@tailwindcss/vite": "^4.3.4",
+    "tailwindcss": "^4.3.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@types/cytoscape": "^3.21.8",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
+}

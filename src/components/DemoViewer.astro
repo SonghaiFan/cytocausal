@@ -1,0 +1,102 @@
+---
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { Code } from 'astro:components';
+import { chapters, type Language } from '../lib/chapters';
+interface Props { topic: string; mode: 'react' | 'vanilla'; lang: Language }
+const { topic, mode, lang } = Astro.props;
+const chapter = chapters.find(c => c.topic === topic)!;
+const chinese = lang === 'zh-cn';
+const files: { name: string; code: string; lang: 'tsx' | 'ts' | 'css' | 'html' | 'js' }[] = [];
+const visited = new Set<string>();
+async function collect(file: string) {
+  if (visited.has(file)) return;
+  visited.add(file);
+  const code = await readFile(file, 'utf8');
+  files.push({ name: file.replace(/^(src|public)\//, ''), code, lang: file.endsWith('.tsx') ? 'tsx' : file.endsWith('.ts') ? 'ts' : file.endsWith('.css') ? 'css' : file.endsWith('.html') ? 'html' : 'js' });
+  if (!file.startsWith('src/')) return;
+  for (const match of code.matchAll(/(?:from\s*|import\s*\()\s*["']([^"']+)["']/g)) {
+    const specifier = match[1];
+    if (!specifier.startsWith('@/') && !specifier.startsWith('.')) continue;
+    const base = specifier.startsWith('@/') ? `src/${specifier.slice(2)}` : path.posix.join(path.posix.dirname(file), specifier);
+    for (const extension of ['.tsx', '.ts']) {
+      try { await collect(base + extension); break; }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+    }
+  }
+}
+if (mode === 'react') await collect(`src/examples/${chapter.slug}/page.tsx`);
+else {
+  await collect(`public/demos/vanilla/${lang}/${topic}.html`);
+  await collect('public/demo-frame.css');
+  await collect('public/demo-frame.js');
+  await collect('public/demo-controls.css');
+}
+---
+<demo-viewer>
+  <div class="viewer-toolbar" role="tablist" aria-label={chinese ? '示例视图' : 'Example view'}>
+    <button id="preview-tab" role="tab" aria-selected="true" aria-controls="preview-panel" data-mode="preview">{chinese ? '预览' : 'Preview'}</button>
+    <button id="code-tab" role="tab" aria-selected="false" aria-controls="code-panel" tabindex="-1" data-mode="code">{chinese ? '代码' : 'Code'}</button>
+  </div>
+  <div id="preview-panel" role="tabpanel" aria-labelledby="preview-tab" tabindex="0"><slot /></div>
+  <div id="code-panel" role="tabpanel" aria-labelledby="code-tab" tabindex="0" hidden>
+    <div class="source-toolbar">
+      <label>{chinese ? '源文件' : 'Source file'}<select aria-label={chinese ? '源文件' : 'Source file'}>{files.map((file, i) => <option value={i}>{file.name}</option>)}</select></label>
+      <button class="copy-source" type="button" data-copy-label={chinese ? '复制' : 'Copy'} data-success-label={chinese ? '已复制' : 'Copied'} data-error-label={chinese ? '复制失败，请手动选择代码' : 'Select the code to copy manually'}>{chinese ? '复制' : 'Copy'}</button>
+      <span class="copy-status" role="status"></span>
+    </div>
+    {files.map((file, i) => <div class="source-file" data-file={i} hidden={i !== 0}><Code code={file.code} lang={file.lang} theme="github-dark" /></div>)}
+  </div>
+</demo-viewer>
+<script>
+  class DemoViewer extends HTMLElement {
+    connectedCallback() {
+      const tabs = Array.from(this.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+      const preview = this.querySelector<HTMLElement>('#preview-panel')!;
+      const code = this.querySelector<HTMLElement>('#code-panel')!;
+      const activate = (mode: string, focus = false) => {
+        preview.hidden = mode !== 'preview';
+        code.hidden = mode !== 'code';
+        for (const tab of tabs) {
+          const selected = tab.dataset.mode === mode;
+          tab.setAttribute('aria-selected', String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+          if (selected && focus) tab.focus();
+        }
+        if (mode === 'preview') requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+      };
+      for (const tab of tabs) {
+        tab.addEventListener('click', () => activate(tab.dataset.mode!));
+        tab.addEventListener('keydown', event => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          activate(event.key === 'Home' ? 'preview' : event.key === 'End' ? 'code' : tab.dataset.mode === 'preview' ? 'code' : 'preview', true);
+        });
+      }
+      const select = this.querySelector<HTMLSelectElement>('select')!;
+      const status = this.querySelector<HTMLElement>('.copy-status')!;
+      select.addEventListener('change', () => {
+        this.querySelectorAll<HTMLElement>('.source-file').forEach(file => file.hidden = file.dataset.file !== select.value);
+        status.textContent = '';
+      });
+      const copy = this.querySelector<HTMLButtonElement>('.copy-source')!;
+      copy.addEventListener('click', async () => {
+        const source = this.querySelector<HTMLElement>('.source-file:not([hidden]) code')?.textContent ?? '';
+        try { await navigator.clipboard.writeText(source); status.textContent = copy.dataset.successLabel!; }
+        catch { status.textContent = copy.dataset.errorLabel!; }
+      });
+    }
+  }
+  if (!customElements.get('demo-viewer')) customElements.define('demo-viewer', DemoViewer);
+</script>
+<style is:global>
+  demo-viewer { display: block; min-width: 0; }
+  demo-viewer [hidden] { display: none !important; }
+  .viewer-toolbar { display: flex; gap: .25rem; margin-bottom: 1rem; }
+  .source-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; margin-bottom: .75rem; font-size: .8125rem; }
+  .source-toolbar label { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; min-width: 0; flex: 1; }
+  .source-toolbar select { width: 100%; max-width: 30rem; min-width: 0; padding: .4rem; border: 1px solid var(--sl-color-hairline-light); border-radius: .3rem; color: var(--sl-color-text); background: var(--sl-color-bg); font: inherit; }
+  .source-file pre { max-height: 65vh; overflow: auto; border-radius: .375rem; padding: 1rem; font-size: .8125rem; line-height: 1.6; }
+  .source-file pre code { background: transparent; padding: 0; font: inherit; }
+  .copy-status { color: var(--sl-color-gray-2); }
+</style>
