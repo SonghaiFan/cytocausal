@@ -9,7 +9,8 @@
     "postbuild": "pagefind --site .next/server/app --output-path public/_pagefind",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "check:content": "node scripts/check-content.mjs"
+    "check:content": "node scripts/check-content.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.4",
@@ -29,6 +30,7 @@
     "tailwindcss": "^4.3.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/cytoscape": "^3.21.8",
     "@types/node": "^22.20.5",
     "@types/react": "^19",

@@ -1,5 +1,6 @@
 export default {
   index: "Overview",
+  "--cytoscape": { type: "separator", title: "Cytoscape.js" },
   setup: "1. Setup & initialization",
   elements: "2. Nodes & edges",
   layouts: "3. Layouts & viewport",
@@ -7,4 +8,14 @@ export default {
   events: "5. Interactions & events",
   algorithms: "6. Graph algorithms",
   data: "7. Import & export",
+  "--framework": { type: "separator", title: "cytocausal" },
+  "data-model": "8. Data model",
+  "react-lifecycle": "9. React lifecycle",
+  "stable-layouts": "10. Stable layouts and anchoring",
+  "version-transitions": "11. Version transitions",
+  "causal-analysis": "12. Causal analysis",
+  "scale-performance": "13. Scale and performance",
+  "--cases": { type: "separator", title: "Case studies" },
+  "case-perspectiva": "Perspectiva",
+  "case-explorer": "Causal Explorer",
 };

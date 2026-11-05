@@ -1,5 +1,6 @@
 export default {
   index: "概览",
+  "--cytoscape": { type: "separator", title: "Cytoscape.js" },
   setup: "1. 环境搭建与初始化",
   elements: "2. 节点与边",
   layouts: "3. 布局与视图",
@@ -7,4 +8,14 @@ export default {
   events: "5. 交互与事件",
   algorithms: "6. 图算法与分析",
   data: "7. 数据导入导出",
+  "--framework": { type: "separator", title: "cytocausal" },
+  "data-model": "8. 数据模型",
+  "react-lifecycle": "9. React 生命周期",
+  "stable-layouts": "10. 稳定布局与锚定",
+  "version-transitions": "11. 版本过渡",
+  "causal-analysis": "12. 因果分析",
+  "scale-performance": "13. 规模与性能",
+  "--cases": { type: "separator", title: "案例" },
+  "case-perspectiva": "Perspectiva",
+  "case-explorer": "Causal Explorer",
 };

@@ -34,7 +34,7 @@ npm run check:content
 npm run build
 ```
 
-`npm run test:e2e` needs Chrome and production builds of both apps. `npm test` also checks results against the real Perspectiva and Causal Explorer datasets when they are on disk. Those datasets aren't in this repo, so set `CYTOCAUSAL_PERSPECTIVA` and `CYTOCAUSAL_EXPLORER` to their project folders, or those tests are skipped.
+`npm run test:e2e` needs Chrome and a production build of each app, so run `npm run build` first. `npm test` also checks results against the real Perspectiva and Causal Explorer datasets when they are on disk. Those datasets aren't in this repo, so set `CYTOCAUSAL_PERSPECTIVA` and `CYTOCAUSAL_EXPLORER` to their project folders, or those tests are skipped.
 
 ## License
 
