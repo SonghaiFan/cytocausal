@@ -1,0 +1,15 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@source "../examples";
+@source "../components";
+.react-demo { font-size: .875rem; line-height: 1.6; }
+.example-description { color: var(--sl-color-gray-2); margin: 0 0 1rem; }
+.example-sections { display: grid; gap: 1rem; }
+.example-section { min-width: 0; padding: 1rem; border: 1px solid var(--sl-color-hairline-light); border-radius: .375rem; }
+.example-section h2 { font-size: 1rem; font-weight: 600; margin: 0 0 .75rem; }
+.react-demo [class*='text-gray-'] { color: var(--sl-color-gray-2); }
+.react-demo [class*='bg-white']:not(button), .react-demo [class*='bg-gray-']:not(button) { background: var(--sl-color-gray-6); }
+.react-demo .graph-canvas { background: white; border-radius: .25rem; overflow: hidden; }
+.react-demo .example-section h2 { margin: 0 0 .75rem; }
+.react-demo .example-section + .example-section { margin-top: 0; }

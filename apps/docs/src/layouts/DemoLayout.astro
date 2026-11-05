@@ -1,0 +1,30 @@
+---
+import DemoViewer from '../components/DemoViewer.astro';
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import { chapters, type Language } from '../lib/chapters';
+interface Props { topic: string; mode: 'react' | 'vanilla'; lang: Language }
+const { topic, mode, lang } = Astro.props;
+const chapter = chapters.find(c => c.topic === topic)!;
+const chinese = lang === 'zh-cn';
+const title = chinese ? chapter.zh : chapter.title;
+const sidebar = chapters.map(c => ({ label: `${c.number}. ${chinese ? c.zh : c.title}`, link: mode === 'react' ? `/examples/react/${c.topic}/` : `/examples/vanilla/${lang}/${c.topic}/` }));
+---
+<StarlightPage frontmatter={{ title, tableOfContents: false, editUrl: false, prev: false, next: false }} sidebar={sidebar} lang={chinese ? 'zh-CN' : 'en'}>
+  <nav class="demo-tabs" aria-label="Chapter views">
+    <a href={`/${lang}/${topic}/`}>{chinese ? '教程' : 'Guide'}</a>
+    <a href={`/examples/react/${topic}/`} aria-current={mode === 'react' ? 'page' : undefined}>React</a>
+    <a href={`/examples/vanilla/${lang}/${topic}/`} aria-current={mode === 'vanilla' ? 'page' : undefined}>Vanilla JS</a>
+    <a class="other-language" href={`/${lang === 'en' ? 'zh-cn' : 'en'}/${topic}/`}>{chinese ? 'English guide' : '中文教程'}</a>
+  </nav>
+  <div class="demo-workspace not-content"><DemoViewer topic={topic} mode={mode} lang={lang}><slot /></DemoViewer></div>
+</StarlightPage>
+<style is:global>
+  body:has(.demo-workspace) { --sl-content-margin-inline: 0; }
+  .demo-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; border-bottom: 1px solid var(--sl-color-hairline-light); padding-bottom: .7rem; margin-bottom: 1rem; font-size: .875rem; }
+  .demo-tabs a { padding: .35rem .7rem; border-radius: .3rem; color: var(--sl-color-gray-2); text-decoration: none; }
+  .demo-tabs a:hover { background: var(--sl-color-gray-6); }
+  .demo-tabs a[aria-current] { color: var(--sl-color-text-accent); background: var(--sl-color-accent-low); font-weight: 600; }
+  .demo-tabs .other-language { margin-inline-start: auto; font-size: .8rem; }
+  .demo-workspace { min-width: 0; }
+  .demo-frame { display: block; width: 100%; height: 900px; border: 0; background: var(--sl-color-bg); }
+</style>
