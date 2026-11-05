@@ -7,10 +7,10 @@
   min-height: 2rem;
   margin: 0;
   padding: .375rem .75rem;
-  border: 1px solid var(--sl-color-hairline-light, var(--demo-border, #d9dde5));
+  border: 1px solid var(--demo-border, #d9dde5);
   border-radius: .3rem;
-  background: var(--sl-color-bg, var(--demo-bg, #fff));
-  color: var(--sl-color-text, var(--demo-text, #262b35));
+  background: var(--demo-bg, #fff);
+  color: var(--demo-text, #262b35);
   font-family: inherit;
   font-size: .8125rem;
   font-weight: 500;
@@ -19,19 +19,19 @@
   cursor: pointer;
 }
 :is(.react-demo, .viewer-toolbar, .source-toolbar, .demo-frame-body) button:hover {
-  background: var(--sl-color-accent-low, var(--demo-panel, #f6f7f9));
-  color: var(--sl-color-text-accent, #0369a1);
-  border-color: var(--sl-color-accent, #0284c7);
+  background: var(--demo-panel, #f6f7f9);
+  color: var(--demo-accent, #0369a1);
+  border-color: var(--demo-accent, #0369a1);
 }
 :is(.react-demo, .viewer-toolbar, .source-toolbar, .demo-frame-body) button:focus-visible {
-  outline: 2px solid var(--sl-color-accent, #0284c7);
+  outline: 2px solid var(--demo-accent, #0369a1);
   outline-offset: 2px;
 }
 :is(.react-demo, .viewer-toolbar, .source-toolbar, .demo-frame-body) button:disabled { opacity: .5; cursor: not-allowed; }
 .viewer-toolbar { align-items: center; }
 .viewer-toolbar button[aria-selected='true'] {
-  background: var(--sl-color-accent-low);
-  color: var(--sl-color-text-accent);
-  border-color: var(--sl-color-accent);
+  background: var(--demo-accent-low, #e0f2fe);
+  color: var(--demo-accent, #0369a1);
+  border-color: var(--demo-accent, #0369a1);
 }
 .demo-frame-body button { margin: .15rem; }

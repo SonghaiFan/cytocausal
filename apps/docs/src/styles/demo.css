@@ -1,0 +1,52 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "../../public/demo-controls.css";
+@source "../examples";
+@source "../components";
+
+:root {
+  --demo-bg: #fff;
+  --demo-border: #d9dde5;
+  --demo-muted: #596171;
+  --demo-panel: #f6f7f9;
+  --demo-accent: #0369a1;
+  --demo-accent-low: #e0f2fe;
+}
+html.dark {
+  --demo-bg: #17181c;
+  --demo-border: #363b45;
+  --demo-muted: #b6bdcb;
+  --demo-panel: #202329;
+  --demo-accent: #7dd3fc;
+  --demo-accent-low: #082f49;
+}
+
+.demo-title { margin: .25rem 0 1rem; font-size: 1.75rem; font-weight: 700; }
+.demo-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; padding-bottom: .7rem; margin-bottom: .7rem; border-bottom: 1px solid var(--demo-border); }
+.demo-tabs a { padding: .35rem .7rem; border-radius: .3rem; color: var(--demo-muted); text-decoration: none; }
+.demo-tabs a:hover { background: var(--demo-panel); }
+.demo-tabs a[aria-current] { color: var(--demo-accent); background: var(--demo-accent-low); font-weight: 600; }
+.demo-tabs .other-language { margin-inline-start: auto; font-size: .8rem; }
+.demo-chapters { display: flex; flex-wrap: wrap; gap: .25rem .75rem; margin-bottom: 1rem; font-size: .8125rem; }
+.demo-chapters a { color: var(--demo-muted); text-decoration: none; }
+.demo-chapters a[aria-current] { color: var(--demo-accent); font-weight: 600; }
+.demo-frame { display: block; width: 100%; height: 900px; border: 0; background: var(--demo-bg); }
+
+.demo-viewer { min-width: 0; }
+.demo-viewer [hidden] { display: none !important; }
+.viewer-toolbar { display: flex; gap: .25rem; margin-bottom: 1rem; }
+.source-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; margin-bottom: .75rem; font-size: .8125rem; }
+.source-toolbar label { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; min-width: 0; flex: 1; }
+.source-toolbar select { width: 100%; max-width: 30rem; min-width: 0; padding: .4rem; border: 1px solid var(--demo-border); border-radius: .3rem; background: var(--demo-bg); }
+.source-file pre { max-height: 65vh; overflow: auto; border-radius: .375rem; padding: 1rem; font-size: .8125rem; line-height: 1.6; }
+.copy-status { color: var(--demo-muted); }
+
+.react-demo { font-size: .875rem; line-height: 1.6; }
+.example-description { color: var(--demo-muted); margin: 0 0 1rem; }
+.example-sections { display: grid; gap: 1rem; }
+.example-section { min-width: 0; padding: 1rem; border: 1px solid var(--demo-border); border-radius: .375rem; }
+.example-section h2 { font-size: 1rem; font-weight: 600; margin: 0 0 .75rem; }
+.react-demo [class*='text-gray-'] { color: var(--demo-muted); }
+.react-demo [class*='bg-white']:not(button), .react-demo [class*='bg-gray-']:not(button) { background: var(--demo-panel); }
+.react-demo .graph-canvas { background: white; border-radius: .25rem; overflow: hidden; }

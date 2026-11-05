@@ -2,10 +2,13 @@
 
 ## Decisions
 
+- **Stack:** cytocausal is Next.js plus Cytoscape.js. The apps and docs all run on Next.js, and Cytoscape only renders in the browser.
+- **Docs:** built with Nextra.
 - **One renderer:** both demos use Cytoscape.js. Explorer's graph (725 nodes, 1,494 edges) ran at 60 fps on the canvas renderer, without labels. WebGL gave no benefit at this size.
 - **Precomputed positions:** a full fcose layout of Explorer's graph blocks the page for 1-4 s, so it stays out of page load.
 - **Separate apps:** each demo keeps its own URL and links to the docs.
 - **Cytoscape version:** pinned to 3.31.0 across the workspace. 3.34 ships its own types without `Stylesheet`, so upgrading is a separate change.
+- **Zod version:** pinned to 4.1.12. Nextra 4.6.1 rejects every page under newer Zod (tested with 4.6.7), so remove the pin only after testing a newer Nextra.
 - **Extraction rule:** a feature joins a package only once both demos use it.
 - **Workshop data:** stays out of this repo until its public use is confirmed. `data/private/` is ignored.
 
@@ -25,7 +28,7 @@ Move Perspectiva onto the framework, extracting from working code. Turn the brow
 Done when alignment and version transition offsets are still 0.
 
 ### 3. Explorer
-Retest performance with labels first. If that fails, Explorer stays on Sigma and shares only `core`.
+Move Explorer from Create React App to Next.js. Retest performance with labels first. If that fails, Explorer keeps Sigma as its renderer and shares only `core`.
 
 Done when it matches the current app and fixes search, the sentence panel, cause and effect highlighting, and directed node sizing.
 

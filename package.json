@@ -13,10 +13,12 @@
   "scripts": {
     "dev": "npm run dev -w @cytocausal/docs",
     "build": "npm run build -w @cytocausal/docs",
+    "start": "npm run start -w @cytocausal/docs",
     "typecheck": "npm run typecheck -w @cytocausal/docs",
     "check:content": "npm run check:content -w @cytocausal/docs"
   },
   "overrides": {
-    "cytoscape": "3.31.0"
+    "cytoscape": "3.31.0",
+    "zod": "4.1.12"
   }
 }

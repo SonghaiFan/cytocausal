@@ -4,14 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "start": "astro preview",
-    "typecheck": "astro check",
+    "dev": "next dev",
+    "build": "next build",
+    "postbuild": "pagefind --site .next/server/app --output-path public/_pagefind",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
     "check:content": "node scripts/check-content.mjs"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.3.4",
     "cytoscape": "3.31.0",
     "cytoscape-cise": "^2.0.0",
     "cytoscape-cola": "^2.5.1",
@@ -19,19 +20,20 @@
     "cytoscape-dagre": "^2.5.0",
     "cytoscape-elk": "^2.3.0",
     "cytoscape-fcose": "^2.2.0",
+    "next": "^16.4.5",
+    "nextra": "^4.6.1",
+    "nextra-theme-docs": "^4.6.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "astro": "^7.4.5",
-    "@astrojs/starlight": "^0.42.9",
-    "@astrojs/react": "^7.1.2",
-    "@tailwindcss/vite": "^4.3.4",
+    "shiki": "^3.0.0",
     "tailwindcss": "^4.3.4"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.12",
     "@types/cytoscape": "^3.21.8",
+    "@types/node": "^22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "pagefind": "^1.6.0",
     "typescript": "^5"
   }
 }
