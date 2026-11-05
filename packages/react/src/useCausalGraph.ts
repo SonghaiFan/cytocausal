@@ -1,5 +1,4 @@
 "use client";
-import type { FeedbackLoop } from "@cytocausal/core";
 import {
   fitNodes,
   focusNode,
@@ -9,6 +8,7 @@ import {
   resolveMotion,
   zoomBy,
   type CausalMotion,
+  type Route,
 } from "@cytocausal/cytoscape";
 import type { Core } from "cytoscape";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -22,8 +22,16 @@ export interface CausalGraphOptions {
   readableLabels?: boolean;
   /** Zoom level for `focus`. Without it, the zoom doesn't change. */
   focusZoom?: number;
+  /** Nodes to start with selected, such as from a shared link. */
+  initialSelected?: string[];
   motion?: CausalMotion;
 }
+
+const firstNode = (cy: Core) =>
+  cy
+    .nodes(":visible")
+    .sort((a, b) => b.degree(false) - a.degree(false))
+    .first();
 
 /**
  * Selection, hover, loop highlighting and view controls for one graph. Pass `attach` to the
@@ -35,32 +43,38 @@ export function useCausalGraph({
   selectable = true,
   readableLabels = false,
   focusZoom,
+  initialSelected = [],
   motion,
 }: CausalGraphOptions = {}) {
   const cy = useRef<Core | null>(null);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState(initialSelected);
   const [hovered, setHovered] = useState<string | null>(null);
-  const [activeLoop, setActiveLoop] = useState<FeedbackLoop | null>(null);
+  const [activeLoop, setActiveLoop] = useState<Route | null>(null);
+  const [depth, setDepth] = useState(1);
+  const [announcement, setAnnouncement] = useState("");
+  const cursor = useRef<string | null>(null);
+  const keyHandler = useRef<((event: KeyboardEvent) => void) | null>(null);
 
-  const latest = useRef({ selected, hovered, activeLoop });
+  const latest = useRef({ selected, hovered, activeLoop, depth });
 
   const applyHighlight = useCallback(() => {
     const instance = cy.current;
     if (!instance || instance.destroyed()) return;
-    const { selected, hovered, activeLoop } = latest.current;
+    const { selected, hovered, activeLoop, depth } = latest.current;
     if (activeLoop) {
       highlightCausalNeighbours(instance, []);
       highlightLoop(instance, activeLoop);
     } else {
       highlightLoop(instance, null);
-      highlightCausalNeighbours(instance, selected.length ? selected : hovered ? [hovered] : []);
+      const ids = selected.length ? selected : hovered ? [hovered] : [];
+      highlightCausalNeighbours(instance, ids, depth);
     }
   }, []);
 
   useEffect(() => {
-    latest.current = { selected, hovered, activeLoop };
+    latest.current = { selected, hovered, activeLoop, depth };
     applyHighlight();
-  }, [selected, hovered, activeLoop, applyHighlight]);
+  }, [selected, hovered, activeLoop, depth, applyHighlight]);
 
   const add = useCallback(
     (ids: string[], id: string) => (ids.includes(id) ? ids : [...ids, id].slice(-maxSelected)),
@@ -99,9 +113,9 @@ export function useCausalGraph({
     setSelected((ids) => ids.filter(test));
   }, []);
 
-  /** Highlights a loop, or removes the highlight if it's already showing. */
-  const toggleLoop = useCallback((loop: FeedbackLoop) => {
-    setActiveLoop((current) => (current === loop ? null : loop));
+  /** Highlights a loop or path, or removes the highlight if it's already showing. */
+  const toggleLoop = useCallback((route: Route) => {
+    setActiveLoop((current) => (current === route ? null : route));
   }, []);
 
   const fit = useCallback(() => {
@@ -115,6 +129,20 @@ export function useCausalGraph({
   const zoomOut = useCallback(() => {
     if (cy.current) zoomBy(cy.current, 1 / 1.5, resolveMotion(motion).view);
   }, [motion]);
+
+  /** Moves the keyboard cursor to a node, and announces it to screen readers. */
+  const moveCursor = useCallback(
+    (instance: Core, id: string) => {
+      const node = instance.getElementById(id);
+      instance.nodes().removeClass("keyboard-cursor");
+      node.addClass("keyboard-cursor");
+      cursor.current = id;
+      setHovered(id);
+      setAnnouncement(String(node.data("label")));
+      instance.animate({ center: { eles: node } }, { duration: resolveMotion(motion).view });
+    },
+    [motion],
+  );
 
   /** Connects a Cytoscape instance. A rebuilt graph brings a new one. */
   const attach = useCallback(
@@ -132,9 +160,42 @@ export function useCausalGraph({
         instance.on("mouseover", "node", (event) => setHovered(event.target.id()));
         instance.on("mouseout", "node", () => setHovered(null));
       }
+      if (selectable) {
+        const container = instance.container()!;
+        const onKeyDown = (event: KeyboardEvent) => {
+          const nodes = instance.nodes(":visible").sort((a, b) => a.id().localeCompare(b.id()));
+          const current = cursor.current ? instance.getElementById(cursor.current) : null;
+          const here = current?.length ? current : null;
+          const index = here ? nodes.toArray().findIndex((node) => node.id() === here.id()) : -1;
+          const step = (offset: number) => nodes[(index + offset + nodes.length) % nodes.length];
+
+          let next: { id(): string } | undefined;
+          if (event.key === "ArrowRight") next = here ? here.outgoers("node").first() : firstNode(instance);
+          else if (event.key === "ArrowLeft") next = here ? here.incomers("node").first() : firstNode(instance);
+          else if (event.key === "ArrowDown") next = here ? step(1) : firstNode(instance);
+          else if (event.key === "ArrowUp") next = here ? step(-1) : firstNode(instance);
+          else if ((event.key === "Enter" || event.key === " ") && here) toggle(here.id());
+          else if (event.key === "Escape") {
+            instance.nodes().removeClass("keyboard-cursor");
+            cursor.current = null;
+            setHovered(null);
+            clear();
+          } else return;
+
+          event.preventDefault();
+          if (next && "length" in next && next.length === 0) return;
+          if (next) moveCursor(instance, next.id());
+        };
+        if (keyHandler.current) container.removeEventListener("keydown", keyHandler.current);
+        keyHandler.current = onKeyDown;
+        container.addEventListener("keydown", onKeyDown);
+        container.tabIndex = 0;
+        if (!container.hasAttribute("aria-label")) container.setAttribute("aria-label", "Causal graph");
+      }
+      cursor.current = null;
       applyHighlight();
     },
-    [applyHighlight, clear, readableLabels, selectable, toggle],
+    [applyHighlight, clear, moveCursor, readableLabels, selectable, toggle],
   );
 
   return {
@@ -144,6 +205,10 @@ export function useCausalGraph({
     selected,
     hovered,
     activeLoop,
+    depth,
+    setDepth,
+    /** Text for a live region, so screen readers hear where the keyboard cursor is. */
+    announcement,
     toggle,
     focus,
     clear,

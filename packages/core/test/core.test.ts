@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   analyzeSnapshot,
+  diffSnapshots,
+  findCausalPaths,
   findFeedbackLoops,
   importExplorer,
   importPerspectiva,
@@ -136,6 +138,87 @@ test("search matches ids, labels and evidence, with labels first", () => {
   assert.deepEqual(ids("2"), ["2"]);
   assert.deepEqual(ids("r"), []);
   assert.deepEqual(ids(""), []);
+});
+
+test("paths follow link direction, shortest first", () => {
+  const graph = snapshot("s", ["a", "b", "c", "d"], [["a", "b"], ["b", "c"], ["a", "c"], ["c", "d"]]);
+  const { paths, complete } = findCausalPaths(graph, "a", "c");
+  assert.deepEqual(paths.map((path) => path.nodes), [["a", "c"], ["a", "b", "c"]]);
+  assert.deepEqual(paths[1].edges, ["a-b", "b-c"]);
+  assert.equal(complete, true);
+  assert.deepEqual(findCausalPaths(graph, "c", "a").paths, []);
+  assert.deepEqual(findCausalPaths(graph, "a", "a").paths, []);
+});
+
+test("paths don't repeat a node, and limits are reported", () => {
+  const graph = snapshot("s", ["a", "b", "c"], [["a", "b"], ["b", "a"], ["b", "c"]]);
+  assert.deepEqual(findCausalPaths(graph, "a", "c").paths[0].nodes, ["a", "b", "c"]);
+  assert.equal(findCausalPaths(graph, "a", "c").paths.length, 1);
+
+  const short = findCausalPaths(graph, "a", "c", { maxLength: 2 });
+  assert.deepEqual(short.paths, []);
+  assert.equal(short.complete, false);
+});
+
+const versions = (correspondence?: Record<string, string>): CausalDataset => ({
+  id: "d",
+  snapshots: [
+    {
+      id: "V1",
+      nodes: [node("a"), node("b"), node("c"), node("gone")],
+      edges: [
+        { ...edge("a", "b"), polarity: "positive" },
+        { ...edge("b", "c"), polarity: "positive" },
+        { ...edge("a", "gone"), polarity: "positive" },
+      ],
+    },
+    {
+      id: "final",
+      nodes: [node("a"), { id: "b2", label: "B renamed" }, node("c"), node("new")],
+      edges: [
+        { ...edge("a", "b2"), polarity: "negative" },
+        { ...edge("b2", "c"), polarity: "positive" },
+        { ...edge("c", "new"), polarity: "positive" },
+      ],
+    },
+  ],
+  correspondences: correspondence ? [{ from: "V1", to: "final", nodes: correspondence }] : [],
+});
+
+test("a diff follows renamed nodes and finds what changed", () => {
+  const diff = diffSnapshots(versions({ a: "a", b: "b2", c: "c" }), "V1", "final");
+  assert.deepEqual(diff.addedNodes.map(({ id }) => id), ["new"]);
+  assert.deepEqual(diff.removedNodes.map(({ id }) => id), ["gone"]);
+  assert.deepEqual(diff.renamedNodes.map(({ from, to }) => [from.id, to.id]), [["b", "b2"]]);
+  assert.deepEqual(diff.addedLinks.map(({ id }) => id), ["c-new"]);
+  assert.deepEqual(diff.removedLinks.map(({ id }) => id), ["a-gone"]);
+  assert.deepEqual(diff.changedLinks.map(({ polarity }) => polarity), [["positive", "negative"]]);
+});
+
+test("a diff works in reverse", () => {
+  const diff = diffSnapshots(versions({ a: "a", b: "b2", c: "c" }), "final", "V1");
+  assert.deepEqual(diff.addedNodes.map(({ id }) => id), ["gone"]);
+  assert.deepEqual(diff.removedNodes.map(({ id }) => id), ["new"]);
+});
+
+test("a diff reports merged nodes", () => {
+  const dataset: CausalDataset = {
+    id: "d",
+    snapshots: [snapshot("V1", ["a", "b"], []), snapshot("final", ["ab"], [])],
+    correspondences: [{ from: "V1", to: "final", nodes: { a: "ab", b: "ab" } }],
+  };
+  const diff = diffSnapshots(dataset, "V1", "final");
+  assert.deepEqual(diff.mergedNodes.map(({ from, to }) => [from.map(({ id }) => id), to.id]), [
+    [["a", "b"], "ab"],
+  ]);
+  assert.deepEqual(diff.addedNodes, []);
+  assert.deepEqual(diff.removedNodes, []);
+});
+
+test("without a correspondence, a diff matches nodes by id", () => {
+  const diff = diffSnapshots(versions(), "V1", "final");
+  assert.deepEqual(diff.addedNodes.map(({ id }) => id), ["b2", "new"]);
+  assert.deepEqual(diff.removedNodes.map(({ id }) => id), ["b", "gone"]);
 });
 
 test("Perspectiva data keeps polarity, evidence and anchors", () => {

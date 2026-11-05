@@ -1,11 +1,12 @@
 "use client";
 import type { FeedbackLoop, Snapshot } from "@cytocausal/core";
+import type { Route } from "@cytocausal/cytoscape";
 import { useCausalLabels } from "./labels.tsx";
 
 export interface LoopListProps {
   snapshot: Snapshot;
   loops: FeedbackLoop[];
-  active?: FeedbackLoop | null;
+  active?: Route | null;
   onToggle: (loop: FeedbackLoop) => void;
   /** Heading text. The default shows the number of loops. */
   title?: string;

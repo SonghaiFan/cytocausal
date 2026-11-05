@@ -130,5 +130,13 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     },
     { selector: "edge.loop-link", style: { ...highlight(colors.focus), width: 3 } },
     { selector: ".outside-loops", style: { display: "none" } },
+    { selector: "node.diff-added", style: { "background-color": colors.added } },
+    { selector: "node.diff-removed", style: { "background-color": colors.clarification } },
+    { selector: "edge.diff-added", style: { ...highlight(colors.added), width: 3 } },
+    { selector: "edge.diff-removed", style: { ...highlight(colors.clarification), width: 3 } },
+    {
+      selector: "node.keyboard-cursor",
+      style: { "outline-width": 3, "outline-color": colors.focus, "outline-offset": 3 },
+    },
   ] as unknown as Stylesheet[];
 }

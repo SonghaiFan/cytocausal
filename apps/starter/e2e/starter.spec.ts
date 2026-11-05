@@ -80,7 +80,7 @@ test("search finds nodes by label and evidence, and highlights the choice", asyn
   await search.fill("queue");
   await page.locator(".cc-search").getByRole("button", { name: "Queue length" }).click();
   await expect.poll(async () => (await graph(page))?.loopNodes).toBe(0);
-  await expect.poll(async () => (await classes()).focus).toEqual(["queue"]);
+  await expect.poll(async () => (await classes()).focus).toEqual(["queue", "satisfaction"]);
 
   await search.fill("nothing like this");
   await expect(page.getByRole("status").filter({ hasText: "0 matches" })).toBeVisible();
@@ -189,10 +189,11 @@ test("selecting a node shows its details, and they link to its neighbours", asyn
 
   await details.getByRole("button", { name: "Customers", exact: true }).click();
   await expect(page.getByLabel("Node customers")).toBeVisible();
-  await expect(details).toHaveCount(0);
+  await expect(details).toBeVisible();
 
   await page.getByRole("button", { name: "Close customers" }).click();
   await expect(page.getByLabel("Node customers")).toHaveCount(0);
+  await expect(details).toBeVisible();
 });
 
 const nodesInView = (page: Page) =>
@@ -250,4 +251,126 @@ test("the starter runs out of the box", async ({ page }) => {
   await page.getByRole("button", { name: /^Reinforcing/ }).click();
   await expect.poll(async () => (await graph(page))?.loopNodes).toBe(5);
   expect(errors).toEqual([]);
+});
+
+const nodesWith = (page: Page, selector: string) =>
+  page.evaluate((selector) => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    return div._cyreg.cy.elements(selector).nodes().map((node: any) => node.id()).sort();
+  }, selector);
+
+const choose = async (page: Page, query: string, name: RegExp) => {
+  await page.getByLabel("Search nodes").fill(query);
+  await page.locator(".cc-search").getByRole("button", { name }).click();
+};
+
+const openFinal = async (page: Page) => {
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  await page.getByRole("button", { name: "final", exact: true }).click();
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(5);
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+};
+
+test("two selected nodes list the paths between them, and a path can be highlighted", async ({ page }) => {
+  await openFinal(page);
+  await choose(page, "customers", /^Customers/);
+  await choose(page, "queue", /^Queue length/);
+
+  const paths = page.getByLabel("Paths");
+  await expect(paths.getByText("Paths from Customers to Queue length (2)")).toBeVisible();
+  await expect(paths.getByText("Paths from Queue length to Customers (1)")).toBeVisible();
+
+  const longest = paths.getByRole("button", { name: /Revenue/ });
+  await longest.click();
+  await expect(longest).toHaveAttribute("aria-pressed", "true");
+  await expect
+    .poll(() => nodesWith(page, ".loop-node"))
+    .toEqual(["customers", "queue", "revenue", "staff"]);
+
+  await longest.click();
+  await expect.poll(() => nodesWith(page, ".loop-node")).toEqual([]);
+});
+
+test("the highlight reaches further upstream and downstream on request", async ({ page }) => {
+  await openFinal(page);
+  await choose(page, "revenue", /^Revenue/);
+  await expect.poll(() => nodesWith(page, ".cause")).toEqual(["customers"]);
+  await expect.poll(() => nodesWith(page, ".effect")).toEqual(["staff"]);
+
+  await page.getByRole("button", { name: "2", exact: true }).click();
+  await expect.poll(() => nodesWith(page, ".cause")).toEqual(["customer-satisfaction", "customers"]);
+  await expect.poll(() => nodesWith(page, ".effect")).toEqual(["queue", "staff"]);
+});
+
+test("changes between versions are listed and marked on the graph", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  const changes = page.getByLabel("Changes");
+  await expect(changes.getByText("Added (2)")).toBeVisible();
+  await expect(changes.getByText("Renamed (1)")).toBeVisible();
+
+  await changes.getByRole("button", { name: "Show on graph" }).click();
+  await page.getByRole("button", { name: "final", exact: true }).click();
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+  await expect.poll(() => nodesWith(page, ".diff-added")).toEqual(["revenue", "staff"]);
+
+  await changes.getByRole("button", { name: "Show on graph" }).click();
+  await expect.poll(() => nodesWith(page, ".diff-added")).toEqual([]);
+});
+
+test("the graph can be used from the keyboard", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+  const surface = page.getByLabel(/^Causal graph/);
+  await surface.focus();
+
+  await page.keyboard.press("ArrowDown");
+  const [start] = await nodesWith(page, ".keyboard-cursor");
+  expect(start).toBeTruthy();
+
+  await page.keyboard.press("ArrowRight");
+  const [next] = await nodesWith(page, ".keyboard-cursor");
+  expect(next).not.toBe(start);
+  const label = await page.evaluate((id) => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    return div._cyreg.cy.getElementById(id).data("label");
+  }, next);
+  await expect(page.locator("p.cc-sr-only")).toHaveText(label);
+
+  await page.keyboard.press("Enter");
+  await expect.poll(() => nodesWith(page, ".focus")).toEqual([next]);
+
+  await page.keyboard.press("Escape");
+  await expect.poll(() => nodesWith(page, ".focus")).toEqual([]);
+  await expect.poll(() => nodesWith(page, ".keyboard-cursor")).toEqual([]);
+});
+
+test("a link reopens the same version and selection", async ({ page }) => {
+  await openFinal(page);
+  await choose(page, "revenue", /^Revenue/);
+  await expect(page).toHaveURL(/version=final/);
+  await expect(page).toHaveURL(/selected=revenue/);
+
+  await page.reload();
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(5);
+  await expect(page.getByLabel("Node revenue")).toBeVisible();
+  await expect.poll(() => nodesWith(page, ".focus")).toEqual(["revenue"]);
+
+  // A link from elsewhere can name things that don't exist
+  await page.goto("/?version=nope&selected=nobody");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  await expect(page.getByRole("alert").filter({ hasText: /./ })).toHaveCount(0);
+  await expect(page.getByLabel(/^Node /)).toHaveCount(0);
+});
+
+test("the graph downloads as an image", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Export PNG" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/\.png$/);
 });

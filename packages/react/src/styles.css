@@ -79,6 +79,14 @@
 }
 .cc-tooltip .cc-list { margin-top: .25rem; color: var(--cc-muted-text); }
 
+.cc-sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+.cc-graph > div:first-child:focus-visible { outline: 2px solid var(--cc-balancing); outline-offset: -2px; }
+.cc-diff { margin: .5rem 0 0; }
+.cc-diff summary { cursor: pointer; }
+
 @media (max-width: 800px) {
   .cc-graph { flex-basis: 100%; height: 60vh; }
   .cc-sidebar { flex-basis: 100%; max-height: none; border-top: 1px solid var(--cc-border); border-left: 0; }

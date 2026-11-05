@@ -8,6 +8,7 @@ import {
   type LoopOptions,
   type Snapshot,
 } from "@cytocausal/core";
+import type { Route } from "@cytocausal/cytoscape";
 import { useMemo } from "react";
 import { useCausalLabels } from "./labels.tsx";
 import { LoopList } from "./LoopList.tsx";
@@ -18,7 +19,7 @@ export interface NodeDetailsProps {
   /** Called with a node id when someone chooses a cause or effect. */
   onSelect: (id: string) => void;
   onClose: () => void;
-  activeLoop?: FeedbackLoop | null;
+  activeLoop?: Route | null;
   onToggleLoop?: (loop: FeedbackLoop) => void;
   /** Limits for finding loops through this node. Set these for large graphs. */
   loopOptions?: LoopOptions;

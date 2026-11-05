@@ -23,6 +23,23 @@ export interface CausalLabels {
   seeAll: (count: number) => string;
   darkMode: string;
   lightMode: string;
+  graph: string;
+  depth: string;
+  paths: (from: string, to: string) => string;
+  noPaths: string;
+  changes: string;
+  showChanges: string;
+  added: string;
+  removed: string;
+  renamed: string;
+  merged: string;
+  linksAdded: string;
+  linksRemoved: string;
+  polarityChanged: string;
+  noChanges: string;
+  exportImage: string;
+  copyLink: string;
+  linkCopied: string;
 }
 
 export const defaultLabels: CausalLabels = {
@@ -47,6 +64,23 @@ export const defaultLabels: CausalLabels = {
   seeAll: (count) => `Click to see all ${count}`,
   darkMode: "Dark mode",
   lightMode: "Light mode",
+  graph: "Causal graph. Use the arrow keys to move between nodes, and Enter to select one.",
+  depth: "Steps shown",
+  paths: (from, to) => `Paths from ${from} to ${to}`,
+  noPaths: "No paths found",
+  changes: "Changes",
+  showChanges: "Show on graph",
+  added: "Added",
+  removed: "Removed",
+  renamed: "Renamed",
+  merged: "Merged",
+  linksAdded: "Links added",
+  linksRemoved: "Links removed",
+  polarityChanged: "Polarity changed",
+  noChanges: "No changes",
+  exportImage: "Export PNG",
+  copyLink: "Copy link",
+  linkCopied: "Link copied",
 };
 
 const LabelsContext = createContext(defaultLabels);

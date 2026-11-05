@@ -20,6 +20,16 @@ export function fitNodes(cy: Core, duration = 0) {
   else cy.viewport({ zoom, pan });
 }
 
+/** Downloads the whole graph as a PNG. */
+export function exportImage(cy: Core, fileName: string, background: string) {
+  const blob = cy.png({ full: true, scale: 2, bg: background, output: "blob" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `${fileName}.png`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
 /** Zooms around the middle of the screen. */
 export function zoomBy(cy: Core, factor: number, duration = 0) {
   const renderedPosition = { x: cy.width() / 2, y: cy.height() / 2 };

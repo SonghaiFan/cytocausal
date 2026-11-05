@@ -1,9 +1,17 @@
 "use client";
-import { findFeedbackLoops, validateDataset, type CausalDataset, type CausalNode } from "@cytocausal/core";
+import {
+  diffSnapshots,
+  findFeedbackLoops,
+  validateDataset,
+  type CausalDataset,
+  type CausalNode,
+} from "@cytocausal/core";
 import {
   autoLayout,
   createCausalStyle,
   darkTheme,
+  exportImage,
+  highlightChanges,
   lightTheme,
   savedLayout,
   type CausalStyleOptions,
@@ -11,7 +19,8 @@ import {
   type Positions,
 } from "@cytocausal/cytoscape";
 import type { LayoutOptions } from "cytoscape";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { DepthControl, PathList, VersionDiff } from "./analysis.tsx";
 import { Legend, NodeTooltip, VersionSwitcher, ZoomControls } from "./controls.tsx";
 import { GraphView } from "./GraphView.tsx";
 import { CausalLabelsProvider, useCausalLabels, type CausalLabels } from "./labels.tsx";
@@ -34,6 +43,8 @@ export interface CausalWorkspaceProps {
   layout?: LayoutOptions;
   /** How many nodes can be selected at once. */
   maxSelected?: number;
+  /** Keep the version and selection in the page address, so a link reopens the same view. */
+  shareInUrl?: boolean;
   /** Extra panels, shown at the end of the sidebar. */
   children?: ReactNode;
 }
@@ -52,7 +63,8 @@ function Workspace({
   themes = defaultThemes,
   styleOptions,
   layout,
-  maxSelected = 1,
+  maxSelected = 2,
+  shareInUrl = true,
   children,
 }: CausalWorkspaceProps) {
   const labels = useCausalLabels();
@@ -66,7 +78,12 @@ function Workspace({
     [themes, styleOptions],
   );
 
-  const [version, setVersion] = useState(dataset.snapshots[0].id);
+  const [shared] = useState(() => new URLSearchParams(shareInUrl ? location.search : ""));
+  const [version, setVersion] = useState(() => {
+    const requested = shared.get("version");
+    const known = dataset.snapshots.some(({ id }) => id === requested);
+    return known ? requested! : dataset.snapshots[0].id;
+  });
   const snapshot = dataset.snapshots.find(({ id }) => id === version)!;
   const issues = useMemo(() => validateDataset(dataset), [dataset]);
   const { loops, complete } = useMemo(
@@ -80,7 +97,45 @@ function Workspace({
   const hasPositions = snapshot.nodes.every(({ position }) => position);
 
   const positionCache = useRef<Record<string, Positions>>({});
-  const graph = useCausalGraph({ maxSelected, motion: theme.motion });
+  const graph = useCausalGraph({
+    maxSelected,
+    motion: theme.motion,
+    initialSelected: (shared.get("selected")?.split(",") ?? []).filter((id) =>
+      snapshot.nodes.some((node) => node.id === id),
+    ),
+  });
+
+  const first = dataset.snapshots[0].id;
+  const last = dataset.snapshots[dataset.snapshots.length - 1].id;
+  const [showChanges, setShowChanges] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const { cy, selected } = graph;
+
+  useEffect(() => {
+    if (!shareInUrl) return;
+    const url = new URL(location.href);
+    url.searchParams.set("version", version);
+    if (selected.length) url.searchParams.set("selected", selected.join(","));
+    else url.searchParams.delete("selected");
+    history.replaceState(null, "", url);
+    setCopied(false);
+  }, [shareInUrl, version, selected]);
+
+  useEffect(() => {
+    const instance = cy.current;
+    if (!instance || first === last) return;
+    if (!showChanges) {
+      highlightChanges(instance, [], []);
+      return;
+    }
+    const diff = diffSnapshots(dataset, first, last);
+    const ids = (items: { id: string }[]) => items.map(({ id }) => id);
+    if (version === last) {
+      highlightChanges(instance, [...ids(diff.addedNodes), ...ids(diff.addedLinks)], []);
+    } else {
+      highlightChanges(instance, [], [...ids(diff.removedNodes), ...ids(diff.removedLinks)]);
+    }
+  }, [cy, dataset, first, last, showChanges, version]);
 
   return (
     <CausalRoot theme={theme} className="cc-workspace">
@@ -95,9 +150,15 @@ function Workspace({
           positionCache={positionCache}
           animateSnapshots
           renderTooltip={renderTooltip}
-          onReady={graph.attach}
+          onReady={(instance) => {
+            graph.attach(instance);
+            instance.container()!.setAttribute("aria-label", labels.graph);
+          }}
         />
         <ZoomControls graph={graph} />
+        <p role="status" className="cc-sr-only">
+          {graph.announcement}
+        </p>
       </div>
 
       <aside className="cc-sidebar">
@@ -128,6 +189,16 @@ function Workspace({
           />
         )}
         <Legend />
+        <DepthControl value={graph.depth} onChange={graph.setDepth} />
+        {graph.selected.length === 2 && (
+          <PathList
+            snapshot={snapshot}
+            from={graph.selected[0]}
+            to={graph.selected[1]}
+            active={graph.activeLoop}
+            onToggle={graph.toggleLoop}
+          />
+        )}
         {graph.selected.map((id) => (
           <NodeDetails
             key={id}
@@ -144,6 +215,33 @@ function Workspace({
           active={graph.activeLoop}
           onToggle={graph.toggleLoop}
         />
+        {first !== last && (
+          <VersionDiff
+            dataset={dataset}
+            from={first}
+            to={last}
+            shown={showChanges}
+            onToggle={() => setShowChanges(!showChanges)}
+          />
+        )}
+        <div className="cc-buttons">
+          <button
+            type="button"
+            className="cc-button"
+            onClick={() => cy.current && exportImage(cy.current, dataset.id, theme.colors.background)}
+          >
+            {labels.exportImage}
+          </button>
+          {shareInUrl && (
+            <button
+              type="button"
+              className="cc-button"
+              onClick={() => navigator.clipboard.writeText(location.href).then(() => setCopied(true))}
+            >
+              {copied ? labels.linkCopied : labels.copyLink}
+            </button>
+          )}
+        </div>
         {children}
       </aside>
     </CausalRoot>

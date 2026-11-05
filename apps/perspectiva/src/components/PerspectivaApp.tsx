@@ -1,7 +1,7 @@
 "use client";
 import { findFeedbackLoops, type CausalDataset, type CausalNode, type FeedbackLoop } from "@cytocausal/core";
 import { layouts, type Positions } from "@cytocausal/cytoscape";
-import { CompareView, GraphView, LoopList, useCausalGraph } from "@cytocausal/react";
+import { CompareView, GraphView, LoopList, useCausalGraph, VersionDiff } from "@cytocausal/react";
 import { useMemo, useRef, useState } from "react";
 import datasetsJson from "../../data/datasets.json";
 import { NodeTooltip } from "@/components/NodeTooltip";
@@ -121,6 +121,7 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
             onToggle={(loop) => toggleLoop(snapshot.id, loop)}
           />
         ))}
+        <VersionDiff className="mb-8 shadow-lg" dataset={selected} from={LEFT} to={RIGHT} />
       </Sidebar>
     </main>
   );

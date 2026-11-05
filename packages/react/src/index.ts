@@ -1,5 +1,6 @@
 export * from "./CausalWorkspace.tsx";
 export * from "./CompareView.tsx";
+export * from "./analysis.tsx";
 export * from "./controls.tsx";
 export * from "./GraphView.tsx";
 export * from "./labels.tsx";

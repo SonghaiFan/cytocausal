@@ -32,7 +32,8 @@ import "@cytocausal/react/styles.css";
 | `themes` | `lightTheme`, `darkTheme` | The light and dark [themes](/en/theming/) |
 | `styleOptions` | None | Options for `createCausalStyle` |
 | `layout` | Automatic | Saved positions if every node has one, or else an automatic layout |
-| `maxSelected` | `1` | How many nodes can be selected |
+| `maxSelected` | `2` | How many nodes can be selected. Selecting two lists the paths between them |
+| `shareInUrl` | `true` | Keeps the version and selection in the page address, so a link reopens the same view |
 | `children` | None | Extra panels at the end of the sidebar |
 
 Define `labels`, `themes` and `styleOptions` outside your component, so they stay the same between renders.
@@ -109,6 +110,52 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 ```
 
 `apps/explorer` and `apps/perspectiva` are built this way, each using the parts it needs.
+
+## Paths, depth and changes
+
+These three panels work with the same `useCausalGraph` hook:
+
+```tsx
+"use client";
+import type { CausalDataset, Snapshot } from "@cytocausal/core";
+import { DepthControl, PathList, useCausalGraph, VersionDiff } from "@cytocausal/react";
+
+export function Panels({ dataset, snapshot }: { dataset: CausalDataset; snapshot: Snapshot }) {
+  const graph = useCausalGraph({ maxSelected: 2 });
+  const [from, to] = graph.selected;
+
+  return (
+    <>
+      <DepthControl value={graph.depth} onChange={graph.setDepth} />
+      {to && (
+        <PathList
+          snapshot={snapshot}
+          from={from}
+          to={to}
+          active={graph.activeLoop}
+          onToggle={graph.toggleLoop}
+        />
+      )}
+      <VersionDiff dataset={dataset} from="V1" to="final" />
+    </>
+  );
+}
+```
+
+`PathList` shows both directions, because A can lead to B without B leading to A. `VersionDiff` shows its **Show on graph** button when you pass `shown` and `onToggle`. Mark the changes yourself with `highlightChanges(cy, added, removed)`.
+
+## Export the graph
+
+`CausalWorkspace` has an **Export PNG** button. To add your own, call `exportImage` from `@cytocausal/cytoscape`:
+
+```ts
+import type { Core } from "cytoscape";
+import { exportImage, lightTheme } from "@cytocausal/cytoscape";
+
+export function download(cy: Core) {
+  exportImage(cy, "my-graph", lightTheme.colors.background);
+}
+```
 
 ## Change the text
 

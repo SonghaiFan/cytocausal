@@ -32,7 +32,8 @@ import "@cytocausal/react/styles.css";
 | `themes` | `lightTheme`、`darkTheme` | 浅色和深色[主题](/zh-cn/theming/) |
 | `styleOptions` | 无 | `createCausalStyle` 的选项 |
 | `layout` | 自动 | 所有节点都有位置时使用已保存的位置，否则自动布局 |
-| `maxSelected` | `1` | 可同时选中的节点数 |
+| `maxSelected` | `2` | 可同时选中的节点数。选中两个节点时列出它们之间的路径 |
+| `shareInUrl` | `true` | 把版本和选中项保存在页面地址中，打开链接时恢复同样的视图 |
 | `children` | 无 | 放在侧边栏末尾的额外面板 |
 
 请把 `labels`、`themes` 和 `styleOptions` 定义在组件外部，让它们在多次渲染之间保持不变。
@@ -109,6 +110,52 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 ```
 
 `apps/explorer` 和 `apps/perspectiva` 就是这样构建的，各自只使用需要的部分。
+
+## 路径、深度和变化
+
+这三个面板都配合 `useCausalGraph` 使用：
+
+```tsx
+"use client";
+import type { CausalDataset, Snapshot } from "@cytocausal/core";
+import { DepthControl, PathList, useCausalGraph, VersionDiff } from "@cytocausal/react";
+
+export function Panels({ dataset, snapshot }: { dataset: CausalDataset; snapshot: Snapshot }) {
+  const graph = useCausalGraph({ maxSelected: 2 });
+  const [from, to] = graph.selected;
+
+  return (
+    <>
+      <DepthControl value={graph.depth} onChange={graph.setDepth} />
+      {to && (
+        <PathList
+          snapshot={snapshot}
+          from={from}
+          to={to}
+          active={graph.activeLoop}
+          onToggle={graph.toggleLoop}
+        />
+      )}
+      <VersionDiff dataset={dataset} from="V1" to="final" />
+    </>
+  );
+}
+```
+
+`PathList` 显示两个方向，因为 A 能影响 B 并不代表 B 能影响 A。传入 `shown` 和 `onToggle` 后，`VersionDiff` 会显示 **Show on graph** 按钮。也可以用 `highlightChanges(cy, added, removed)` 自己标记变化。
+
+## 导出图片
+
+`CausalWorkspace` 自带 **Export PNG** 按钮。如需自己添加，可调用 `@cytocausal/cytoscape` 的 `exportImage`：
+
+```ts
+import type { Core } from "cytoscape";
+import { exportImage, lightTheme } from "@cytocausal/cytoscape";
+
+export function download(cy: Core) {
+  exportImage(cy, "my-graph", lightTheme.colors.background);
+}
+```
 
 ## 修改文字
 

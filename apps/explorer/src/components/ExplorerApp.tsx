@@ -112,6 +112,9 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
           </div>
         </header>
         <ZoomControls graph={graph} />
+        <p role="status" className="cc-sr-only">
+          {graph.announcement}
+        </p>
       </div>
 
       <aside className="w-full md:w-96 shrink-0 h-[45vh] md:h-full overflow-auto bg-gray-50 border-l p-3 space-y-3">
