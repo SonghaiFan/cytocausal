@@ -35,6 +35,8 @@ export interface GraphViewProps {
   waitForAnchors?: boolean;
   anchorPositions?: Positions;
   onLayoutComplete?: (positions: Positions) => void;
+  /** Gives access to each new Cytoscape instance, for custom interaction. */
+  onReady?: (cy: Core) => void;
   renderTooltip?: (node: CausalNode) => ReactNode;
   className?: string;
 }
@@ -52,6 +54,7 @@ export function GraphView({
   waitForAnchors = false,
   anchorPositions,
   onLayoutComplete,
+  onReady,
   renderTooltip,
   className,
 }: GraphViewProps) {
@@ -68,9 +71,9 @@ export function GraphView({
   const cacheKey = cacheKeyOf(dataset.id, layout, snapshotId);
 
   // Listeners outlive a snapshot change, so they read the latest values
-  const latest = useRef({ cacheKey, snapshot, onLayoutComplete });
+  const latest = useRef({ cacheKey, snapshot, onLayoutComplete, onReady });
   useEffect(() => {
-    latest.current = { cacheKey, snapshot, onLayoutComplete };
+    latest.current = { cacheKey, snapshot, onLayoutComplete, onReady };
   });
 
   const rememberPositions = useCallback(() => {
@@ -151,6 +154,7 @@ export function GraphView({
       });
     }
     initial.run();
+    latest.current.onReady?.(instance);
     shown.current = { dataset: dataset.id, layout, snapshot: snapshotId };
     // cacheKey follows dataset, layout and snapshotId
     // eslint-disable-next-line react-hooks/exhaustive-deps

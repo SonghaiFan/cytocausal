@@ -1,0 +1,33 @@
+{
+  "name": "@cytocausal/explorer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3101",
+    "build": "next build",
+    "start": "next start -p 3101",
+    "typecheck": "tsc --noEmit",
+    "import-data": "node scripts/import-data.ts",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@cytocausal/core": "*",
+    "@cytocausal/cytoscape": "*",
+    "@cytocausal/react": "*",
+    "@tailwindcss/postcss": "^4.3.4",
+    "cytoscape": "3.31.0",
+    "next": "^16.4.5",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/cytoscape": "^3.21.8",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
+}

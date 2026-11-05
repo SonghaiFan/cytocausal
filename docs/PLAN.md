@@ -4,12 +4,12 @@
 
 - **Stack:** cytocausal is Next.js plus Cytoscape.js. The apps and docs all run on Next.js, and Cytoscape only renders in the browser.
 - **Docs:** built with Nextra.
-- **One renderer:** both demos use Cytoscape.js. Explorer's graph (725 nodes, 1,494 edges) ran at 60 fps on the canvas renderer, without labels. WebGL gave no benefit at this size.
+- **One renderer:** both demos use Cytoscape.js, replacing Sigma in Explorer. Explorer's graph (725 nodes, 1,494 edges) ran at 60 fps on the canvas renderer on an M4 Mac, even with every label drawn. WebGL gave no benefit at this size.
 - **Precomputed positions:** a full fcose layout of Explorer's graph blocks the page for 1-4 s, so it stays out of page load.
 - **Separate apps:** each demo keeps its own URL and links to the docs.
 - **Cytoscape version:** pinned to 3.31.0 across the workspace. 3.34 ships its own types without `Stylesheet`, so upgrading is a separate change.
 - **Zod version:** pinned to 4.1.12. Nextra 4.6.1 rejects every page under newer Zod (tested with 4.6.7), so remove the pin only after testing a newer Nextra.
-- **Extraction rule:** a feature joins a package only once both demos use it.
+- **Extraction rule:** a feature joins a package only once both demos use it, or when it is core to the framework. Importers stay in `core` beside the tests that check them.
 - **Workshop data:** public, confirmed by Songhai Fan. It lives in `apps/perspectiva/data/`, generated from the Perspectiva project.
 
 ## Phases
