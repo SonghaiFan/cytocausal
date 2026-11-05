@@ -1,7 +1,7 @@
 import { readFile, access } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
-const guides = ['getting-started', 'theming', 'data-model', 'react-lifecycle', 'stable-layouts', 'version-transitions', 'causal-analysis', 'scale-performance', 'case-perspectiva', 'case-explorer'];
+const guides = ['getting-started', 'theming', 'interactions', 'data-model', 'react-lifecycle', 'stable-layouts', 'version-transitions', 'causal-analysis', 'scale-performance', 'case-perspectiva', 'case-explorer'];
 
 for (const lang of ['en', 'zh-cn']) {
   const meta = await readFile(`src/content/${lang}/_meta.ts`, 'utf8');

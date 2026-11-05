@@ -4,6 +4,7 @@ const languages = ["en", "zh-cn"];
 const guides = [
   "getting-started",
   "theming",
+  "interactions",
   "data-model",
   "react-lifecycle",
   "stable-layouts",

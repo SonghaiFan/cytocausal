@@ -1,21 +1,16 @@
 "use client";
-import { findFeedbackLoops, validateDataset, type CausalNode, type FeedbackLoop } from "@cytocausal/core";
-import {
-  fcoseLayout,
-  focusNode,
-  highlightCausalNeighbours,
-  highlightLoop,
-  type Positions,
-} from "@cytocausal/cytoscape";
+import { findFeedbackLoops, validateDataset, type CausalNode } from "@cytocausal/core";
+import { fcoseLayout, type Positions } from "@cytocausal/cytoscape";
 import {
   CausalRoot,
   GraphView,
   NodeSearch,
   themeForScheme,
+  useCausalGraph,
   useColorScheme,
 } from "@cytocausal/react";
-import type { Core, LayoutOptions } from "cytoscape";
-import { useEffect, useMemo, useRef, useState } from "react";
+import type { LayoutOptions } from "cytoscape";
+import { useMemo, useRef, useState } from "react";
 import { dataset } from "@/data";
 import { styles } from "@/graph-style";
 
@@ -39,26 +34,13 @@ export function App() {
   const { scheme, setScheme } = useColorScheme();
   const theme = themeForScheme(scheme);
   const [version, setVersion] = useState("V1");
-  const [activeLoop, setActiveLoop] = useState<FeedbackLoop | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
-  const cy = useRef<Core | null>(null);
+  const graph = useCausalGraph({ motion: theme.motion });
   const positionCache = useRef<Record<string, Positions>>({});
 
   const snapshot = dataset.snapshots.find(({ id }) => id === version)!;
   const { loops } = useMemo(() => findFeedbackLoops(snapshot), [snapshot]);
   const labelOf = (id: string) => snapshot.nodes.find((node) => node.id === id)!.label;
   const issues = useMemo(() => validateDataset(dataset), []);
-
-  useEffect(() => {
-    if (!cy.current) return;
-    if (activeLoop) {
-      highlightCausalNeighbours(cy.current, []);
-      highlightLoop(cy.current, activeLoop);
-    } else {
-      highlightLoop(cy.current, null);
-      highlightCausalNeighbours(cy.current, selected ? [selected] : []);
-    }
-  }, [activeLoop, selected]);
 
   return (
     <CausalRoot theme={theme}>
@@ -74,12 +56,7 @@ export function App() {
             positionCache={positionCache}
             animateSnapshots
             renderTooltip={renderTooltip}
-            onReady={(instance) => {
-              cy.current = instance;
-              instance.on("tap", (event) => {
-                if (event.target === instance) setSelected(null);
-              });
-            }}
+            onReady={graph.attach}
           />
         </div>
 
@@ -92,16 +69,7 @@ export function App() {
           </div>
           {issues.length > 0 && <pre role="alert">{issues.join("\n")}</pre>}
 
-          <NodeSearch
-            nodes={snapshot.nodes}
-            onSelect={(id) => {
-              setActiveLoop(null);
-              setSelected(id);
-              if (cy.current) {
-                focusNode(cy.current, id, { zoom: cy.current.zoom(), motion: theme.motion });
-              }
-            }}
-          />
+          <NodeSearch nodes={snapshot.nodes} onSelect={graph.focus} />
 
           <h2>Version</h2>
           <div className="versions">
@@ -111,8 +79,7 @@ export function App() {
                 type="button"
                 aria-pressed={version === id}
                 onClick={() => {
-                  setActiveLoop(null);
-                  setSelected(null);
+                  graph.clear();
                   setVersion(id);
                 }}
               >
@@ -128,11 +95,8 @@ export function App() {
                 <button
                   type="button"
                   className="loop"
-                  aria-pressed={activeLoop === loop}
-                  onClick={() => {
-                    setSelected(null);
-                    setActiveLoop(activeLoop === loop ? null : loop);
-                  }}
+                  aria-pressed={graph.activeLoop === loop}
+                  onClick={() => graph.toggleLoop(loop)}
                 >
                   {loop.type}: {[...loop.nodes, loop.nodes[0]].map(labelOf).join(" → ")}
                 </button>

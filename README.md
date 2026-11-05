@@ -25,7 +25,7 @@ Open `http://localhost:3102`, then edit `apps/starter/src/data.ts` to use your o
 | `apps/docs` | Guides, in English and Chinese |
 | `packages/core` | Data model, validation and analysis |
 | `packages/cytoscape` | Themes, styles, layouts, transitions and highlighting |
-| `packages/react` | `GraphView`, `CompareView` and `NodeSearch` |
+| `packages/react` | `GraphView`, `CompareView`, `NodeSearch` and `useCausalGraph` |
 
 ## Commands
 

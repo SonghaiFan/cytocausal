@@ -84,7 +84,7 @@ export function useNodeClicks(cy: Core | null, onClick: (id: string) => void) {
 
 ## 用 onReady 添加自定义行为
 
-`GraphView` 会把每个新的 Cytoscape 实例传给 `onReady`。在这里绑定监听器，并把实例存入 ref，以便之后执行缩放到节点等操作。每次重建都会产生新实例，所以不要假设只有一个。
+常用的选中和视图控制可以直接使用 [`useCausalGraph`](/zh-cn/interactions/)。其他情况下，`GraphView` 会把每个新的 Cytoscape 实例传给 `onReady`。在这里绑定监听器，并把实例存入 ref，以便之后执行缩放到节点等操作。每次重建都会产生新实例，所以不要假设只有一个。
 
 ## 隐藏的页面会暂停动画
 

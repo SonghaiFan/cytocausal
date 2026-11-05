@@ -3,6 +3,7 @@ export default {
   "getting-started": "快速开始",
   "--guides": { type: "separator", title: "指南" },
   "theming": "主题与样式",
+  "interactions": "交互",
   "data-model": "数据模型",
   "react-lifecycle": "React 生命周期",
   "stable-layouts": "稳定布局与锚定",

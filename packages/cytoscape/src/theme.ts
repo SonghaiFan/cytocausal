@@ -23,6 +23,7 @@ export interface CausalMotion {
   fade: number;
   move: number;
   focus: number;
+  view: number;
 }
 
 export interface CausalTheme {
@@ -34,7 +35,7 @@ export interface CausalTheme {
   motion: CausalMotion;
 }
 
-export const defaultMotion: CausalMotion = { fade: 400, move: 800, focus: 600 };
+export const defaultMotion: CausalMotion = { fade: 400, move: 800, focus: 600, view: 300 };
 
 const shared = {
   fontFamily: "system-ui, sans-serif",

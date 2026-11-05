@@ -139,6 +139,43 @@ test("reduced motion skips animation", async ({ page }) => {
   await expect.poll(async () => (await graph(page))?.nodes).toBe(5);
 });
 
+test("nodes respond to hover and click, and the background clears them", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+
+  const state = () =>
+    page.evaluate(() => {
+      const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+      const ids = (selector: string) => div._cyreg.cy.nodes(selector).map((n: any) => n.id());
+      return { focus: ids(".focus"), causes: ids(".cause"), effects: ids(".effect") };
+    });
+  const pointOf = (id: string) =>
+    page.evaluate((node) => {
+      const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+      const { left, top } = div.getBoundingClientRect();
+      const { x, y } = div._cyreg.cy.getElementById(node).renderedPosition();
+      return { x: left + x, y: top + y };
+    }, id);
+  const none = { focus: [], causes: [], effects: [] };
+  const queue = { focus: ["queue"], causes: ["customers"], effects: ["satisfaction"] };
+
+  const { x, y } = await pointOf("queue");
+  await page.mouse.move(x, y);
+  await expect.poll(state).toEqual(queue);
+
+  await page.mouse.move(5, 5);
+  await expect.poll(state).toEqual(none);
+
+  await page.mouse.click(x, y);
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(200);
+  expect(await state()).toEqual(queue);
+
+  await page.mouse.click(5, 5);
+  await expect.poll(state).toEqual(none);
+});
+
 test("the starter runs out of the box", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

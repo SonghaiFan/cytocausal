@@ -16,7 +16,7 @@ export function LoopPanel({
   onToggle,
 }: {
   groups: { snapshot: Snapshot; loops: FeedbackLoop[] }[];
-  active: { snapshotId: string; loop: FeedbackLoop } | null;
+  active: FeedbackLoop | null;
   onToggle: (snapshotId: string, loop: FeedbackLoop) => void;
 }) {
   return (
@@ -38,7 +38,7 @@ export function LoopPanel({
                 <ul className="max-h-48 overflow-auto">
                   {loops.map((loop) => {
                     const { letter, title, className } = badge[loop.type];
-                    const selected = active?.loop === loop;
+                    const selected = active === loop;
                     return (
                       <li key={loop.edges.join()}>
                         <button

@@ -3,6 +3,7 @@ export default {
   "getting-started": "Getting started",
   "--guides": { type: "separator", title: "Guides" },
   "theming": "Themes and styles",
+  "interactions": "Interactions",
   "data-model": "Data model",
   "react-lifecycle": "React lifecycle",
   "stable-layouts": "Stable layouts and anchoring",

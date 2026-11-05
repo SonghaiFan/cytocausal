@@ -1,9 +1,8 @@
 "use client";
 import { findFeedbackLoops, type CausalDataset, type CausalNode, type FeedbackLoop } from "@cytocausal/core";
-import { highlightLoop, layouts, type Positions } from "@cytocausal/cytoscape";
-import { CompareView, GraphView } from "@cytocausal/react";
-import type { Core } from "cytoscape";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { layouts, type Positions } from "@cytocausal/cytoscape";
+import { CompareView, GraphView, useCausalGraph } from "@cytocausal/react";
+import { useMemo, useRef, useState } from "react";
 import datasetsJson from "../../data/datasets.json";
 import { LoopPanel } from "@/components/LoopPanel";
 import { NodeTooltip } from "@/components/NodeTooltip";
@@ -13,7 +12,6 @@ import { graphStyles } from "@/graph-style";
 const datasets = datasetsJson as CausalDataset[];
 const LEFT = "V1";
 const RIGHT = "final";
-const SINGLE = "single";
 const graphFrame = "bg-gray-100 border border-gray-300";
 const renderTooltip = (node: CausalNode) => <NodeTooltip node={node} />;
 
@@ -24,11 +22,10 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
   const [layoutName, setLayoutName] = useState<keyof typeof layouts>("fcose");
   const [viewMode, setViewMode] = useState<ViewMode>("2 Graphs");
   const [version, setVersion] = useState(LEFT);
-  const [activeLoop, setActiveLoop] = useState<{ snapshotId: string; loop: FeedbackLoop } | null>(
-    null,
-  );
   const positionCache = useRef<Record<string, Positions>>({});
-  const graphs = useRef(new Map<string, Core>());
+  // Clicking a node here shows its details rather than selecting it
+  const main = useCausalGraph({ selectable: false });
+  const right = useCausalGraph({ selectable: false });
 
   const shownVersions = viewMode === "1 Graph" ? [version] : [LEFT, RIGHT];
   const loopGroups = useMemo(
@@ -42,23 +39,19 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
     [selected, viewMode, version],
   );
 
-  const onGraphReady = useCallback((cy: Core, snapshotId: string) => {
-    graphs.current.set(snapshotId, cy);
-  }, []);
-
-  useEffect(() => {
-    for (const [snapshotId, cy] of graphs.current) {
-      if (cy.destroyed()) continue;
-      const shown = snapshotId === SINGLE ? version : snapshotId;
-      highlightLoop(cy, activeLoop?.snapshotId === shown ? activeLoop.loop : null);
-    }
-  }, [activeLoop, version]);
+  const toggleLoop = (snapshotId: string, loop: FeedbackLoop) => {
+    const [target, other] =
+      viewMode === "2 Graphs" && snapshotId === RIGHT ? [right, main] : [main, right];
+    other.clear();
+    target.toggleLoop(loop);
+  };
 
   // A highlighted loop belongs to what was on screen when it was chosen
   const clearing =
     <T,>(update: (value: T) => void) =>
     (value: T) => {
-      setActiveLoop(null);
+      main.clear();
+      right.clear();
       update(value);
     };
 
@@ -88,7 +81,7 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
               {...shared}
               snapshotId={version}
               animateSnapshots
-              onReady={(cy) => onGraphReady(cy, SINGLE)}
+              onReady={main.attach}
             />
           ) : (
             <CompareView
@@ -96,7 +89,7 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
               {...shared}
               left={LEFT}
               right={RIGHT}
-              onReady={onGraphReady}
+              onReady={(cy, snapshotId) => (snapshotId === LEFT ? main : right).attach(cy)}
             />
           )}
         </div>
@@ -120,10 +113,8 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
       >
         <LoopPanel
           groups={loopGroups}
-          active={activeLoop}
-          onToggle={(snapshotId, loop) =>
-            setActiveLoop(activeLoop?.loop === loop ? null : { snapshotId, loop })
-          }
+          active={main.activeLoop ?? right.activeLoop}
+          onToggle={toggleLoop}
         />
       </Sidebar>
     </main>

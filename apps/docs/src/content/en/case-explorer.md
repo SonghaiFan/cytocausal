@@ -50,8 +50,8 @@ The harder problem was keeping labels readable, which took collision handling.
 | Short loops through a node | `findFeedbackLoops` | [Causal analysis](/en/causal-analysis/) |
 | Causes and effects | `highlightCausalNeighbours` | [Causal analysis](/en/causal-analysis/) |
 | Fast first render | Saved positions | [Scale and performance](/en/scale-performance/) |
-| Readable labels | Collision handling | [Scale and performance](/en/scale-performance/) |
-| Selection and hover | `onReady` | [React lifecycle](/en/react-lifecycle/) |
+| Readable labels | `readableLabels` | [Scale and performance](/en/scale-performance/) |
+| Selection and hover | `useCausalGraph` | [Interactions](/en/interactions/) |
 | Searching labels and descriptions | `NodeSearch`, `focusNode` | [Getting started](/en/getting-started/) |
 
 ## Result

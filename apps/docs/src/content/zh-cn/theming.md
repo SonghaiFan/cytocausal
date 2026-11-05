@@ -85,6 +85,7 @@ export function Page({ children }: { children: ReactNode }) {
 | `fade` | 元素出现和消失 |
 | `move` | 节点在版本之间移动 |
 | `focus` | 把视图移动到节点 |
+| `view` | 缩放和适配视图 |
 
 把它作为 `motion` 传给 `GraphView`。如果读者的系统要求减少动态效果，cytocausal 会自动跳过这些动画。
 

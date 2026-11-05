@@ -50,8 +50,8 @@ Causal Explorer 展示 ACCESS 基准中的因果图，内容是日常生活中�
 | 经过节点的短回路 | `findFeedbackLoops` | [因果分析](/zh-cn/causal-analysis/) |
 | 原因和结果 | `highlightCausalNeighbours` | [因果分析](/zh-cn/causal-analysis/) |
 | 快速首次渲染 | 已保存的位置 | [规模与性能](/zh-cn/scale-performance/) |
-| 可读的标签 | 碰撞处理 | [规模与性能](/zh-cn/scale-performance/) |
-| 选择和悬停 | `onReady` | [React 生命周期](/zh-cn/react-lifecycle/) |
+| 可读的标签 | `readableLabels` | [规模与性能](/zh-cn/scale-performance/) |
+| 选择和悬停 | `useCausalGraph` | [交互](/zh-cn/interactions/) |
 | 搜索标签和描述 | `NodeSearch`、`focusNode` | [快速开始](/zh-cn/getting-started/) |
 
 ## 结果

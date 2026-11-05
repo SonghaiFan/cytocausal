@@ -84,7 +84,7 @@ This caused a real bug in Perspectiva. A `layoutstop` listener held on to the ol
 
 ## Use onReady for custom behaviour
 
-`GraphView` passes each new Cytoscape instance to `onReady`. Attach listeners there, and store the instance in a ref for later calls such as zooming to a node. A new instance arrives after every rebuild, so don't assume there's only one.
+For the usual selection and view controls, use [`useCausalGraph`](/en/interactions/). For anything else, `GraphView` passes each new Cytoscape instance to `onReady`. Attach listeners there, and store the instance in a ref for later calls such as zooming to a node. A new instance arrives after every rebuild, so don't assume there's only one.
 
 ## Hidden tabs stop animations
 

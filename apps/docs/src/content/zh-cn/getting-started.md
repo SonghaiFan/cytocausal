@@ -63,7 +63,7 @@ export const dataset: CausalDataset = {
 | `apps/docs` | 本站 |
 | `packages/core` | 数据模型、验证和分析 |
 | `packages/cytoscape` | 主题、样式、布局、过渡和高亮 |
-| `packages/react` | `GraphView`、`CompareView` 和 `NodeSearch` |
+| `packages/react` | `GraphView`、`CompareView`、`NodeSearch` 和 `useCausalGraph` |
 
 运行示例：`npm run dev:perspectiva` 和 `npm run dev:explorer`。
 

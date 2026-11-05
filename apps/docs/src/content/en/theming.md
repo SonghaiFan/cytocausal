@@ -85,6 +85,7 @@ export function Page({ children }: { children: ReactNode }) {
 | `fade` | Elements appearing and disappearing |
 | `move` | Nodes moving between versions |
 | `focus` | Moving the view to a node |
+| `view` | Zooming and fitting |
 
 Pass it to `GraphView` as `motion`. If the reader's system asks for reduced motion, cytocausal skips these animations for you.
 

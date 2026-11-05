@@ -63,7 +63,7 @@ The starter shows any problems `validateDataset` finds at the top of the sidebar
 | `apps/docs` | This site |
 | `packages/core` | Data model, validation and analysis |
 | `packages/cytoscape` | Themes, styles, layouts, transitions and highlighting |
-| `packages/react` | `GraphView`, `CompareView` and `NodeSearch` |
+| `packages/react` | `GraphView`, `CompareView`, `NodeSearch` and `useCausalGraph` |
 
 Run the examples with `npm run dev:perspectiva` and `npm run dev:explorer`.
 

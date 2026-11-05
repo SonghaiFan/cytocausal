@@ -3,21 +3,14 @@ import {
   findFeedbackLoops,
   type CausalDataset,
   type CausalNode,
-  type FeedbackLoop,
   type LoopSearch,
 } from "@cytocausal/core";
-import {
-  focusNode,
-  highlightCausalNeighbours,
-  highlightLoop,
-  type Positions,
-} from "@cytocausal/cytoscape";
-import { GraphView, NodeSearch } from "@cytocausal/react";
-import type { Core, LayoutOptions } from "cytoscape";
+import type { Positions } from "@cytocausal/cytoscape";
+import { GraphView, NodeSearch, useCausalGraph } from "@cytocausal/react";
+import type { LayoutOptions } from "cytoscape";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NodePanel } from "@/components/NodePanel";
-import { CAUSE_COLOR, EFFECT_COLOR, graphStyles } from "@/graph-style";
-import { fitNodes, keepLabelsReadable } from "@/labels";
+import { CAUSE_COLOR, EFFECT_COLOR, graphStyles, theme } from "@/graph-style";
 
 const MAX_SELECTED = 2;
 // The largest group of loops is too big to list, so panels show the shortest ones
@@ -55,12 +48,15 @@ export function ExplorerApp() {
 
 function Explorer({ dataset }: { dataset: CausalDataset }) {
   const [{ nodes, edges }] = dataset.snapshots;
-  const cy = useRef<Core | null>(null);
   const positionCache = useRef<Record<string, Positions>>({});
-  const [selected, setSelected] = useState<string[]>([]);
-  const [hovered, setHovered] = useState<string | null>(null);
+  const graph = useCausalGraph({
+    maxSelected: MAX_SELECTED,
+    readableLabels: true,
+    focusZoom: 2,
+    motion: theme.motion,
+  });
+  const { selected, keepSelected, fit, cy } = graph;
   const [loopsOnly, setLoopsOnly] = useState(false);
-  const [activeLoop, setActiveLoop] = useState<FeedbackLoop | null>(null);
 
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const links = useMemo(() => {
@@ -93,81 +89,18 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
     return edges.filter(({ source, target }) => ids.has(source) && ids.has(target));
   }, [edges, visibleNodes]);
 
-  const toggle = useCallback(
-    (id: string) =>
-      setSelected((current) =>
-        current.includes(id)
-          ? current.filter((item) => item !== id)
-          : [...current, id].slice(-MAX_SELECTED),
-      ),
-    [],
-  );
-
-  const onReady = useCallback(
-    (instance: Core) => {
-      cy.current = instance;
-      fitNodes(instance);
-      keepLabelsReadable(instance);
-      instance.on("tap", "node", (event) => toggle(event.target.id()));
-      instance.on("tap", (event) => {
-        if (event.target === instance) setSelected([]);
-      });
-      instance.on("mouseover", "node", (event) => setHovered(event.target.id()));
-      instance.on("mouseout", "node", () => setHovered(null));
-    },
-    [toggle],
-  );
-
-  const focus = useCallback((id: string) => {
-    setSelected((current) => (current.includes(id) ? current : [...current, id].slice(-MAX_SELECTED)));
-    if (cy.current) focusNode(cy.current, id);
-  }, []);
-
   useEffect(() => {
-    if (!cy.current) return;
-    if (activeLoop) {
-      highlightCausalNeighbours(cy.current, []);
-      highlightLoop(cy.current, activeLoop);
-    } else {
-      highlightLoop(cy.current, null);
-      highlightCausalNeighbours(cy.current, selected.length ? selected : hovered ? [hovered] : []);
-    }
-  }, [selected, hovered, activeLoop]);
-
-  // A loop is only listed while one of its nodes is selected
-  useEffect(() => {
-    setActiveLoop((loop) =>
-      loop && [...loopsThrough.values()].some(({ loops }) => loops.includes(loop)) ? loop : null,
-    );
-  }, [loopsThrough]);
-
-  useEffect(() => {
-    if (!cy.current) return;
     const instance = cy.current;
+    if (!instance) return;
     instance.batch(() => {
       instance.nodes().removeClass("outside-loops");
       if (loopsOnly) {
         instance.nodes().filter((node) => !node.data("inFeedbackLoop")).addClass("outside-loops");
       }
     });
-    fitNodes(instance, 400);
-    setSelected((current) => current.filter((id) => inScope(nodeById.get(id)!)));
-  }, [loopsOnly, inScope, nodeById]);
-
-  const zoomBy = (factor: number) => {
-    const instance = cy.current;
-    if (!instance) return;
-    const { width, height } = instance.container()!.getBoundingClientRect();
-    instance.animate(
-      {
-        zoom: {
-          level: instance.zoom() * factor,
-          renderedPosition: { x: width / 2, y: height / 2 },
-        },
-      },
-      { duration: 200 },
-    );
-  };
+    fit();
+    keepSelected((id) => inScope(nodeById.get(id)!));
+  }, [loopsOnly, inScope, nodeById, cy, fit, keepSelected]);
 
   const control = "w-9 h-9 bg-white border rounded shadow hover:bg-gray-100";
 
@@ -181,7 +114,7 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
           stylesheet={graphStyles}
           positionCache={positionCache}
           maxZoom={10}
-          onReady={onReady}
+          onReady={graph.attach}
           renderTooltip={renderTooltip}
         />
         <header className="absolute top-2 left-2 flex items-center gap-3 pointer-events-none bg-white/85 rounded p-1">
@@ -195,17 +128,17 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
           </div>
         </header>
         <div className="absolute bottom-3 left-3 flex flex-col gap-2">
-          <button type="button" aria-label="Zoom in" className={control} onClick={() => zoomBy(1.5)}>
+          <button type="button" aria-label="Zoom in" className={control} onClick={graph.zoomIn}>
             +
           </button>
-          <button type="button" aria-label="Zoom out" className={control} onClick={() => zoomBy(1 / 1.5)}>
+          <button type="button" aria-label="Zoom out" className={control} onClick={graph.zoomOut}>
             −
           </button>
           <button
             type="button"
             aria-label="Fit graph"
             className={control}
-            onClick={() => cy.current && fitNodes(cy.current, 300)}
+            onClick={fit}
           >
             ⤢
           </button>
@@ -215,7 +148,7 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
       <aside className="w-full md:w-96 shrink-0 h-[45vh] md:h-full overflow-auto bg-gray-50 border-l p-3 space-y-3">
         <NodeSearch
           nodes={visibleNodes}
-          onSelect={focus}
+          onSelect={graph.focus}
           placeholder="Search nodes and sentences…"
           className="bg-white border rounded-md shadow p-3"
         />
@@ -243,10 +176,10 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
             effects={links.effects.get(id) ?? []}
             loops={loopsThrough.get(id)!}
             labelOf={(nodeId) => nodeById.get(nodeId)!.label}
-            activeLoop={activeLoop}
-            onToggleLoop={(loop) => setActiveLoop(activeLoop === loop ? null : loop)}
-            onSelect={focus}
-            onClose={() => toggle(id)}
+            activeLoop={graph.activeLoop}
+            onToggleLoop={graph.toggleLoop}
+            onSelect={graph.focus}
+            onClose={() => graph.toggle(id)}
           />
         ))}
 
