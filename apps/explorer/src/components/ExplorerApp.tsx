@@ -6,12 +6,16 @@ import {
   type FeedbackLoop,
   type LoopSearch,
 } from "@cytocausal/core";
-import { highlightCausalNeighbours, highlightLoop, type Positions } from "@cytocausal/cytoscape";
-import { GraphView } from "@cytocausal/react";
+import {
+  focusNode,
+  highlightCausalNeighbours,
+  highlightLoop,
+  type Positions,
+} from "@cytocausal/cytoscape";
+import { GraphView, NodeSearch } from "@cytocausal/react";
 import type { Core, LayoutOptions } from "cytoscape";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NodePanel } from "@/components/NodePanel";
-import { Search } from "@/components/Search";
 import { CAUSE_COLOR, EFFECT_COLOR, graphStyles } from "@/graph-style";
 import { fitNodes, keepLabelsReadable } from "@/labels";
 
@@ -116,10 +120,7 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
 
   const focus = useCallback((id: string) => {
     setSelected((current) => (current.includes(id) ? current : [...current, id].slice(-MAX_SELECTED)));
-    const node = cy.current?.getElementById(id);
-    if (node?.length) {
-      cy.current!.animate({ center: { eles: node }, zoom: 2 }, { duration: 600 });
-    }
+    if (cy.current) focusNode(cy.current, id);
   }, []);
 
   useEffect(() => {
@@ -211,7 +212,12 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
       </div>
 
       <aside className="w-full md:w-96 shrink-0 h-[45vh] md:h-full overflow-auto bg-gray-50 border-l p-3 space-y-3">
-        <Search nodes={visibleNodes} onSelect={focus} />
+        <NodeSearch
+          nodes={visibleNodes}
+          onSelect={focus}
+          placeholder="Search nodes and sentences…"
+          className="bg-white border rounded-md shadow p-3"
+        />
 
         <section className="bg-white border rounded-md shadow p-3 text-sm space-y-2">
           <label className="flex items-center gap-2 cursor-pointer">

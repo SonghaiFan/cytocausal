@@ -34,3 +34,9 @@ export function highlightLoop(cy: Core, loop: FeedbackLoop | null) {
     loop.edges.forEach((id) => cy.getElementById(id).removeClass("dimmed").addClass("loop-link"));
   });
 }
+
+/** Moves the view to a node. */
+export function focusNode(cy: Core, id: string, { zoom = 2, duration = 600 } = {}) {
+  const node = cy.getElementById(id);
+  if (node.length > 0) cy.animate({ center: { eles: node }, zoom }, { duration });
+}

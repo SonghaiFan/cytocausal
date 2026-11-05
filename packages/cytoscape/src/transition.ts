@@ -65,6 +65,11 @@ export function transitionToSnapshot(
     const addOrUpdate = (element: ElementDefinition, addition: Partial<ElementDefinition>) => {
       const existing = cy.getElementById(element.data.id!);
       if (existing.length > 0) {
+        // An edge can keep its id while pointing at different nodes in this version
+        const { source, target } = element.data;
+        if (existing.isEdge() && (source !== existing.data("source") || target !== existing.data("target"))) {
+          existing.move({ source, target });
+        }
         existing.data(element.data);
         existing.removeStyle("opacity");
       } else {

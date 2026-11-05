@@ -4,7 +4,7 @@ title: "React lifecycle"
 
 # React lifecycle
 
-Cytoscape and React both want to own what's on screen. cytocausal keeps them apart: React decides what to show, and one long-lived Cytoscape instance draws it. `GraphView` in `@cytocausal/react` does this for you, and this chapter explains why it works the way it does.
+Cytoscape and React both want to own what's on screen. cytocausal keeps them apart: React decides what to show, and one long-lived Cytoscape instance draws it. `GraphView` in `@cytocausal/react` does this for you, and this guide explains why it works the way it does.
 
 ## Render in the browser only
 

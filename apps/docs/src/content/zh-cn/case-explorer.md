@@ -43,7 +43,7 @@ Causal Explorer 展示 ACCESS 基准中的因果图，内容是日常生活中�
 
 ## 框架如何解决
 
-| 需求 | 机制 | 章节 |
+| 需求 | 机制 | 指南 |
 | :--- | :--- | :--- |
 | 有向节点大小 | `analyzeSnapshot` | [因果分析](/zh-cn/causal-analysis/) |
 | 反馈回路开关 | `feedbackGroups` | [因果分析](/zh-cn/causal-analysis/) |
@@ -52,6 +52,7 @@ Causal Explorer 展示 ACCESS 基准中的因果图，内容是日常生活中�
 | 快速首次渲染 | 已保存的位置 | [规模与性能](/zh-cn/scale-performance/) |
 | 可读的标签 | 碰撞处理 | [规模与性能](/zh-cn/scale-performance/) |
 | 选择和悬停 | `onReady` | [React 生命周期](/zh-cn/react-lifecycle/) |
+| 搜索标签和描述 | `NodeSearch`、`focusNode` | [快速开始](/zh-cn/getting-started/) |
 
 ## 结果
 

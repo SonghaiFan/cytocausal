@@ -43,7 +43,7 @@ The harder problem was keeping labels readable, which took collision handling.
 
 ## How the framework solved it
 
-| Need | Mechanism | Chapter |
+| Need | Mechanism | Guide |
 | :--- | :--- | :--- |
 | Directed node sizes | `analyzeSnapshot` | [Causal analysis](/en/causal-analysis/) |
 | Feedback loop toggle | `feedbackGroups` | [Causal analysis](/en/causal-analysis/) |
@@ -52,6 +52,7 @@ The harder problem was keeping labels readable, which took collision handling.
 | Fast first render | Saved positions | [Scale and performance](/en/scale-performance/) |
 | Readable labels | Collision handling | [Scale and performance](/en/scale-performance/) |
 | Selection and hover | `onReady` | [React lifecycle](/en/react-lifecycle/) |
+| Searching labels and descriptions | `NodeSearch`, `focusNode` | [Getting started](/en/getting-started/) |
 
 ## Result
 

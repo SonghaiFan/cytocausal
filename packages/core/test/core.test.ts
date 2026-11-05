@@ -5,6 +5,7 @@ import {
   findFeedbackLoops,
   importExplorer,
   importPerspectiva,
+  searchNodes,
   validateDataset,
 } from "../src/index.ts";
 import type { CausalDataset, Snapshot } from "../src/index.ts";
@@ -118,6 +119,23 @@ test("limits are reported instead of hiding loops silently", () => {
   assert.equal(capped.loops.length, 1);
   assert.equal(capped.complete, false);
   assert.equal(findFeedbackLoops(graph, { maxLength: 3 }).complete, true);
+});
+
+test("search matches ids, labels and evidence, with labels first", () => {
+  const nodes = [
+    { id: "1", label: "Heavy rain", evidence: [{ text: "storm season" }] },
+    { id: "2", label: "Floods", evidence: [{ text: "after heavy rain" }] },
+    { id: "3", label: "Storm damage" },
+  ];
+  const ids = (text: string) => searchNodes(nodes, text).map(({ node }) => node.id);
+
+  assert.deepEqual(ids("rain"), ["1", "2"]);
+  assert.deepEqual(ids("  STORM "), ["3", "1"]);
+  assert.equal(searchNodes(nodes, "rain")[1].evidence, "after heavy rain");
+  assert.equal(searchNodes(nodes, "rain")[0].evidence, undefined);
+  assert.deepEqual(ids("2"), ["2"]);
+  assert.deepEqual(ids("r"), []);
+  assert.deepEqual(ids(""), []);
 });
 
 test("Perspectiva data keeps polarity, evidence and anchors", () => {

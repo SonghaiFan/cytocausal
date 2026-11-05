@@ -2,7 +2,8 @@
 
 ## Decisions
 
-- **Stack:** cytocausal is Next.js plus Cytoscape.js. The apps and docs all run on Next.js, and Cytoscape only renders in the browser.
+- **Purpose:** cytocausal is a React web app starter for causal graphs that other people can build on. It is not a Cytoscape tutorial, so `apps/starter` is the entry point and the two demos are examples.
+- **Stack:** the apps and docs all run on Next.js, and graphs render in the browser with Cytoscape.js.
 - **Docs:** built with Nextra.
 - **One renderer:** both demos use Cytoscape.js, replacing Sigma in Explorer. Explorer's graph (725 nodes, 1,494 edges) ran at 60 fps on the canvas renderer on an M4 Mac, even with every label drawn. WebGL gave no benefit at this size.
 - **Precomputed positions:** a full fcose layout of Explorer's graph blocks the page for 1-4 s, so it stays out of page load.
@@ -33,7 +34,7 @@ Move Explorer from Create React App to Next.js. Retest performance with labels f
 Done when it matches the current app and fixes search, the sentence panel, cause and effect highlighting, and directed node sizing.
 
 ### 4. Docs
-Add chapters on the data model, React lifecycle, stable layouts and anchoring, version transitions, causal analysis, and scale and performance, in English and Chinese. Add a case study for each demo.
+Add guides on the data model, React lifecycle, stable layouts and anchoring, version transitions, causal analysis, and scale and performance, in English and Chinese. Add a case study for each demo. The earlier Cytoscape tutorials were removed, and remain in the `learning-cytoscape` project.
 
 ### 5. New capabilities and cutover
 Loop detection is done in both demos, with loops labelled as reinforcing or balancing where polarity exists. Add version comparison to Explorer only if its older data can be matched up.

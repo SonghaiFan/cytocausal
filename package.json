@@ -12,15 +12,16 @@
     "node": ">=22.18"
   },
   "scripts": {
-    "dev": "npm run dev -w @cytocausal/docs",
-    "build": "npm run build -w @cytocausal/docs && npm run build -w @cytocausal/perspectiva && npm run build -w @cytocausal/explorer",
-    "start": "npm run start -w @cytocausal/docs",
+    "dev": "npm run dev -w @cytocausal/starter",
+    "build": "npm run build --workspaces --if-present",
+    "start": "npm run start -w @cytocausal/starter",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "check:content": "npm run check:content -w @cytocausal/docs",
     "test": "npm run test -w @cytocausal/core",
     "dev:perspectiva": "npm run dev -w @cytocausal/perspectiva",
     "test:e2e": "npm run test:e2e --workspaces --if-present",
-    "dev:explorer": "npm run dev -w @cytocausal/explorer"
+    "dev:explorer": "npm run dev -w @cytocausal/explorer",
+    "dev:docs": "npm run dev -w @cytocausal/docs"
   },
   "overrides": {
     "cytoscape": "3.31.0",

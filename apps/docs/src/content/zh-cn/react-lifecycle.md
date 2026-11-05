@@ -4,7 +4,7 @@ title: "React 生命周期"
 
 # React 生命周期
 
-Cytoscape 和 React 都想掌控屏幕上的内容。cytocausal 让两者分工：React 决定显示什么，一个长期存在的 Cytoscape 实例负责绘制。`@cytocausal/react` 中的 `GraphView` 已经处理好这些，本章解释它为什么这样工作。
+Cytoscape 和 React 都想掌控屏幕上的内容。cytocausal 让两者分工：React 决定显示什么，一个长期存在的 Cytoscape 实例负责绘制。`@cytocausal/react` 中的 `GraphView` 已经处理好这些，本指南解释它为什么这样工作。
 
 ## 只在浏览器中渲染
 

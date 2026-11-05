@@ -35,7 +35,7 @@ Perspectiva 用于比较参与式工作坊中不同版本的因果回路图。�
 
 ## 框架如何解决
 
-| 需求 | 机制 | 章节 |
+| 需求 | 机制 | 指南 |
 | :--- | :--- | :--- |
 | 跨版本匹配节点 | `Correspondence` | [数据模型](/zh-cn/data-model/) |
 | 并排比较 | `CompareView` | [稳定布局](/zh-cn/stable-layouts/) |

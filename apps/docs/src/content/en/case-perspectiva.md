@@ -35,7 +35,7 @@ Rewriting the ids wasn't an option, because merged nodes would collide. The mapp
 
 ## How the framework solved it
 
-| Need | Mechanism | Chapter |
+| Need | Mechanism | Guide |
 | :--- | :--- | :--- |
 | Matching nodes across versions | `Correspondence` | [Data model](/en/data-model/) |
 | Side-by-side comparison | `CompareView` | [Stable layouts](/en/stable-layouts/) |

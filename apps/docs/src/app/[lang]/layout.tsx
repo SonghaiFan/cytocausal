@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { DocsShell } from "@/components/DocsShell";
-import type { Language } from "@/lib/chapters";
+import { DocsShell, type Language } from "@/components/DocsShell";
 
 // Any other first segment would reach Nextra as an unknown locale and crash
 export const dynamicParams = false;
@@ -20,7 +19,7 @@ export default async function GuideLayout({
 }) {
   const { lang } = await params;
   return (
-    <DocsShell lang={lang as Language} localeSwitch>
+    <DocsShell lang={lang as Language}>
       {children}
     </DocsShell>
   );
