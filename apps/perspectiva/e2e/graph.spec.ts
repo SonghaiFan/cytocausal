@@ -1,0 +1,203 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { expect, test, type Page } from "@playwright/test";
+
+type Positions = Record<string, { x: number; y: number }>;
+
+const datasets: {
+  id: string;
+  correspondences: { nodes: Record<string, string> }[];
+}[] = JSON.parse(readFileSync(path.resolve(import.meta.dirname, "../data/datasets.json"), "utf8"));
+
+const anchorsOf = (id: string) => datasets.find((d) => d.id === id)!.correspondences[0].nodes;
+
+/** Reads node positions from every graph on the page. */
+const readGraphs = (page: Page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement & { _cyreg?: { cy: any } }>("div")]
+      .filter((div) => div._cyreg?.cy)
+      .map((div) => {
+        const cy = div._cyreg!.cy;
+        return {
+          animating: cy.elements().filter((ele: any) => ele.animated()).length,
+          faint: cy.elements().filter((ele: any) => Number(ele.style("opacity")) < 1).length,
+          visible: getComputedStyle(div).visibility === "visible",
+          positions: Object.fromEntries(
+            cy.nodes().map((node: any) => [node.id(), node.position()]),
+          ) as Record<string, { x: number; y: number }>,
+        };
+      }),
+  );
+
+/** Waits until the expected graphs are visible and have stopped moving. */
+async function settled(page: Page, count: number) {
+  let previous = "";
+  await expect
+    .poll(
+      async () => {
+        const graphs = await readGraphs(page);
+        const ready =
+          graphs.length === count && graphs.every((g) => g.visible && g.animating === 0 && !g.faint);
+        const current = JSON.stringify(graphs);
+        const stable = ready && current === previous;
+        previous = current;
+        return stable;
+      },
+      { timeout: 20_000, intervals: [400] },
+    )
+    .toBe(true);
+  return (await readGraphs(page)).map(({ positions }) => positions);
+}
+
+/** The largest distance between each right node and the centre of its left nodes. */
+function alignmentOffset(left: Positions, right: Positions, anchors: Record<string, string>) {
+  const sources: Record<string, { x: number; y: number }[]> = {};
+  for (const [from, to] of Object.entries(anchors)) (sources[to] ||= []).push(left[from]);
+  return Math.max(
+    ...Object.entries(sources).map(([id, points]) => {
+      const x = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+      const y = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+      return Math.hypot(right[id].x - x, right[id].y - y);
+    }),
+  );
+}
+
+const expectSamePositions = (actual: Positions, expected: Positions) => {
+  expect(Object.keys(actual).sort()).toEqual(Object.keys(expected).sort());
+  for (const [id, { x, y }] of Object.entries(expected)) {
+    expect(Math.hypot(actual[id].x - x, actual[id].y - y), `node ${id}`).toBeLessThan(1);
+  }
+};
+
+const version = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
+
+test("every dataset has 129 anchors between them", () => {
+  const anchors = datasets.flatMap(({ id }) => Object.keys(anchorsOf(id)));
+  expect(datasets).toHaveLength(8);
+  expect(anchors).toHaveLength(129);
+});
+
+for (const { id } of datasets) {
+  test(`${id}: both views agree and switching versions keeps positions`, async ({ page }) => {
+    await page.goto(`/?dataset=${id}`);
+    const [left, right] = await settled(page, 2);
+    expect(alignmentOffset(left, right, anchorsOf(id))).toBeLessThan(1);
+
+    await page.getByLabel("View Mode").selectOption("1 Graph");
+    expectSamePositions((await settled(page, 1))[0], left);
+    await page.evaluate(() => {
+      const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+      div._cyreg.cy.scratch("same-graph", true);
+    });
+
+    await version(page, "Final").click();
+    await page.waitForTimeout(150);
+    expect((await readGraphs(page))[0].animating).toBeGreaterThan(0);
+    expectSamePositions((await settled(page, 1))[0], right);
+
+    await version(page, "V1").click();
+    await page.waitForTimeout(150);
+    expectSamePositions((await settled(page, 1))[0], left);
+
+    // Rapid switching must leave no leftovers and no damaged positions
+    for (const name of ["Final", "V1", "Final", "V1", "Final"]) {
+      await version(page, name).click();
+      await page.waitForTimeout(40);
+    }
+    expectSamePositions((await settled(page, 1))[0], right);
+    await version(page, "V1").click();
+    await page.waitForTimeout(150);
+    expectSamePositions((await settled(page, 1))[0], left);
+
+    const kept = await page.evaluate(() => {
+      const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+      return div._cyreg.cy.scratch("same-graph");
+    });
+    expect(kept).toBe(true);
+  });
+}
+
+test("alignment holds with the cola layout", async ({ page }) => {
+  await page.goto("/?dataset=expert_9");
+  await settled(page, 2);
+  await page.getByText("cola", { exact: true }).click();
+  await page.waitForTimeout(300);
+  const [left, right] = await settled(page, 2);
+  expect(alignmentOffset(left, right, anchorsOf("expert_9"))).toBeLessThan(1);
+});
+
+test("switching dataset in the page keeps alignment", async ({ page }) => {
+  await page.goto("/?dataset=citizen_1&debug=1");
+  await settled(page, 2);
+  await page.getByLabel("Dataset").selectOption("expert_9");
+  await page.waitForTimeout(300);
+  const [left, right] = await settled(page, 2);
+  expect(Object.keys(left)).toHaveLength(25);
+  expect(alignmentOffset(left, right, anchorsOf("expert_9"))).toBeLessThan(1);
+});
+
+test("versions stay consistent without visiting the comparison first", async ({ page }) => {
+  await page.goto("/?dataset=citizen_1&debug=1");
+  await settled(page, 2);
+  await page.getByLabel("View Mode").selectOption("1 Graph");
+  await settled(page, 1);
+  await page.getByLabel("Dataset").selectOption("expert_2");
+  await page.waitForTimeout(300);
+  const [first] = await settled(page, 1);
+  await version(page, "Final").click();
+  await page.waitForTimeout(150);
+  const [final] = await settled(page, 1);
+  await version(page, "V1").click();
+  await page.waitForTimeout(150);
+  expectSamePositions((await settled(page, 1))[0], first);
+  await version(page, "Final").click();
+  await page.waitForTimeout(150);
+  expectSamePositions((await settled(page, 1))[0], final);
+});
+
+test("graphs appear in place on first load", async ({ page }) => {
+  await page.addInitScript(() => {
+    const frames: unknown[] = [];
+    (window as any).__frames = frames;
+    const record = () => {
+      frames.push(
+        [...document.querySelectorAll<any>("div")]
+          .filter((div) => div._cyreg?.cy)
+          .map((div) => ({
+            visible: getComputedStyle(div).visibility === "visible",
+            positions: div._cyreg.cy
+              .nodes()
+              .map((n: any) => `${Math.round(n.position().x)},${Math.round(n.position().y)}`)
+              .join(";"),
+          })),
+      );
+      requestAnimationFrame(record);
+    };
+    record();
+  });
+  await page.goto("/?dataset=expert_9");
+  await settled(page, 2);
+  const frames: { visible: boolean; positions: string }[][] = await page.evaluate(
+    () => (window as any).__frames,
+  );
+  const shown = frames.filter((frame) => frame.length === 2);
+  const final = shown[shown.length - 1];
+  const wrong = (index: number) =>
+    shown.filter((f) => f[index].visible && f[index].positions !== final[index].positions).length;
+  expect(wrong(0)).toBe(0);
+  expect(wrong(1)).toBeLessThanOrEqual(2);
+});
+
+test("hovering a node shows its terms", async ({ page }) => {
+  await page.goto("/?dataset=expert_9");
+  await settled(page, 2);
+  const point = await page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    const { left, top } = div.getBoundingClientRect();
+    const { x, y } = div._cyreg.cy.nodes()[0].renderedPosition();
+    return { x: left + x, y: top + y };
+  });
+  await page.mouse.move(point.x, point.y);
+  await expect(page.getByText("Terms", { exact: true })).toBeVisible();
+  await expect(page.getByText("Contributions", { exact: true })).toBeVisible();
+});

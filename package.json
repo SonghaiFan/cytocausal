@@ -13,11 +13,13 @@
   },
   "scripts": {
     "dev": "npm run dev -w @cytocausal/docs",
-    "build": "npm run build -w @cytocausal/docs",
+    "build": "npm run build -w @cytocausal/docs && npm run build -w @cytocausal/perspectiva",
     "start": "npm run start -w @cytocausal/docs",
-    "typecheck": "npm run typecheck -w @cytocausal/core && npm run typecheck -w @cytocausal/docs",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "check:content": "npm run check:content -w @cytocausal/docs",
-    "test": "npm run test -w @cytocausal/core"
+    "test": "npm run test -w @cytocausal/core",
+    "dev:perspectiva": "npm run dev -w @cytocausal/perspectiva",
+    "test:e2e": "npm run test:e2e -w @cytocausal/perspectiva"
   },
   "overrides": {
     "cytoscape": "3.31.0",

@@ -1,2 +1,2 @@
-// GraphView, CompareView, search and the evidence panel.
-export {};
+export * from "./CompareView.tsx";
+export * from "./GraphView.tsx";

@@ -10,7 +10,7 @@
 - **Cytoscape version:** pinned to 3.31.0 across the workspace. 3.34 ships its own types without `Stylesheet`, so upgrading is a separate change.
 - **Zod version:** pinned to 4.1.12. Nextra 4.6.1 rejects every page under newer Zod (tested with 4.6.7), so remove the pin only after testing a newer Nextra.
 - **Extraction rule:** a feature joins a package only once both demos use it.
-- **Workshop data:** stays out of this repo until its public use is confirmed. `data/private/` is ignored.
+- **Workshop data:** public, confirmed by Songhai Fan. It lives in `apps/perspectiva/data/`, generated from the Perspectiva project.
 
 ## Phases
 

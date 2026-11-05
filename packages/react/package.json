@@ -3,5 +3,19 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": "./src/index.ts"
+  "exports": "./src/index.ts",
+  "scripts": { "typecheck": "tsc --noEmit" },
+  "dependencies": {
+    "@cytocausal/core": "*",
+    "@cytocausal/cytoscape": "*",
+    "cytoscape": "3.31.0"
+  },
+  "peerDependencies": {
+    "react": "^19"
+  },
+  "devDependencies": {
+    "@types/cytoscape": "^3.21.8",
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
 }
