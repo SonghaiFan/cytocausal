@@ -55,7 +55,7 @@ export const layouts = { cola: colaLayout, fcose: fcoseLayout };
 export const autoLayout = {
   ...fcoseLayout,
   randomize: true,
-  padding: 100,
+  padding: 30,
   idealEdgeLength: () => 180,
 } as LayoutOptions;
 

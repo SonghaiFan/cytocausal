@@ -1,6 +1,7 @@
 export default {
   index: "Overview",
   "getting-started": "Getting started",
+  "showcase": { title: "Showcase", theme: { layout: "full", toc: false } },
   "--guides": { type: "separator", title: "Guides" },
   "components": "Components",
   "theming": "Themes and styles",

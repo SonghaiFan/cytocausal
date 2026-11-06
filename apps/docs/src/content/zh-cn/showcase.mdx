@@ -1,0 +1,39 @@
+---
+title: 组件展示
+---
+
+import { CompareDemo, GalleryDemo, StyleDemo, WorkspaceDemo } from "../../components/showcase/index.tsx";
+
+# 组件展示
+
+本页的所有内容都可以直接操作，使用的是一个虚构的咖啡店模型。组件界面的文字默认是英文，可用 `labels` [替换](/zh-cn/components/)。
+
+## 完整界面
+
+这是 `<CausalWorkspace dataset={dataset} />` 提供的界面。可以试试：
+
+- 依次点击两个节点，查看它们之间的路径。
+- 从 **V1** 切换到 **final**，观察图的变化。
+- 点击图，再用方向键和 Enter 操作。
+
+<WorkspaceDemo />
+
+属性说明见[组件](/zh-cn/components/)。
+
+## 样式
+
+同一张图的不同选项，详见[主题和样式](/zh-cn/theming/)。
+
+<StyleDemo />
+
+## 版本对比
+
+`CompareView` 让对应的节点保持相同的排布，新增内容一眼可见。
+
+<CompareDemo />
+
+## 所有面板
+
+面板可以单独使用，组成你自己的布局。下面的面板共用一个 `useCausalGraph`，所以彼此联动。
+
+<GalleryDemo language="zh" />

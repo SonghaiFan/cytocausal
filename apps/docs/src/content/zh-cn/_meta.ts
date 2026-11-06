@@ -1,6 +1,7 @@
 export default {
   index: "概览",
   "getting-started": "快速开始",
+  "showcase": { title: "组件展示", theme: { layout: "full", toc: false } },
   "--guides": { type: "separator", title: "指南" },
   "components": "组件",
   "theming": "主题与样式",

@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 const languages = ["en", "zh-cn"];
 const guides = [
   "getting-started",
+  "showcase",
   "components",
   "theming",
   "interactions",
@@ -105,4 +106,38 @@ test("guides fit a phone", async ({ page }) => {
   await page.goto("/zh-cn/stable-layouts/");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   expect(overflow).toBe(false);
+});
+
+const demoGraph = (page: Page, frame: string) =>
+  page.evaluate((frame) => {
+    const div = [...document.querySelectorAll<any>(`${frame} div`)].find((d) => d._cyreg?.cy);
+    const cy = div?._cyreg.cy;
+    return cy && { nodes: cy.nodes().length, focus: cy.nodes(".focus").map((n: any) => n.id()) };
+  }, frame);
+
+test("the showcase runs live demos in both languages", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+
+  for (const lang of languages) {
+    await page.goto(`/${lang}/showcase/`);
+    await expect.poll(async () => (await demoGraph(page, ".showcase-workspace"))?.nodes).toBe(3);
+    await expect.poll(async () => (await demoGraph(page, ".showcase-style"))?.nodes).toBe(5);
+    await expect.poll(async () => (await demoGraph(page, ".showcase-compare"))?.nodes).toBe(3);
+    await expect.poll(async () => (await demoGraph(page, ".showcase-gallery"))?.focus).toEqual([
+      "customers",
+      "queue",
+    ]);
+  }
+
+  const gallery = page.locator(".showcase-gallery");
+  await gallery.getByRole("button", { name: /Revenue/ }).first().click();
+  await expect(gallery.getByRole("button", { name: /Revenue/ }).first()).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.getByRole("button", { name: "flowing" }).click();
+  await expect(page.getByText('link: "flowing"')).toBeVisible();
+  expect(errors).toEqual([]);
 });
