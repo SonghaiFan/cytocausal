@@ -19,7 +19,7 @@ export interface CausalStyleOptions {
 
 const nodeStyles = (
   { colors }: CausalTheme,
-  { node = "dot", sizeByScore, managedLabels }: CausalStyleOptions,
+  { node = "pill", sizeByScore, managedLabels }: CausalStyleOptions,
 ) => {
   if (node === "pill") {
     return {
@@ -58,7 +58,7 @@ const nodeStyles = (
   };
 };
 
-const linkStyles = ({ colors }: CausalTheme, { link = "bezier" }: CausalStyleOptions) => {
+const linkStyles = ({ colors }: CausalTheme, { link = "flowing" }: CausalStyleOptions) => {
   const shared = {
     "line-color": colors.link,
     "target-arrow-color": colors.link,
@@ -89,6 +89,9 @@ const linkStyles = ({ colors }: CausalTheme, { link = "bezier" }: CausalStyleOpt
 /** Builds a Cytoscape stylesheet with every state the framework's interactions use. */
 export function createCausalStyle(theme: CausalTheme, options: CausalStyleOptions = {}) {
   const { colors, dimmedOpacity, fontFamily } = theme;
+  const { node = "pill", link = "flowing" } = options;
+  // Labels inside a node need to stay readable when a highlight recolours it
+  const onColour = node === "pill" ? { color: colors.background } : {};
   const highlight = (color: string) => ({
     "line-color": color,
     "target-arrow-color": color,
@@ -103,7 +106,7 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
       selector: 'edge[polarity="negative"]',
       style: {
         "line-style": "dashed",
-        ...(options.link === "flowing" ? { "control-point-distances": [20, -20] } : {}),
+        ...(link === "flowing" ? { "control-point-distances": [20, -20] } : {}),
       },
     },
     ...(options.baseRules ?? []),
@@ -112,15 +115,20 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     { selector: "node.selected", style: { "border-color": colors.focus, "border-width": "2px" } },
     {
       selector: "node.focus",
-      style: { ...shownLabel, "border-width": 3, "border-color": colors.focus, "z-index": 10 },
+      style: {
+        ...shownLabel,
+        "border-width": node === "pill" ? 2 : 3,
+        "border-color": colors.focus,
+        "z-index": 10,
+      },
     },
     {
       selector: "node.cause",
-      style: { ...shownLabel, "background-color": colors.cause, "z-index": 9 },
+      style: { ...shownLabel, ...onColour, "background-color": colors.cause, "z-index": 9 },
     },
     {
       selector: "node.effect",
-      style: { ...shownLabel, "background-color": colors.effect, "z-index": 9 },
+      style: { ...shownLabel, ...onColour, "background-color": colors.effect, "z-index": 9 },
     },
     { selector: "edge.cause-link", style: { ...highlight(colors.cause), width: 2 } },
     { selector: "edge.effect-link", style: { ...highlight(colors.effect), width: 2 } },
@@ -130,8 +138,11 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     },
     { selector: "edge.loop-link", style: { ...highlight(colors.focus), width: 3 } },
     { selector: ".outside-loops", style: { display: "none" } },
-    { selector: "node.diff-added", style: { "background-color": colors.added } },
-    { selector: "node.diff-removed", style: { "background-color": colors.clarification } },
+    { selector: "node.diff-added", style: { ...onColour, "background-color": colors.added } },
+    {
+      selector: "node.diff-removed",
+      style: { ...onColour, "background-color": colors.clarification },
+    },
     { selector: "edge.diff-added", style: { ...highlight(colors.added), width: 3 } },
     { selector: "edge.diff-removed", style: { ...highlight(colors.clarification), width: 3 } },
     {

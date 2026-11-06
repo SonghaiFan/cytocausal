@@ -56,7 +56,7 @@ export const autoLayout = {
   ...fcoseLayout,
   randomize: true,
   padding: 30,
-  idealEdgeLength: () => 180,
+  idealEdgeLength: () => 90,
 } as LayoutOptions;
 
 /** Uses the positions already on each node. */

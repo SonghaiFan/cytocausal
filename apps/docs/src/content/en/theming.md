@@ -31,11 +31,15 @@ Pass `stylesheet` to `GraphView`. Changing it restyles the graph in place, so no
 
 | Option | Values | Use it for |
 | :--- | :--- | :--- |
-| `node` | `dot`, `pill` | `pill` holds the label inside the node |
-| `link` | `bezier`, `flowing`, `straight` | `straight` suits dense graphs |
+| `node` | `pill` (default), `dot` | `pill` holds the label inside the node. `dot` suits large graphs |
+| `link` | `flowing` (default), `bezier`, `straight` | `straight` suits dense graphs |
 | `sizeByScore` | `true` | Sizing nodes by their `score` data, from 0 to 1 |
 | `managedLabels` | `true` | Labels placed by your own code |
 | `baseRules` | Cytoscape rules | Styles specific to your app |
+
+## Match ROC UI
+
+The components use the same spacing, corners and control sizes as [ROC UI](https://github.com/SonghaiFan/roc-ui). If your page sets its `--roc-*` tokens, such as `--roc-radius-control` or `--roc-control-height`, the components follow them. Colours still come from the theme.
 
 ## Add your own rules
 

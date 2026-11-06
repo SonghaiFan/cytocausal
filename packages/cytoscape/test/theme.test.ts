@@ -30,8 +30,8 @@ for (const theme of [lightTheme, darkTheme]) {
   });
 
   test(`${theme.name}: graph colours stand out from the background`, () => {
+    // Nodes aren't here: they carry their label inside, which the text test covers
     const marks: (keyof CausalTheme["colors"])[] = [
-      "node",
       "link",
       "focus",
       "cause",
@@ -82,6 +82,6 @@ test("only managed labels hide by default", () => {
       ({ selector }) => selector === "node",
     )!.style;
   assert.equal(nodeRule({}).label, "data(label)");
-  assert.equal(nodeRule({ managedLabels: true }).label, undefined);
-  assert.equal(nodeRule({ sizeByScore: true }).width, "mapData(score, 0, 1, 5, 24)");
+  assert.equal(nodeRule({ node: "dot", managedLabels: true }).label, undefined);
+  assert.equal(nodeRule({ node: "dot", sizeByScore: true }).width, "mapData(score, 0, 1, 5, 24)");
 });

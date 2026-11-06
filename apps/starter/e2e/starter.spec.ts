@@ -98,7 +98,7 @@ test("changing theme restyles the same graph without moving it", async ({ page }
       const cy = div._cyreg.cy;
       return {
         positions: JSON.stringify(cy.nodes().map((node: any) => node.position())),
-        nodeColor: cy.nodes()[0].style("background-color"),
+        linkText: cy.edges()[0].style("color"),
         marked: cy.scratch("marked") ?? false,
         pageColor: getComputedStyle(document.querySelector("aside")!).backgroundColor,
       };
@@ -109,7 +109,7 @@ test("changing theme restyles the same graph without moving it", async ({ page }
 
   const light = await read();
   await page.getByRole("button", { name: "Dark mode" }).click();
-  await expect.poll(async () => (await read()).nodeColor).not.toBe(light.nodeColor);
+  await expect.poll(async () => (await read()).linkText).not.toBe(light.linkText);
   const dark = await read();
   expect(dark.positions).toBe(light.positions);
   expect(dark.marked).toBe(true);

@@ -13,10 +13,7 @@ const theme: CausalTheme = {
   colors: {
     ...lightTheme.colors,
     background: "#f8fafc",
-    node: "#fbbf24",
-    nodeText: "#000000",
     link: "#d9dadc",
-    focus: "#111111",
   },
 };
 

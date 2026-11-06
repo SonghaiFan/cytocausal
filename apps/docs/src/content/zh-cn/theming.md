@@ -31,11 +31,15 @@ export const stylesheet = createCausalStyle(theme, {
 
 | 选项 | 取值 | 用途 |
 | :--- | :--- | :--- |
-| `node` | `dot`、`pill` | `pill` 把标签放在节点内 |
-| `link` | `bezier`、`flowing`、`straight` | `straight` 适合密集的图 |
+| `node` | `pill`（默认）、`dot` | `pill` 把标签放在节点内，`dot` 适合大型图 |
+| `link` | `flowing`（默认）、`bezier`、`straight` | `straight` 适合密集的图 |
 | `sizeByScore` | `true` | 根据 `score` 数据（0 到 1）决定节点大小 |
 | `managedLabels` | `true` | 由你的代码放置标签 |
 | `baseRules` | Cytoscape 规则 | 你的应用特有的样式 |
+
+## 配合 ROC UI
+
+组件的间距、圆角和控件尺寸与 [ROC UI](https://github.com/SonghaiFan/roc-ui) 一致。如果页面设置了 `--roc-radius-control`、`--roc-control-height` 等 `--roc-*` 变量，组件会跟随它们。颜色仍然来自主题。
 
 ## 添加自己的规则
 

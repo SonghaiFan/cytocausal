@@ -16,6 +16,7 @@ export const theme: CausalTheme = {
 };
 
 export const graphStyles = createCausalStyle(theme, {
+  node: "dot",
   link: "straight",
   sizeByScore: true,
   managedLabels: true,

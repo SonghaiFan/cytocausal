@@ -146,7 +146,6 @@ function Workspace({
           layout={layout ?? (hasPositions ? savedLayout : autoLayout)}
           stylesheet={stylesheets[scheme]}
           motion={theme.motion}
-          maxZoom={1.8}
           positionCache={positionCache}
           animateSnapshots
           renderTooltip={renderTooltip}

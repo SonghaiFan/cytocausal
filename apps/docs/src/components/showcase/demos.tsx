@@ -81,7 +81,7 @@ function Choice<T extends string>({
 export function StyleDemo() {
   const theme = useDocsTheme();
   const [node, setNode] = useState<"dot" | "pill">("pill");
-  const [link, setLink] = useState<"bezier" | "flowing" | "straight">("bezier");
+  const [link, setLink] = useState<"bezier" | "flowing" | "straight">("flowing");
   const options = useMemo(() => ({ node, link }), [node, link]);
   const stylesheet = useStyle(theme, options);
   const positionCache = useRef({});
