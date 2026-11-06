@@ -3,7 +3,7 @@ import {
   fitNodes,
   focusNode,
   highlightCausalNeighbours,
-  highlightLoop,
+  highlightRoute,
   keepLabelsReadable,
   resolveMotion,
   zoomBy,
@@ -49,32 +49,34 @@ export function useCausalGraph({
   const cy = useRef<Core | null>(null);
   const [selected, setSelected] = useState(initialSelected);
   const [hovered, setHovered] = useState<string | null>(null);
-  const [activeLoop, setActiveLoop] = useState<Route | null>(null);
+  const [activeRoute, setActiveRoute] = useState<Route | null>(null);
+  const [previewedRoute, setPreviewedRoute] = useState<Route | null>(null);
   const [depth, setDepth] = useState(1);
   const [announcement, setAnnouncement] = useState("");
   const cursor = useRef<string | null>(null);
   const keyHandler = useRef<((event: KeyboardEvent) => void) | null>(null);
 
-  const latest = useRef({ selected, hovered, activeLoop, depth });
+  const latest = useRef({ selected, hovered, activeRoute, previewedRoute, depth });
 
   const applyHighlight = useCallback(() => {
     const instance = cy.current;
     if (!instance || instance.destroyed()) return;
-    const { selected, hovered, activeLoop, depth } = latest.current;
-    if (activeLoop) {
+    const { selected, hovered, activeRoute, previewedRoute, depth } = latest.current;
+    const route = previewedRoute ?? activeRoute;
+    if (route) {
       highlightCausalNeighbours(instance, []);
-      highlightLoop(instance, activeLoop);
+      highlightRoute(instance, route);
     } else {
-      highlightLoop(instance, null);
+      highlightRoute(instance, null);
       const ids = selected.length ? selected : hovered ? [hovered] : [];
       highlightCausalNeighbours(instance, ids, depth);
     }
   }, []);
 
   useEffect(() => {
-    latest.current = { selected, hovered, activeLoop, depth };
+    latest.current = { selected, hovered, activeRoute, previewedRoute, depth };
     applyHighlight();
-  }, [selected, hovered, activeLoop, depth, applyHighlight]);
+  }, [selected, hovered, activeRoute, previewedRoute, depth, applyHighlight]);
 
   const add = useCallback(
     (ids: string[], id: string) => (ids.includes(id) ? ids : [...ids, id].slice(-maxSelected)),
@@ -84,7 +86,7 @@ export function useCausalGraph({
   /** Selects a node, or deselects it if it's already selected. */
   const toggle = useCallback(
     (id: string) => {
-      setActiveLoop(null);
+      setActiveRoute(null);
       setSelected((ids) => (ids.includes(id) ? ids.filter((item) => item !== id) : add(ids, id)));
     },
     [add],
@@ -93,7 +95,7 @@ export function useCausalGraph({
   /** Selects a node and moves the view to it. */
   const focus = useCallback(
     (id: string) => {
-      setActiveLoop(null);
+      setActiveRoute(null);
       setSelected((ids) => add(ids, id));
       if (cy.current) {
         focusNode(cy.current, id, { zoom: focusZoom ?? cy.current.zoom(), motion });
@@ -105,7 +107,7 @@ export function useCausalGraph({
   /** Clears the selection and any highlighted loop. */
   const clear = useCallback(() => {
     setSelected([]);
-    setActiveLoop(null);
+    setActiveRoute(null);
   }, []);
 
   /** Keeps only the selected nodes that pass a test, such as after filtering the graph. */
@@ -114,8 +116,8 @@ export function useCausalGraph({
   }, []);
 
   /** Highlights a loop or path, or removes the highlight if it's already showing. */
-  const toggleLoop = useCallback((route: Route) => {
-    setActiveLoop((current) => (current === route ? null : route));
+  const toggleRoute = useCallback((route: Route) => {
+    setActiveRoute((current) => (current === route ? null : route));
   }, []);
 
   const fit = useCallback(() => {
@@ -204,7 +206,7 @@ export function useCausalGraph({
     cy,
     selected,
     hovered,
-    activeLoop,
+    activeRoute,
     depth,
     setDepth,
     /** Text for a live region, so screen readers hear where the keyboard cursor is. */
@@ -213,7 +215,9 @@ export function useCausalGraph({
     focus,
     clear,
     keepSelected,
-    toggleLoop,
+    toggleRoute,
+    /** Shows a route while pointing at it, without changing the kept highlight. */
+    previewRoute: setPreviewedRoute,
     fit,
     zoomIn,
     zoomOut,

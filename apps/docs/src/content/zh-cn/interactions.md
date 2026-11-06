@@ -89,14 +89,15 @@ export function Explorer({ dataset }: { dataset: CausalDataset }) {
 | 名称 | 用途 |
 | :--- | :--- |
 | `attach` | 传给 `onReady` |
-| `selected`、`hovered`、`activeLoop` | 当前状态，可显示在你自己的面板中 |
+| `selected`、`hovered`、`activeRoute` | 当前状态，可显示在你自己的面板中 |
+| `previewRoute(route)` | 临时显示一条路线，比如悬停时，传 `null` 结束 |
 | `depth`、`setDepth(steps)` | 高亮延伸到几条连线之外 |
 | `announcement` | 实时区域的文字 |
 | `toggle(id)` | 选中或取消选中节点 |
 | `focus(id)` | 选中节点并把视图移到它 |
 | `clear()` | 清除选中和回路 |
 | `keepSelected(test)` | 移除未通过检查的选中节点，比如筛选之后 |
-| `toggleLoop(route)` | 高亮 `findFeedbackLoops` 返回的回路或 `findCausalPaths` 返回的路径 |
+| `toggleRoute(route)` | 高亮 `findFeedbackLoops` 返回的回路或 `findCausalPaths` 返回的路径 |
 | `zoomIn()`、`zoomOut()`、`fit()` | 移动视图 |
 | `cy` | Cytoscape 实例的 ref，用于其他操作 |
 

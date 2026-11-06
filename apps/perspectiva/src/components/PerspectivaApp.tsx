@@ -1,6 +1,7 @@
 "use client";
-import { findFeedbackLoops, type CausalDataset, type CausalNode, type FeedbackLoop } from "@cytocausal/core";
+import { findFeedbackLoops, type CausalDataset, type CausalNode } from "@cytocausal/core";
 import { layouts, type Positions } from "@cytocausal/cytoscape";
+import type { Route } from "@cytocausal/cytoscape";
 import { CompareView, GraphView, LoopList, useCausalGraph, VersionDiff } from "@cytocausal/react";
 import { useMemo, useRef, useState } from "react";
 import datasetsJson from "../../data/datasets.json";
@@ -38,11 +39,11 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
     [selected, viewMode, version],
   );
 
-  const toggleLoop = (snapshotId: string, loop: FeedbackLoop) => {
+  const toggleLoop = (snapshotId: string, route: Route) => {
     const [target, other] =
       viewMode === "2 Graphs" && snapshotId === RIGHT ? [right, main] : [main, right];
     other.clear();
-    target.toggleLoop(loop);
+    target.toggleRoute(route);
   };
 
   // A highlighted loop belongs to what was on screen when it was chosen
@@ -117,7 +118,7 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
             title={loopGroups.length > 1 ? `Feedback loops: ${snapshot.id}` : undefined}
             snapshot={snapshot}
             loops={loops}
-            active={main.activeLoop ?? right.activeLoop}
+            active={main.activeRoute ?? right.activeRoute}
             onToggle={(loop) => toggleLoop(snapshot.id, loop)}
           />
         ))}

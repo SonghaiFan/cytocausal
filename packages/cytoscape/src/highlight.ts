@@ -44,13 +44,13 @@ export function highlightCausalNeighbours(cy: Core, ids: string[], depth = 1) {
 }
 
 /** Dims the graph except one route through it, such as a loop or a path, or clears it. */
-export function highlightLoop(cy: Core, route: Route | null) {
+export function highlightRoute(cy: Core, route: Route | null) {
   cy.batch(() => {
-    cy.elements().removeClass("dimmed loop-node loop-link");
+    cy.elements().removeClass("dimmed route-node route-link");
     if (!route) return;
     cy.elements().addClass("dimmed");
-    route.nodes.forEach((id) => cy.getElementById(id).removeClass("dimmed").addClass("loop-node"));
-    route.edges.forEach((id) => cy.getElementById(id).removeClass("dimmed").addClass("loop-link"));
+    route.nodes.forEach((id) => cy.getElementById(id).removeClass("dimmed").addClass("route-node"));
+    route.edges.forEach((id) => cy.getElementById(id).removeClass("dimmed").addClass("route-link"));
   });
 }
 

@@ -194,7 +194,7 @@ const highlighted = (page: Page) =>
       .filter((div) => div._cyreg?.cy)
       .map((div) => {
         const cy = div._cyreg.cy;
-        return { nodes: cy.nodes(".loop-node").length, links: cy.edges(".loop-link").length };
+        return { nodes: cy.nodes(".route-node").length, links: cy.edges(".route-link").length };
       }),
   );
 

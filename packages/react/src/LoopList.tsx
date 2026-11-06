@@ -1,13 +1,17 @@
 "use client";
 import type { FeedbackLoop, Snapshot } from "@cytocausal/core";
 import type { Route } from "@cytocausal/cytoscape";
+import { required, useOptionalCausal } from "./CausalProvider.tsx";
 import { useCausalLabels } from "./labels.tsx";
+import { RouteButton } from "./RouteButton.tsx";
 
 export interface LoopListProps {
-  snapshot: Snapshot;
-  loops: FeedbackLoop[];
+  snapshot?: Snapshot;
+  loops?: FeedbackLoop[];
   active?: Route | null;
-  onToggle: (loop: FeedbackLoop) => void;
+  onToggle?: (route: Route) => void;
+  /** Called with a loop while it's hovered or focused, and null afterwards. */
+  onPreview?: (route: Route | null) => void;
   /** Heading text. The default shows the number of loops. */
   title?: string;
   /** False if a limit may have hidden some loops. */
@@ -22,16 +26,21 @@ const count = (loops: FeedbackLoop[], type: FeedbackLoop["type"]) =>
 
 /** Lists feedback loops, marked reinforcing or balancing, for choosing one to highlight. */
 export function LoopList({
-  snapshot,
-  loops,
+  snapshot: given,
+  loops: givenLoops,
   active,
   onToggle,
+  onPreview,
   title,
-  complete = true,
+  complete: givenComplete,
   bare = false,
   className = "",
 }: LoopListProps) {
   const labels = useCausalLabels();
+  const causal = useOptionalCausal();
+  const snapshot = required(given ?? causal?.snapshot, "LoopList", "snapshot");
+  const loops = required(givenLoops ?? causal?.loops, "LoopList", "loops");
+  const complete = givenComplete ?? (givenLoops ? true : causal?.loopsComplete);
   const labelOf = (id: string) => snapshot.nodes.find((node) => node.id === id)?.label ?? id;
   const typed = loops.some((loop) => loop.type !== "unknown");
   const heading = title ?? `${labels.loops} (${loops.length}${complete ? "" : "+"})`;
@@ -54,17 +63,12 @@ export function LoopList({
           <ul className="cc-list">
             {loops.map((loop) => (
               <li key={loop.edges.join()}>
-                <button
-                  type="button"
-                  className="cc-row"
-                  aria-pressed={active === loop}
-                  onClick={() => onToggle(loop)}
-                >
+                <RouteButton route={loop} active={active} onToggle={onToggle} onPreview={onPreview}>
                   {loop.type !== "unknown" && (
                     <span className={`cc-badge cc-badge-${loop.type}`}>{labels[loop.type]}</span>
                   )}
                   {[...loop.nodes, loop.nodes[0]].map(labelOf).join(" → ")}
-                </button>
+                </RouteButton>
               </li>
             ))}
           </ul>

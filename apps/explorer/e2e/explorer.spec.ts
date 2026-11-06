@@ -203,7 +203,7 @@ test("a node lists its short feedback loops, and choosing one highlights it", as
   const counts = () =>
     withCy<{ nodes: number; links: number; causes: number }>(
       page,
-      `return { nodes: cy.nodes(".loop-node").length, links: cy.edges(".loop-link").length,
+      `return { nodes: cy.nodes(".route-node").length, links: cy.edges(".route-link").length,
                 causes: cy.nodes(".cause").length };`,
     );
   await expect.poll(async () => (await counts()).nodes).toBeGreaterThan(1);

@@ -4,23 +4,23 @@ import {
   effectsOf,
   findFeedbackLoops,
   type CausalNode,
-  type FeedbackLoop,
   type LoopOptions,
   type Snapshot,
 } from "@cytocausal/core";
 import type { Route } from "@cytocausal/cytoscape";
 import { useMemo } from "react";
+import { required, useOptionalCausal } from "./CausalProvider.tsx";
 import { useCausalLabels } from "./labels.tsx";
 import { LoopList } from "./LoopList.tsx";
 
 export interface NodeDetailsProps {
-  snapshot: Snapshot;
+  snapshot?: Snapshot;
   nodeId: string;
   /** Called with a node id when someone chooses a cause or effect. */
-  onSelect: (id: string) => void;
-  onClose: () => void;
-  activeLoop?: Route | null;
-  onToggleLoop?: (loop: FeedbackLoop) => void;
+  onSelect?: (id: string) => void;
+  onClose?: () => void;
+  activeRoute?: Route | null;
+  onToggleRoute?: (route: Route) => void;
   /** Limits for finding loops through this node. Set these for large graphs. */
   loopOptions?: LoopOptions;
   className?: string;
@@ -58,16 +58,20 @@ function NodeLinks({
 
 /** Shows a node's causes, effects, loops and evidence. */
 export function NodeDetails({
-  snapshot,
+  snapshot: given,
   nodeId,
-  onSelect,
-  onClose,
-  activeLoop,
-  onToggleLoop,
+  onSelect: chosen,
+  onClose: closed,
+  activeRoute,
+  onToggleRoute,
   loopOptions,
   className = "",
 }: NodeDetailsProps) {
   const labels = useCausalLabels();
+  const causal = useOptionalCausal();
+  const snapshot = required(given ?? causal?.snapshot, "NodeDetails", "snapshot");
+  const onSelect = required(chosen ?? causal?.graph.focus, "NodeDetails", "onSelect");
+  const onClose = closed ?? (() => causal?.graph.toggle(nodeId));
   const node = snapshot.nodes.find(({ id }) => id === nodeId);
   const search = useMemo(
     () => findFeedbackLoops(snapshot, { ...loopOptions, through: nodeId }),
@@ -106,15 +110,15 @@ export function NodeDetails({
         nodes={effectsOf(snapshot, nodeId)}
         onSelect={onSelect}
       />
-      {onToggleLoop && search.loops.length > 0 && (
+      {onToggleRoute && search.loops.length > 0 && (
         <LoopList
           bare
           className="cc-block"
           snapshot={snapshot}
           loops={search.loops}
           complete={search.complete}
-          active={activeLoop}
-          onToggle={onToggleLoop}
+          active={activeRoute}
+          onToggle={onToggleRoute}
         />
       )}
       {evidence.length > 0 && (

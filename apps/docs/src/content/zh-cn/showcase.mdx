@@ -34,6 +34,16 @@ import { CompareDemo, GalleryDemo, StyleDemo, WorkspaceDemo } from "../../compon
 
 ## 所有面板
 
-面板可以单独使用，组成你自己的布局。下面的面板共用一个 `useCausalGraph`，所以彼此联动。
+面板可以单独使用，组成你自己的布局。在 `CausalProvider` 里，面板会自动连接，所以下面的组件都不需要传属性：
+
+```tsx
+<CausalProvider dataset={dataset}>
+  <CausalGraph />
+  <NodeSearch />
+  <SelectionPanel />
+  <LoopList />
+  <VersionDiff />
+</CausalProvider>
+```
 
 <GalleryDemo language="zh" />

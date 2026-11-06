@@ -19,7 +19,7 @@
 .showcase-sticky { position: sticky; top: 4rem; align-self: start; height: min(620px, calc(100vh - 5rem)); min-height: 0; }
 .showcase-cards { display: flex; flex-direction: column; gap: 1.25rem; padding: 1rem; border-left: 1px solid var(--cc-border, #cbd5e1); background: var(--cc-surface); }
 .showcase-card h3 { margin: 0; font-size: .875rem; font-weight: 600; }
-.showcase-card p:not(.cc-panel) { margin: .125rem 0 .5rem; color: var(--cc-muted-text); font-size: .8125rem; }
+.showcase-card > p { margin: .125rem 0 .5rem; color: var(--cc-muted-text); font-size: .8125rem; }
 
 @media (max-width: 900px) {
   .showcase-workspace { height: auto; }

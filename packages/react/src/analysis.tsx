@@ -8,66 +8,100 @@ import {
 } from "@cytocausal/core";
 import type { Route } from "@cytocausal/cytoscape";
 import { useMemo, type ReactNode } from "react";
+import { required, useCausal, useOptionalCausal } from "./CausalProvider.tsx";
 import { useCausalLabels } from "./labels.tsx";
+import { NodeDetails } from "./NodeDetails.tsx";
+import { RouteButton } from "./RouteButton.tsx";
 
 /** Buttons for how many links away a highlight reaches. */
 export function DepthControl({
   value,
   onChange,
   steps = [1, 2, 3],
+  bare = false,
   className = "",
 }: {
-  value: number;
-  onChange: (depth: number) => void;
+  value?: number;
+  onChange?: (depth: number) => void;
   steps?: number[];
+  /** Leave out the panel, to place it on the graph. */
+  bare?: boolean;
   className?: string;
 }) {
   const labels = useCausalLabels();
+  const causal = useOptionalCausal();
+  const current = value ?? causal?.graph.depth;
+  const choose = onChange ?? causal?.graph.setDepth;
+
+  const buttons = (
+    <div role="group" aria-label={labels.depth} className="cc-segmented">
+      {steps.map((step) => (
+        <button
+          key={step}
+          type="button"
+          className="cc-button"
+          aria-pressed={step === current}
+          onClick={() => choose?.(step)}
+        >
+          {step}
+        </button>
+      ))}
+    </div>
+  );
+  if (bare) {
+    return (
+      <div className={`cc-inline ${className}`}>
+        <span className="cc-muted">{labels.depth}</span>
+        {buttons}
+      </div>
+    );
+  }
   return (
     <section className={`cc-panel ${className}`}>
       <h3 className="cc-heading">{labels.depth}</h3>
-      <div className="cc-buttons">
-        {steps.map((step) => (
-          <button
-            key={step}
-            type="button"
-            className="cc-button"
-            aria-pressed={step === value}
-            onClick={() => onChange(step)}
-          >
-            {step}
-          </button>
-        ))}
-      </div>
+      {buttons}
     </section>
   );
 }
 
-/** Lists the causal paths between two nodes, in both directions, for choosing one to highlight. */
+/**
+ * Lists the causal paths between two nodes, in both directions, for choosing one to highlight.
+ * In a provider, it follows the two selected nodes.
+ */
 export function PathList({
-  snapshot,
-  from,
-  to,
+  snapshot: given,
+  from: start,
+  to: end,
   active,
   onToggle,
+  onPreview,
   className = "",
 }: {
-  snapshot: Snapshot;
-  from: string;
-  to: string;
+  snapshot?: Snapshot;
+  from?: string;
+  to?: string;
   active?: Route | null;
-  onToggle: (path: Route) => void;
+  onToggle?: (path: Route) => void;
+  onPreview?: (path: Route | null) => void;
   className?: string;
 }) {
   const labels = useCausalLabels();
+  const causal = useOptionalCausal();
+  const snapshot = required(given ?? causal?.snapshot, "PathList", "snapshot");
+  const from = start ?? causal?.graph.selected[0];
+  const to = end ?? causal?.graph.selected[1];
   const labelOf = (id: string) => snapshot.nodes.find((node) => node.id === id)?.label ?? id;
   const searches = useMemo(
-    () => [
-      { start: from, end: to, ...findCausalPaths(snapshot, from, to) },
-      { start: to, end: from, ...findCausalPaths(snapshot, to, from) },
-    ],
+    () =>
+      from && to
+        ? [
+            { start: from, end: to, ...findCausalPaths(snapshot, from, to) },
+            { start: to, end: from, ...findCausalPaths(snapshot, to, from) },
+          ]
+        : [],
     [snapshot, from, to],
   );
+  if (searches.length === 0) return null;
 
   return (
     <section aria-label="Paths" className={`cc-panel ${className}`}>
@@ -83,14 +117,9 @@ export function PathList({
             <ul className="cc-list">
               {paths.map((path) => (
                 <li key={path.edges.join()}>
-                  <button
-                    type="button"
-                    className="cc-row"
-                    aria-pressed={active === path}
-                    onClick={() => onToggle(path)}
-                  >
+                  <RouteButton route={path} active={active} onToggle={onToggle} onPreview={onPreview}>
                     {path.nodes.map(labelOf).join(" → ")}
-                  </button>
+                  </RouteButton>
                 </li>
               ))}
             </ul>
@@ -98,6 +127,31 @@ export function PathList({
         </div>
       ))}
     </section>
+  );
+}
+
+/** Everything about the current selection: a prompt, each node's details and the paths. */
+export function SelectionPanel({ className = "" }: { className?: string }) {
+  const labels = useCausalLabels();
+  const { graph } = useCausal();
+  const { selected, clear } = graph;
+
+  if (selected.length === 0) {
+    return <p className={`cc-panel cc-hint ${className}`}>{labels.selectHint}</p>;
+  }
+  return (
+    <>
+      <div className="cc-spread">
+        <p className="cc-muted">{selected.length === 1 ? labels.pathHint : ""}</p>
+        <button type="button" className="cc-link" onClick={clear}>
+          {labels.clearSelection}
+        </button>
+      </div>
+      <PathList className={className} />
+      {selected.map((id) => (
+        <NodeDetails key={id} nodeId={id} className={className} />
+      ))}
+    </>
   );
 }
 
@@ -118,7 +172,40 @@ function ChangeGroup({ title, items }: { title: string; items: ReactNode[] }) {
 }
 
 /** Summarises what changed between two snapshots. */
-export function VersionDiff({
+export function VersionDiff(props: VersionDiffProps) {
+  const causal = useOptionalCausal();
+  const dataset = required(props.dataset ?? causal?.dataset, "VersionDiff", "dataset");
+  const from = props.from ?? causal?.firstVersion ?? dataset.snapshots[0].id;
+  const to = props.to ?? causal?.lastVersion ?? dataset.snapshots[dataset.snapshots.length - 1].id;
+  if (from === to) return null;
+
+  // Inside a provider, the button marks the changes on its graph
+  const connected = causal && !props.onToggle;
+  return (
+    <Differences
+      dataset={dataset}
+      from={from}
+      to={to}
+      shown={connected ? causal.showChanges : props.shown}
+      onToggle={connected ? () => causal.setShowChanges(!causal.showChanges) : props.onToggle}
+      className={props.className}
+    />
+  );
+}
+
+export interface VersionDiffProps {
+  dataset?: CausalDataset;
+  /** Defaults to the first snapshot. */
+  from?: string;
+  /** Defaults to the last snapshot. */
+  to?: string;
+  /** Whether changes are marked on the graph. Leave out with `onToggle` to hide the button. */
+  shown?: boolean;
+  onToggle?: () => void;
+  className?: string;
+}
+
+function Differences({
   dataset,
   from,
   to,

@@ -93,7 +93,7 @@ console.log(complete); // true
 
 这些数量，以及 Perspectiva 的每个回路及其类型，都与 NetworkX 的 `simple_cycles` 一致。
 
-要显示回路，请把它传给 `highlightLoop(cy, loop)`。它会添加 `loop-node` 和 `loop-link` 类并淡化其他元素。传入 `null` 可清除高亮。
+要显示回路，请把它传给 `highlightRoute(cy, loop)`。它会添加 `route-node` 和 `route-link` 类并淡化其他元素。传入 `null` 可清除高亮。
 
 ## 原因和结果
 

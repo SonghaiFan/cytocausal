@@ -66,6 +66,30 @@
 .cc-badge-balancing { background: var(--cc-balancing); }
 
 .cc-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.cc-segmented { display: inline-flex; max-width: 100%; overflow-x: auto; }
+.cc-segmented .cc-button { min-width: var(--cc-control-height); padding-inline: 12px; border-radius: 0; }
+.cc-segmented .cc-button + .cc-button { margin-left: -1px; }
+.cc-segmented .cc-button:first-child { border-radius: var(--cc-radius-control) 0 0 var(--cc-radius-control); }
+.cc-segmented .cc-button:last-child { border-radius: 0 var(--cc-radius-control) var(--cc-radius-control) 0; }
+.cc-inline { display: flex; align-items: center; gap: 8px; }
+.cc-inline .cc-muted { margin: 0; }
+
+.cc-overlay {
+  position: absolute; left: 12px; right: 12px; display: flex; flex-wrap: wrap;
+  align-items: center; justify-content: space-between; gap: 8px; pointer-events: none;
+}
+.cc-overlay > * { pointer-events: auto; }
+.cc-overlay-top { top: 12px; }
+.cc-overlay-bottom {
+  bottom: 12px; right: calc(var(--cc-control-height) + 24px); justify-content: flex-start;
+  gap: 8px 16px; font-size: var(--cc-text-body);
+}
+.cc-hint { margin: 0; color: var(--cc-muted-text); }
+.cc-link {
+  flex-shrink: 0; padding: 0; border: 0; background: none; color: var(--cc-muted-text); font: inherit;
+  font-size: 12px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.cc-link:hover { color: var(--cc-text); }
 .cc-button {
   display: inline-flex; align-items: center; justify-content: center; min-height: var(--cc-control-height);
   padding: 8px 15px; border: 1px solid var(--cc-border); border-radius: var(--cc-radius-control);
@@ -77,7 +101,7 @@
 .cc-button:hover { box-shadow: inset 0 0 0 100px #80808018; }
 .cc-button[aria-pressed="true"] { background: var(--cc-text); color: var(--cc-background); }
 .cc-close { border: 0; background: none; color: var(--cc-muted-text); font-size: 1.1rem; cursor: pointer; }
-.cc-button:focus-visible, .cc-row:focus-visible, .cc-close:focus-visible, .cc-input:focus-visible {
+.cc-button:focus-visible, .cc-row:focus-visible, .cc-close:focus-visible, .cc-input:focus-visible, .cc-link:focus-visible {
   outline: 2px solid var(--cc-muted-text); outline-offset: 2px;
 }
 

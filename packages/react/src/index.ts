@@ -1,6 +1,13 @@
 export * from "./CausalWorkspace.tsx";
 export * from "./CompareView.tsx";
 export * from "./analysis.tsx";
+export { CausalGraph } from "./CausalGraph.tsx";
+export {
+  CausalProvider,
+  useCausal,
+  type CausalProviderProps,
+  type CausalState,
+} from "./CausalProvider.tsx";
 export * from "./controls.tsx";
 export * from "./GraphView.tsx";
 export * from "./labels.tsx";

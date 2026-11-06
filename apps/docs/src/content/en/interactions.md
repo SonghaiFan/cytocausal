@@ -89,14 +89,15 @@ Show `announcement` in a live region, so screen readers say where the cursor is:
 | Name | Use |
 | :--- | :--- |
 | `attach` | Pass to `onReady` |
-| `selected`, `hovered`, `activeLoop` | The current state, to show in your own panels |
+| `selected`, `hovered`, `activeRoute` | The current state, to show in your own panels |
+| `previewRoute(route)` | Shows a route for now, such as on hover. Pass `null` to end it |
 | `depth`, `setDepth(steps)` | How many links away the highlight reaches |
 | `announcement` | Text for a live region |
 | `toggle(id)` | Selects or deselects a node |
 | `focus(id)` | Selects a node and moves the view to it |
 | `clear()` | Clears the selection and loop |
 | `keepSelected(test)` | Drops selected nodes that fail a test, such as after filtering |
-| `toggleLoop(route)` | Highlights a loop from `findFeedbackLoops` or a path from `findCausalPaths` |
+| `toggleRoute(route)` | Highlights a loop from `findFeedbackLoops` or a path from `findCausalPaths` |
 | `zoomIn()`, `zoomOut()`, `fit()` | Moves the view |
 | `cy` | A ref to the Cytoscape instance, for anything else |
 

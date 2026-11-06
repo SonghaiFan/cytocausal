@@ -93,7 +93,7 @@ The number of loops can grow very quickly with graph size. Set `maxLength` on la
 
 These counts, and every Perspectiva loop and type, match NetworkX's `simple_cycles`.
 
-To show a loop, pass it to `highlightLoop(cy, loop)`, which adds `loop-node` and `loop-link` classes and dims everything else. Pass `null` to clear it.
+To show a loop, pass it to `highlightRoute(cy, loop)`, which adds `route-node` and `route-link` classes and dims everything else. Pass `null` to clear it.
 
 ## Causes and effects
 

@@ -1,11 +1,8 @@
 "use client";
+import { createCausalStyle } from "@cytocausal/cytoscape";
 import {
-  autoLayout,
-  createCausalStyle,
-  type CausalStyleOptions,
-  type CausalTheme,
-} from "@cytocausal/cytoscape";
-import {
+  CausalGraph,
+  CausalProvider,
   CausalRoot,
   CausalWorkspace,
   CompareView,
@@ -13,39 +10,32 @@ import {
   GraphView,
   Legend,
   LoopList,
-  NodeDetails,
   NodeSearch,
-  NodeTooltip,
-  PathList,
+  SelectionPanel,
   themeForScheme,
-  useCausalGraph,
   VersionDiff,
   VersionSwitcher,
-  ZoomControls,
 } from "@cytocausal/react";
 import "@cytocausal/react/styles.css";
-import { findFeedbackLoops, type CausalNode } from "@cytocausal/core";
 import { useTheme } from "nextra-theme-docs";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { dataset } from "./data.ts";
 import "./showcase.css";
 
-const renderTooltip = (node: CausalNode) => <NodeTooltip node={node} />;
-
 /** Follows the docs' light or dark setting. */
-function useDocsTheme() {
-  const { resolvedTheme } = useTheme();
-  return themeForScheme(resolvedTheme === "dark" ? "dark" : "light");
-}
-
-function useStyle(theme: CausalTheme, options?: CausalStyleOptions) {
-  return useMemo(() => createCausalStyle(theme, options), [theme, options]);
+function useDocsScheme() {
+  return useTheme().resolvedTheme === "dark" ? ("dark" as const) : ("light" as const);
 }
 
 export function WorkspaceDemo() {
   return (
     <div className="showcase-frame showcase-workspace">
-      <CausalWorkspace dataset={dataset} title="Coffee shop" shareInUrl={false} />
+      <CausalWorkspace
+        dataset={dataset}
+        title="Coffee shop"
+        scheme={useDocsScheme()}
+        shareInUrl={false}
+      />
     </div>
   );
 }
@@ -79,12 +69,10 @@ function Choice<T extends string>({
 }
 
 export function StyleDemo() {
-  const theme = useDocsTheme();
+  const theme = themeForScheme(useDocsScheme());
   const [node, setNode] = useState<"dot" | "pill">("pill");
   const [link, setLink] = useState<"bezier" | "flowing" | "straight">("flowing");
-  const options = useMemo(() => ({ node, link }), [node, link]);
-  const stylesheet = useStyle(theme, options);
-  const positionCache = useRef({});
+  const stylesheet = useMemo(() => createCausalStyle(theme, { node, link }), [theme, node, link]);
 
   return (
     <CausalRoot theme={theme} className="showcase-frame showcase-style">
@@ -102,10 +90,8 @@ export function StyleDemo() {
         <GraphView
           dataset={dataset}
           snapshotId="final"
-          layout={autoLayout}
           stylesheet={stylesheet}
           motion={theme.motion}
-          positionCache={positionCache}
         />
       </div>
     </CausalRoot>
@@ -113,19 +99,16 @@ export function StyleDemo() {
 }
 
 export function CompareDemo() {
-  const theme = useDocsTheme();
-  const stylesheet = useStyle(theme);
-  const positionCache = useRef({});
+  const theme = themeForScheme(useDocsScheme());
+  const stylesheet = useMemo(() => createCausalStyle(theme), [theme]);
   return (
     <CausalRoot theme={theme} className="showcase-frame showcase-compare">
       <CompareView
         dataset={dataset}
         left="V1"
         right="final"
-        layout={autoLayout}
         stylesheet={stylesheet}
         motion={theme.motion}
-        positionCache={positionCache}
       />
     </CausalRoot>
   );
@@ -137,22 +120,18 @@ const descriptions = {
     VersionSwitcher: "Switches between snapshots.",
     Legend: "Explains the highlight colours.",
     DepthControl: "Sets how many links away the highlight reaches.",
-    PathList: "Lists the paths between two selected nodes, in both directions.",
-    NodeDetails: "Shows a node's evidence, causes, effects and loops.",
+    SelectionPanel: "Shows the selected nodes, and the paths between them.",
     LoopList: "Lists feedback loops, and highlights the one you choose.",
     VersionDiff: "Summarises what changed between two snapshots.",
-    selectTwo: "Select two nodes to see this.",
   },
   zh: {
     NodeSearch: "按标签或证据查找节点，并把视图移到所选节点。",
     VersionSwitcher: "在快照之间切换。",
     Legend: "说明高亮颜色的含义。",
     DepthControl: "设置高亮延伸到几条连线之外。",
-    PathList: "列出两个选中节点之间双向的路径。",
-    NodeDetails: "显示节点的证据、原因、结果和回路。",
+    SelectionPanel: "显示选中的节点，以及它们之间的路径。",
     LoopList: "列出反馈回路，并高亮你选择的回路。",
     VersionDiff: "总结两个快照之间的变化。",
-    selectTwo: "选中两个节点后显示。",
   },
 };
 
@@ -168,99 +147,41 @@ function Card({ name, text, children }: { name: string; text: string; children: 
   );
 }
 
-/** Every panel on its own, all connected to one graph. */
+/** Every panel on its own, all connected through one provider. */
 export function GalleryDemo({ language = "en" }: { language?: keyof typeof descriptions }) {
   const text = descriptions[language];
-  const theme = useDocsTheme();
-  const stylesheet = useStyle(theme);
-  const [version, setVersion] = useState("final");
-  const graph = useCausalGraph({
-    maxSelected: 2,
-    motion: theme.motion,
-    initialSelected: ["customers", "queue"],
-  });
-  const snapshot = dataset.snapshots.find(({ id }) => id === version)!;
-  const [from, to] = graph.selected;
-  const positionCache = useRef({});
-  const { loops, complete } = useMemo(() => findFeedbackLoops(snapshot), [snapshot]);
-
   return (
-    <CausalRoot theme={theme} className="showcase-frame showcase-gallery">
-      <div className="cc-graph showcase-sticky">
-        <GraphView
-          dataset={dataset}
-          snapshotId={version}
-          layout={autoLayout}
-          stylesheet={stylesheet}
-          motion={theme.motion}
-          positionCache={positionCache}
-          animateSnapshots
-          renderTooltip={renderTooltip}
-          onReady={graph.attach}
-        />
-        <ZoomControls graph={graph} />
-        <p role="status" className="cc-sr-only">
-          {graph.announcement}
-        </p>
-      </div>
+    <CausalProvider
+      dataset={dataset}
+      scheme={useDocsScheme()}
+      initialVersion="final"
+      initialSelected={["customers", "queue"]}
+      className="showcase-frame showcase-gallery"
+    >
+      <CausalGraph className="showcase-sticky" />
       <div className="showcase-cards">
         <Card name="NodeSearch" text={text.NodeSearch}>
-          <NodeSearch nodes={snapshot.nodes} onSelect={graph.focus} />
+          <NodeSearch />
         </Card>
         <Card name="VersionSwitcher" text={text.VersionSwitcher}>
-          <VersionSwitcher
-            versions={dataset.snapshots.map(({ id }) => id)}
-            value={version}
-            onChange={(id) => {
-              graph.clear();
-              setVersion(id);
-            }}
-          />
+          <VersionSwitcher />
         </Card>
         <Card name="Legend" text={text.Legend}>
           <Legend />
         </Card>
         <Card name="DepthControl" text={text.DepthControl}>
-          <DepthControl value={graph.depth} onChange={graph.setDepth} />
+          <DepthControl />
         </Card>
-        <Card name="PathList" text={text.PathList}>
-          {to ? (
-            <PathList
-              snapshot={snapshot}
-              from={from}
-              to={to}
-              active={graph.activeLoop}
-              onToggle={graph.toggleLoop}
-            />
-          ) : (
-            <p className="cc-panel cc-muted">{text.selectTwo}</p>
-          )}
-        </Card>
-        <Card name="NodeDetails" text={text.NodeDetails}>
-          {from ? (
-            <NodeDetails
-              snapshot={snapshot}
-              nodeId={from}
-              onSelect={graph.focus}
-              onClose={() => graph.toggle(from)}
-            />
-          ) : (
-            <p className="cc-panel cc-muted">{text.selectTwo}</p>
-          )}
+        <Card name="SelectionPanel" text={text.SelectionPanel}>
+          <SelectionPanel />
         </Card>
         <Card name="LoopList" text={text.LoopList}>
-          <LoopList
-            snapshot={snapshot}
-            loops={loops}
-            complete={complete}
-            active={graph.activeLoop}
-            onToggle={graph.toggleLoop}
-          />
+          <LoopList />
         </Card>
         <Card name="VersionDiff" text={text.VersionDiff}>
-          <VersionDiff dataset={dataset} from="V1" to="final" />
+          <VersionDiff />
         </Card>
       </div>
-    </CausalRoot>
+    </CausalProvider>
   );
 }

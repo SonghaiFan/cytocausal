@@ -37,6 +37,9 @@ export interface CausalLabels {
   linksRemoved: string;
   polarityChanged: string;
   noChanges: string;
+  selectHint: string;
+  pathHint: string;
+  clearSelection: string;
   exportImage: string;
   copyLink: string;
   linkCopied: string;
@@ -78,6 +81,9 @@ export const defaultLabels: CausalLabels = {
   linksRemoved: "Links removed",
   polarityChanged: "Polarity changed",
   noChanges: "No changes",
+  selectHint: "Click a node to see what causes it and what it leads to.",
+  pathHint: "Select a second node to trace the paths between them.",
+  clearSelection: "Clear selection",
   exportImage: "Export PNG",
   copyLink: "Copy link",
   linkCopied: "Link copied",

@@ -8,7 +8,7 @@ const graph = (page: Page) =>
     return {
       nodes: cy.nodes().length,
       animating: cy.elements().filter((ele: any) => ele.animated()).length,
-      loopNodes: cy.nodes(".loop-node").length,
+      routeNodes: cy.nodes(".route-node").length,
     };
   });
 
@@ -76,10 +76,10 @@ test("search finds nodes by label and evidence, and highlights the choice", asyn
 
   // Choosing a node replaces a highlighted loop, and the other way round
   await page.getByRole("button", { name: /^Balancing/ }).click();
-  await expect.poll(async () => (await graph(page))?.loopNodes).toBe(3);
+  await expect.poll(async () => (await graph(page))?.routeNodes).toBe(3);
   await search.fill("queue");
   await page.locator(".cc-search").getByRole("button", { name: "Queue length" }).click();
-  await expect.poll(async () => (await graph(page))?.loopNodes).toBe(0);
+  await expect.poll(async () => (await graph(page))?.routeNodes).toBe(0);
   await expect.poll(async () => (await classes()).focus).toEqual(["queue", "satisfaction"]);
 
   await search.fill("nothing like this");
@@ -249,7 +249,7 @@ test("the starter runs out of the box", async ({ page }) => {
   await expect.poll(async () => await graph(page)).toMatchObject({ nodes: 5, animating: 0 });
 
   await page.getByRole("button", { name: /^Reinforcing/ }).click();
-  await expect.poll(async () => (await graph(page))?.loopNodes).toBe(5);
+  await expect.poll(async () => (await graph(page))?.routeNodes).toBe(5);
   expect(errors).toEqual([]);
 });
 
@@ -285,11 +285,14 @@ test("two selected nodes list the paths between them, and a path can be highligh
   await longest.click();
   await expect(longest).toHaveAttribute("aria-pressed", "true");
   await expect
-    .poll(() => nodesWith(page, ".loop-node"))
+    .poll(() => nodesWith(page, ".route-node"))
     .toEqual(["customers", "queue", "revenue", "staff"]);
 
+  // The route stays as a preview until the pointer leaves it
   await longest.click();
-  await expect.poll(() => nodesWith(page, ".loop-node")).toEqual([]);
+  await expect(longest).toHaveAttribute("aria-pressed", "false");
+  await page.getByRole("heading", { name: "cytocausal starter" }).hover();
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual([]);
 });
 
 test("the highlight reaches further upstream and downstream on request", async ({ page }) => {
@@ -373,4 +376,37 @@ test("the graph downloads as an image", async ({ page }) => {
     page.getByRole("button", { name: "Export PNG" }).click(),
   ]);
   expect(download.suggestedFilename()).toMatch(/\.png$/);
+});
+
+test("the sidebar says what to do next, and the selection can be cleared", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  await expect(page.getByText("Click a node to see")).toBeVisible();
+
+  await choose(page, "queue", /^Queue length/);
+  await expect(page.getByText("Click a node to see")).toHaveCount(0);
+  await expect(page.getByText("Select a second node")).toBeVisible();
+
+  await choose(page, "customers", /^Customers/);
+  await expect(page.getByText("Select a second node")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Clear selection" }).click();
+  await expect(page.getByText("Click a node to see")).toBeVisible();
+  await expect.poll(() => nodesWith(page, ".focus")).toEqual([]);
+});
+
+test("hovering a loop previews it, and clicking keeps it", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  const loop = page.getByRole("button", { name: /^Balancing/ });
+
+  await loop.hover();
+  await expect.poll(async () => (await graph(page))?.routeNodes).toBe(3);
+  await expect(loop).toHaveAttribute("aria-pressed", "false");
+  await page.getByRole("heading", { name: "cytocausal starter" }).hover();
+  await expect.poll(async () => (await graph(page))?.routeNodes).toBe(0);
+
+  await loop.click();
+  await page.getByRole("heading", { name: "cytocausal starter" }).hover();
+  await expect.poll(async () => (await graph(page))?.routeNodes).toBe(3);
 });

@@ -139,8 +139,8 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
             snapshot={dataset.snapshots[0]}
             nodeId={id}
             loopOptions={LOOP_SEARCH}
-            activeLoop={graph.activeLoop}
-            onToggleLoop={graph.toggleLoop}
+            activeRoute={graph.activeRoute}
+            onToggleRoute={graph.toggleRoute}
             onSelect={graph.focus}
             onClose={() => graph.toggle(id)}
           />

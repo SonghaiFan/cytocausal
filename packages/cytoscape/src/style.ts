@@ -133,10 +133,10 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     { selector: "edge.cause-link", style: { ...highlight(colors.cause), width: 2 } },
     { selector: "edge.effect-link", style: { ...highlight(colors.effect), width: 2 } },
     {
-      selector: "node.loop-node",
+      selector: "node.route-node",
       style: { ...shownLabel, "border-width": 2, "border-color": colors.focus, "z-index": 9 },
     },
-    { selector: "edge.loop-link", style: { ...highlight(colors.focus), width: 3 } },
+    { selector: "edge.route-link", style: { ...highlight(colors.focus), width: 3 } },
     { selector: ".outside-loops", style: { display: "none" } },
     { selector: "node.diff-added", style: { ...onColour, "background-color": colors.added } },
     {

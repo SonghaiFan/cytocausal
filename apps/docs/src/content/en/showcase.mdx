@@ -34,6 +34,16 @@ The same graph with different options. See [Themes and styles](/en/theming/).
 
 ## Every panel
 
-Use the panels on their own to build your own layout. All of these share one `useCausalGraph` hook, so each one responds to the others.
+Use the panels on their own to build your own layout. Inside a `CausalProvider`, each panel connects itself, so none of these has any props:
+
+```tsx
+<CausalProvider dataset={dataset}>
+  <CausalGraph />
+  <NodeSearch />
+  <SelectionPanel />
+  <LoopList />
+  <VersionDiff />
+</CausalProvider>
+```
 
 <GalleryDemo />

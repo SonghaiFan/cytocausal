@@ -1,9 +1,12 @@
 "use client";
 import type { CausalDataset, CausalNode } from "@cytocausal/core";
 import {
+  autoLayout,
+  createCausalStyle,
   fitNodes,
   getCounterparts,
   isTransitioning,
+  lightTheme,
   placeAround,
   snapshotPositions,
   toElements,
@@ -27,14 +30,15 @@ export type PositionCache = RefObject<Record<string, Positions>>;
 export interface GraphViewProps {
   dataset: CausalDataset;
   snapshotId: string;
-  layout: LayoutOptions;
+  /** Defaults to an automatic layout. */
+  layout?: LayoutOptions;
   /** Changing this restyles the graph in place, so nodes stay where they are. */
-  stylesheet: Stylesheet[];
+  stylesheet?: Stylesheet[];
   motion?: CausalMotion;
   /** Stops small graphs being blown up to fill the screen. */
   maxZoom?: number;
-  /** Shared between views, so every view of a snapshot agrees. */
-  positionCache: PositionCache;
+  /** Pass one to several views, so every view of a snapshot agrees. */
+  positionCache?: PositionCache;
   /** Animate between snapshots of a dataset instead of rebuilding the graph. */
   animateSnapshots?: boolean;
   /** Skip the layout, staying hidden until `anchorPositions` arrive. */
@@ -47,17 +51,19 @@ export interface GraphViewProps {
   className?: string;
 }
 
+const defaultStylesheet = createCausalStyle(lightTheme);
+
 const cacheKeyOf = (dataset: string, layout: LayoutOptions, snapshot: string) =>
   `${dataset}:${layout.name}:${snapshot}`;
 
 export function GraphView({
   dataset,
   snapshotId,
-  layout,
-  stylesheet,
+  layout = autoLayout,
+  stylesheet = defaultStylesheet,
   motion,
   maxZoom = 2,
-  positionCache,
+  positionCache: sharedCache,
   animateSnapshots = false,
   waitForAnchors = false,
   anchorPositions,
@@ -66,6 +72,8 @@ export function GraphView({
   renderTooltip,
   className,
 }: GraphViewProps) {
+  const ownCache = useRef<Record<string, Positions>>({});
+  const positionCache = sharedCache ?? ownCache;
   const container = useRef<HTMLDivElement>(null);
   const cy = useRef<Core | null>(null);
   const anchoredLayout = useRef<Layouts | null>(null);

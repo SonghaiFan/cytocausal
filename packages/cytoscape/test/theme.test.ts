@@ -62,7 +62,7 @@ test("theme variables use kebab case", () => {
 test("the stylesheet covers every state interactions set", () => {
   const rules = createCausalStyle(lightTheme) as unknown as Rule[];
   const selectors = rules.map(({ selector }) => selector).join(" ");
-  for (const name of [".dimmed", ".focus", ".cause", ".effect", ".cause-link", ".effect-link", ".loop-node", ".loop-link"]) {
+  for (const name of [".dimmed", ".focus", ".cause", ".effect", ".cause-link", ".effect-link", ".route-node", ".route-link"]) {
     assert.ok(selectors.includes(name), name);
   }
 });
@@ -73,7 +73,7 @@ test("app rules come before the interaction states", () => {
   }) as unknown as Rule[];
   const index = (selector: string) => rules.findIndex((rule) => rule.selector === selector);
   assert.ok(index("edge.app") > index("edge"));
-  assert.ok(index("edge.app") < index("edge.loop-link"));
+  assert.ok(index("edge.app") < index("edge.route-link"));
 });
 
 test("only managed labels hide by default", () => {

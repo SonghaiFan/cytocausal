@@ -33,6 +33,8 @@ import "@cytocausal/react/styles.css";
 | `styleOptions` | None | Options for `createCausalStyle` |
 | `layout` | Automatic | Saved positions if every node has one, or else an automatic layout |
 | `maxSelected` | `2` | How many nodes can be selected. Selecting two lists the paths between them |
+| `scheme` | System | Sets `light` or `dark`, and hides the switch button |
+| `initialVersion`, `initialSelected` | First snapshot, none | Where to start |
 | `shareInUrl` | `true` | Keeps the version and selection in the page address, so a link reopens the same view |
 | `children` | None | Extra panels at the end of the sidebar |
 
@@ -42,107 +44,99 @@ On graphs of more than 60 nodes, the workspace only lists loops of up to six nod
 
 ## Choose your own parts
 
-| Component | What it shows |
-| :--- | :--- |
-| `GraphView` | One graph |
-| `CompareView` | Two snapshots side by side, with matching nodes aligned |
-| `NodeSearch` | Search box and results |
-| `NodeDetails` | A node's causes, effects, loops and evidence |
-| `LoopList` | Feedback loops, marked reinforcing or balancing |
-| `VersionSwitcher` | Buttons for moving between snapshots |
-| `Legend` | A colour key |
-| `ZoomControls` | Zoom and fit buttons |
-| `NodeTooltip` | A hover preview, for `renderTooltip` |
-
-Connect them with [`useCausalGraph`](/en/interactions/):
+Put the parts you want inside a `CausalProvider`. It holds the dataset, version, selection and theme, and each part connects itself, so none of them needs props:
 
 ```tsx
 "use client";
 import type { CausalDataset } from "@cytocausal/core";
-import { createCausalStyle, fcoseLayout, lightTheme, type Positions } from "@cytocausal/cytoscape";
 import {
-  CausalRoot,
-  GraphView,
-  Legend,
-  NodeDetails,
+  CausalGraph,
+  CausalProvider,
+  LoopList,
   NodeSearch,
-  useCausalGraph,
-  ZoomControls,
+  SelectionPanel,
+  VersionSwitcher,
 } from "@cytocausal/react";
-import { useRef } from "react";
-
-const stylesheet = createCausalStyle(lightTheme);
 
 export function MyApp({ dataset }: { dataset: CausalDataset }) {
-  const [snapshot] = dataset.snapshots;
-  const graph = useCausalGraph();
-  const positionCache = useRef<Record<string, Positions>>({});
-
   return (
-    <CausalRoot theme={lightTheme} className="cc-workspace">
-      <div className="cc-graph">
-        <GraphView
-          dataset={dataset}
-          snapshotId={snapshot.id}
-          layout={fcoseLayout}
-          stylesheet={stylesheet}
-          positionCache={positionCache}
-          onReady={graph.attach}
-        />
-        <ZoomControls graph={graph} />
-      </div>
+    <CausalProvider dataset={dataset} className="cc-workspace">
+      <CausalGraph />
       <aside className="cc-sidebar">
-        <NodeSearch nodes={snapshot.nodes} onSelect={graph.focus} />
-        <Legend />
-        {graph.selected.map((id) => (
-          <NodeDetails
-            key={id}
-            snapshot={snapshot}
-            nodeId={id}
-            onSelect={graph.focus}
-            onClose={() => graph.toggle(id)}
-          />
-        ))}
+        <NodeSearch />
+        <VersionSwitcher />
+        <SelectionPanel />
+        <LoopList />
       </aside>
-    </CausalRoot>
+    </CausalProvider>
   );
 }
 ```
 
-`apps/explorer` and `apps/perspectiva` are built this way, each using the parts it needs.
+| Component | What it shows |
+| :--- | :--- |
+| `CausalGraph` | The graph, with zoom buttons. Children sit on top of it |
+| `NodeSearch` | Search box and results |
+| `VersionSwitcher` | Buttons for moving between snapshots |
+| `SelectionPanel` | A prompt, then the selected nodes and the paths between them |
+| `NodeDetails` | One node's causes, effects and evidence |
+| `PathList` | The paths between two nodes, in both directions |
+| `LoopList` | Feedback loops, marked reinforcing or balancing |
+| `VersionDiff` | What changed between two snapshots |
+| `DepthControl` | How far a highlight reaches |
+| `Legend` | A colour key |
+| `ZoomControls` | Zoom and fit buttons |
 
-## Paths, depth and changes
+Hovering a row in `LoopList` or `PathList` previews it on the graph. Clicking keeps it.
 
-These three panels work with the same `useCausalGraph` hook:
+`VersionSwitcher`, `Legend` and `DepthControl` take `bare`, which leaves out the panel so they can sit on the graph.
+
+### Read the state
+
+Call `useCausal` anywhere inside the provider:
 
 ```tsx
 "use client";
-import type { CausalDataset, Snapshot } from "@cytocausal/core";
-import { DepthControl, PathList, useCausalGraph, VersionDiff } from "@cytocausal/react";
+import { useCausal } from "@cytocausal/react";
 
-export function Panels({ dataset, snapshot }: { dataset: CausalDataset; snapshot: Snapshot }) {
-  const graph = useCausalGraph({ maxSelected: 2 });
-  const [from, to] = graph.selected;
-
+export function Summary() {
+  const { snapshot, version, graph, exportImage } = useCausal();
   return (
-    <>
-      <DepthControl value={graph.depth} onChange={graph.setDepth} />
-      {to && (
-        <PathList
-          snapshot={snapshot}
-          from={from}
-          to={to}
-          active={graph.activeLoop}
-          onToggle={graph.toggleLoop}
-        />
-      )}
-      <VersionDiff dataset={dataset} from="V1" to="final" />
-    </>
+    <button type="button" onClick={exportImage}>
+      Export {version}: {snapshot.nodes.length} nodes, {graph.selected.length} selected
+    </button>
   );
 }
 ```
 
-`PathList` shows both directions, because A can lead to B without B leading to A. `VersionDiff` shows its **Show on graph** button when you pass `shown` and `onToggle`. Mark the changes yourself with `highlightChanges(cy, added, removed)`.
+It also has `setVersion`, `loops`, `theme`, `scheme`, `toggleScheme`, `showChanges`, `setShowChanges` and `copyLink`.
+
+### Without a provider
+
+Every part also takes its data as props, which override the provider. Use this for a layout the provider doesn't fit, such as two graphs that each have their own selection. Connect them with [`useCausalGraph`](/en/interactions/):
+
+```tsx
+"use client";
+import type { CausalDataset } from "@cytocausal/core";
+import { GraphView, NodeSearch, useCausalGraph, ZoomControls } from "@cytocausal/react";
+
+export function MyGraph({ dataset }: { dataset: CausalDataset }) {
+  const [snapshot] = dataset.snapshots;
+  const graph = useCausalGraph();
+
+  return (
+    <div className="cc-workspace">
+      <div className="cc-graph">
+        <GraphView dataset={dataset} snapshotId={snapshot.id} onReady={graph.attach} />
+        <ZoomControls graph={graph} />
+      </div>
+      <NodeSearch nodes={snapshot.nodes} onSelect={graph.focus} />
+    </div>
+  );
+}
+```
+
+`GraphView` only needs `dataset` and `snapshotId`. `layout`, `stylesheet` and `positionCache` have defaults. `apps/explorer` and `apps/perspectiva` are built this way.
 
 ## Export the graph
 

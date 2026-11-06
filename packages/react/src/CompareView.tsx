@@ -1,8 +1,8 @@
 "use client";
 import type { CausalDataset } from "@cytocausal/core";
-import { alignPositions, getCounterparts, type Positions } from "@cytocausal/cytoscape";
+import { alignPositions, autoLayout, getCounterparts, type Positions } from "@cytocausal/cytoscape";
 import type { Core } from "cytoscape";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { GraphView, type GraphViewProps } from "./GraphView.tsx";
 
 type SharedProps = Pick<
@@ -16,14 +16,18 @@ export function CompareView({
   left,
   right,
   onReady,
-  ...shared
+  layout = autoLayout,
+  positionCache: sharedCache,
+  ...others
 }: SharedProps & {
   dataset: CausalDataset;
   left: string;
   right: string;
   onReady?: (cy: Core, snapshotId: string) => void;
 }) {
-  const baselineKey = `${dataset.id}:${left}:${shared.layout.name}`;
+  const ownCache = useRef<Record<string, Positions>>({});
+  const shared = { ...others, layout, positionCache: sharedCache ?? ownCache };
+  const baselineKey = `${dataset.id}:${left}:${layout.name}`;
   const [baseline, setBaseline] = useState<{ key: string; positions: Positions } | null>(null);
 
   const onLayoutComplete = useCallback(
