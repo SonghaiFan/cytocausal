@@ -40,6 +40,8 @@ Open `http://localhost:3102`, then edit `apps/starter/src/data.ts` to use your o
 | `npm run build` | Builds everything |
 | `npm run test:e2e` | Runs browser tests, after a build. Needs Chrome |
 
+The docs link to the example apps, and the apps link back. These default to the local servers. For deployed sites, set `NEXT_PUBLIC_PERSPECTIVA_URL` and `NEXT_PUBLIC_EXPLORER_URL` on the docs, and `NEXT_PUBLIC_DOCS_URL` on the apps.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).

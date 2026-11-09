@@ -141,3 +141,22 @@ test("the showcase runs live demos in both languages", async ({ page }) => {
   await expect(page.getByText('link: "flowing"')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("the docs link to both example apps", async ({ page }) => {
+  for (const [guide, port, name] of [
+    ["case-perspectiva", 3100, "Open the app"],
+    ["case-explorer", 3101, "Open the app"],
+  ] as const) {
+    await page.goto(`/en/${guide}/`);
+    await expect(page.locator("article").getByRole("link", { name })).toHaveAttribute(
+      "href",
+      `http://localhost:${port}`,
+    );
+  }
+  await page.goto("/zh-cn/case-perspectiva/");
+  await expect(page.locator("article").getByRole("link", { name: "打开应用" })).toBeVisible();
+
+  const navbar = page.locator("nav").filter({ hasText: "cytocausal" }).first();
+  await expect(navbar.getByRole("link", { name: /Perspectiva/ })).toBeVisible();
+  await expect(navbar.getByRole("link", { name: /Explorer/ })).toBeVisible();
+});

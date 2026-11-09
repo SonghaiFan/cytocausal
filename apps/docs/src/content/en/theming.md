@@ -82,6 +82,8 @@ export function Page({ children }: { children: ReactNode }) {
 
 ## Motion
 
+The default palette is blue, yellow and black. Nodes are yellow, and labels switch between black and white to stay readable on each colour. `textOn(color)` picks between them for your own rules.
+
 `theme.motion` sets durations in milliseconds:
 
 | Duration | Used for |
@@ -90,6 +92,7 @@ export function Page({ children }: { children: ReactNode }) {
 | `move` | Nodes moving between versions |
 | `focus` | Moving the view to a node |
 | `view` | Zooming and fitting |
+| `highlight` | Fading highlights in and out, on hover and selection |
 
 Pass it to `GraphView` as `motion`. If the reader's system asks for reduced motion, cytocausal skips these animations for you.
 

@@ -1,23 +1,9 @@
-import { createCausalStyle, lightTheme, type CausalTheme } from "@cytocausal/cytoscape";
+import type { CausalStyleOptions } from "@cytocausal/cytoscape";
 
-export const theme: CausalTheme = {
-  ...lightTheme,
-  name: "explorer",
-  dimmedOpacity: 0.12,
-  colors: {
-    ...lightTheme.colors,
-    text: "#000000",
-    node: "#1f77b4",
-    link: "#cccccc",
-    focus: "#111111",
-    cause: "#d95f02",
-    effect: "#1b9e77",
-  },
-};
-
-export const graphStyles = createCausalStyle(theme, {
+/** Dots and straight links keep a graph this dense readable. Everything else is the default. */
+export const styleOptions: CausalStyleOptions = {
   node: "dot",
   link: "straight",
   sizeByScore: true,
   managedLabels: true,
-});
+};

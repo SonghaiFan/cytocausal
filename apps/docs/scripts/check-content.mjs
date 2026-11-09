@@ -6,7 +6,7 @@ const guides = ['getting-started', 'showcase', 'components', 'theming', 'interac
 for (const lang of ['en', 'zh-cn']) {
   const meta = await readFile(`src/content/${lang}/_meta.ts`, 'utf8');
   for (const guide of guides) {
-    const file = `src/content/${lang}/${guide}.${guide === 'showcase' ? 'mdx' : 'md'}`;
+    const file = `src/content/${lang}/${guide}.${/showcase|case-/.test(guide) ? 'mdx' : 'md'}`;
     const text = await readFile(file, 'utf8');
     assert(text.startsWith('---\ntitle:'), `${file}: missing title`);
     assert(meta.includes(`"${guide}"`), `${file}: missing from _meta.ts`);

@@ -1,3 +1,4 @@
+import { settleStyles } from "./ease.ts";
 import type { Snapshot } from "@cytocausal/core";
 import type { Collection, Core, ElementDefinition, LayoutOptions, Layouts } from "cytoscape";
 import { toElements } from "./elements.ts";
@@ -10,9 +11,13 @@ const SCRATCH_KEY = "cytocausalTransition";
 
 interface Transition {
   layout?: Layouts;
+  settled?: boolean;
 }
 
-export const isTransitioning = (cy: Core) => Boolean(cy.scratch(SCRATCH_KEY));
+export const isTransitioning = (cy: Core) => {
+  const transition: Transition | undefined = cy.scratch(SCRATCH_KEY);
+  return Boolean(transition && !transition.settled);
+};
 
 const fadeTo = (eles: Collection, opacity: number, duration: number) =>
   eles.forEach((ele) => {
@@ -49,6 +54,7 @@ export function transitionToSnapshot(
   // Leftovers stay for this transition to reuse or fade out. Removing them and adding
   // an element with the same id would strand its animations: Cytoscape's animation
   // pool tracks elements by id, so it would still hold the removed one.
+  settleStyles(cy);
   cy.elements().stop(true, false);
 
   const sources: Record<string, Position[]> = {};
@@ -146,7 +152,10 @@ export function transitionToSnapshot(
         }) as unknown as LayoutOptions,
   );
   transition.layout.one("layoutstop", () => {
-    if (cy.scratch(SCRATCH_KEY) === transition) onSettled();
+    if (cy.scratch(SCRATCH_KEY) === transition) {
+      transition.settled = true;
+      onSettled();
+    }
   });
   transition.layout.run();
 }

@@ -1,25 +1,23 @@
 "use client";
 import type { CausalDataset, CausalNode } from "@cytocausal/core";
-import type { Positions } from "@cytocausal/cytoscape";
 import {
-  CausalLabelsProvider,
-  CausalRoot,
-  GraphView,
+  CausalGraph,
+  CausalProvider,
+  DepthControl,
   Legend,
-  NodeDetails,
   NodeSearch,
-  NodeTooltip,
-  useCausalGraph,
-  ZoomControls,
+  SelectionPanel,
+  SidebarHeader,
+  useCausal,
+  useCausalLabels,
 } from "@cytocausal/react";
-import type { LayoutOptions } from "cytoscape";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { graphStyles, theme } from "@/graph-style";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { styleOptions } from "@/graph-style";
 
-const MAX_SELECTED = 2;
 // The largest group of loops is too big to list, so panels show the shortest ones
 const LOOP_SEARCH = { maxLength: 4, limit: 30 };
-const savedLayout = { name: "preset", fit: true, padding: 30 } as LayoutOptions;
+const GRAPH_OPTIONS = { readableLabels: true, focusZoom: 2 };
+const DOCS_URL = `${process.env.NEXT_PUBLIC_DOCS_URL ?? "http://localhost:3200"}/en/case-explorer/`;
 
 const labels = {
   search: "Search events and descriptions…",
@@ -27,8 +25,6 @@ const labels = {
   evidence: "Descriptions",
   loops: "Short feedback loops",
 };
-
-const renderTooltip = (node: CausalNode) => <NodeTooltip node={node} />;
 
 export function ExplorerApp() {
   const [dataset, setDataset] = useState<CausalDataset | null>(null);
@@ -44,24 +40,25 @@ export function ExplorerApp() {
   if (failed) return <p className="p-4">The graph could not be loaded.</p>;
   if (!dataset) return <p className="p-4">Loading…</p>;
   return (
-    <CausalLabelsProvider labels={labels}>
-      <CausalRoot theme={theme}>
-        <Explorer dataset={dataset} />
-      </CausalRoot>
-    </CausalLabelsProvider>
+    <CausalProvider
+      dataset={dataset}
+      labels={labels}
+      styleOptions={styleOptions}
+      graphOptions={GRAPH_OPTIONS}
+      shareInUrl
+      className="cc-workspace h-screen"
+    >
+      <Explorer />
+    </CausalProvider>
   );
 }
 
-function Explorer({ dataset }: { dataset: CausalDataset }) {
-  const [{ nodes, edges }] = dataset.snapshots;
-  const positionCache = useRef<Record<string, Positions>>({});
-  const graph = useCausalGraph({
-    maxSelected: MAX_SELECTED,
-    readableLabels: true,
-    focusZoom: 2,
-    motion: theme.motion,
-  });
-  const { selected, keepSelected, fit, cy } = graph;
+function Explorer() {
+  const text = useCausalLabels();
+  const { dataset, snapshot, graph, scheme, toggleScheme, exportImage, copyLink, copied } =
+    useCausal();
+  const { nodes, edges } = snapshot;
+  const { keepSelected, fit, cy } = graph;
   const [loopsOnly, setLoopsOnly] = useState(false);
 
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
@@ -89,39 +86,10 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
   }, [loopsOnly, inScope, nodeById, cy, fit, keepSelected]);
 
   return (
-    <main className="flex flex-col md:flex-row w-screen h-screen overflow-hidden">
-      <div className="relative flex-1 min-h-[55vh] min-w-0">
-        <GraphView
-          dataset={dataset}
-          snapshotId="final"
-          layout={savedLayout}
-          stylesheet={graphStyles}
-          positionCache={positionCache}
-          maxZoom={10}
-          onReady={graph.attach}
-          renderTooltip={renderTooltip}
-        />
-        <header className="absolute top-2 left-2 flex items-center gap-3 pointer-events-none bg-white/85 rounded p-1">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/monash.png" alt="Monash University" className="w-12 h-12" />
-          <div>
-            <h1 className="font-serif text-xl md:text-2xl">Causal Discovery for Event Flows Playground</h1>
-            <p className="font-serif italic" role="status">
-              {visibleNodes.length} nodes, {visibleEdges.length} edges
-            </p>
-          </div>
-        </header>
-        <ZoomControls graph={graph} />
-        <p role="status" className="cc-sr-only">
-          {graph.announcement}
-        </p>
-      </div>
-
-      <aside className="w-full md:w-96 shrink-0 h-[45vh] md:h-full overflow-auto bg-gray-50 border-l p-3 space-y-3">
-        <NodeSearch nodes={visibleNodes} onSelect={graph.focus} />
-
-        <section className="cc-panel space-y-2">
-          <label className="flex items-center gap-2 cursor-pointer">
+    <>
+      <CausalGraph maxZoom={10}>
+        <div className="cc-overlay cc-overlay-top">
+          <label className="cc-check">
             <input
               type="checkbox"
               checked={loopsOnly}
@@ -129,53 +97,63 @@ function Explorer({ dataset }: { dataset: CausalDataset }) {
             />
             Show only feedback loops
           </label>
-        </section>
+          <div className="cc-buttons">
+            <button type="button" className="cc-button" onClick={exportImage}>
+              {text.exportImage}
+            </button>
+            {copyLink && (
+              <button type="button" className="cc-button" onClick={copyLink}>
+                {copied ? text.linkCopied : text.copyLink}
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="cc-overlay cc-overlay-bottom">
+          <Legend bare />
+          <DepthControl bare />
+        </div>
+      </CausalGraph>
 
-        <Legend />
+      <aside className="cc-sidebar">
+        <SidebarHeader
+          title="Causal Explorer"
+          subtitle={
+            <span role="status">
+              {visibleNodes.length} nodes, {visibleEdges.length} edges
+            </span>
+          }
+          scheme={scheme}
+          onToggleScheme={toggleScheme}
+        >
+          <a className="cc-link" href={DOCS_URL}>
+            Docs
+          </a>
+        </SidebarHeader>
 
-        {selected.map((id) => (
-          <NodeDetails
-            key={id}
-            snapshot={dataset.snapshots[0]}
-            nodeId={id}
-            loopOptions={LOOP_SEARCH}
-            activeRoute={graph.activeRoute}
-            onToggleRoute={graph.toggleRoute}
-            onSelect={graph.focus}
-            onClose={() => graph.toggle(id)}
-          />
-        ))}
+        <NodeSearch nodes={visibleNodes} />
+        <SelectionPanel loopOptions={LOOP_SEARCH} />
 
-        <details className="cc-panel" open={selected.length === 0}>
-          <summary className="font-semibold cursor-pointer">Description</summary>
-          <p className="mt-2">
+        <details className="cc-panel cc-disclosure" open={graph.selected.length === 0}>
+          <summary>About this graph</summary>
+          <p>
             This map shows the causal graph from the{" "}
-            <a className="underline" href="https://arxiv.org/abs/2502.08148">
-              ACCESS benchmark
-            </a>
-            , built on{" "}
-            <a className="underline" href="https://arxiv.org/abs/2009.07758">
-              GLUCOSE
-            </a>
-            . Each node is an abstract event, and each edge a causal relation judged by annotators.
+            <a href="https://arxiv.org/abs/2502.08148">ACCESS benchmark</a>, built on{" "}
+            <a href="https://arxiv.org/abs/2009.07758">GLUCOSE</a>. Each node is an abstract event,
+            and each edge a causal relation judged by annotators.
           </p>
           {dataset.id === "access-sample" && (
-            <p className="mt-2">
-              This is a sample of the most central events, with up to five descriptions each. The full
-              benchmark is{" "}
-              <a className="underline" href="https://github.com/isVy08/ACCESS">
-                available on request
-              </a>
-              .
+            <p>
+              This is a sample of the most central events, with up to five descriptions each. The
+              full benchmark is{" "}
+              <a href="https://github.com/isVy08/ACCESS">available on request</a>.
             </p>
           )}
-          <p className="mt-2">
+          <p>
             Node size shows directed betweenness centrality: bigger nodes sit on more of the causal
-            paths through the network. Click a node to read its descriptions, and click a second node to
-            compare them.
+            paths through the network.
           </p>
         </details>
       </aside>
-    </main>
+    </>
   );
 }

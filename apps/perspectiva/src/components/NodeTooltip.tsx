@@ -10,33 +10,27 @@ export function NodeTooltip({ node }: { node: CausalNode }) {
   });
 
   return (
-    <div className="bg-white px-6 py-4 rounded-lg shadow-lg border border-gray-200 text-sm w-max max-w-md">
-      <div className="text-gray-900">ID: {node.id}</div>
-      <div className="text-gray-700 mt-2 text-lg font-bold">
-        {node.label.charAt(0).toUpperCase() + node.label.slice(1)}
-      </div>
+    <div className="cc-tooltip">
+      <p className="cc-muted">{node.id}</p>
+      <h3 className="cc-heading">{node.label.charAt(0).toUpperCase() + node.label.slice(1)}</h3>
       {evidence.length > 0 && (
         <>
-          <div className="mt-4">
-            <strong className="text-gray-800 bg-yellow-400 rounded px-2 py-1">Terms</strong>
-            <ul className="list-disc ml-4 mt-2 text-gray-700">
-              {evidence.map(({ text }, index) => (
-                <li key={index}>
-                  P{index + 1}: {text}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="mt-4">
-            <strong className="text-white bg-red-400 rounded px-2 py-1">Contributions</strong>
-            <ul className="list-disc ml-4 mt-2 text-gray-700">
-              {Object.entries(contributions).map(([type, count]) => (
-                <li key={type}>
-                  <span className="font-bold">{count}</span> {type}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <h4 className="cc-heading cc-block">Terms</h4>
+          <ul className="cc-list cc-evidence">
+            {evidence.map(({ text }, index) => (
+              <li key={index}>
+                P{index + 1}: {text}
+              </li>
+            ))}
+          </ul>
+          <h4 className="cc-heading cc-block">Contributions</h4>
+          <ul className="cc-list cc-evidence">
+            {Object.entries(contributions).map(([type, count]) => (
+              <li key={type}>
+                {count} {type}
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </div>

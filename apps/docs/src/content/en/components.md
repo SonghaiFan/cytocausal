@@ -86,10 +86,14 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `DepthControl` | How far a highlight reaches |
 | `Legend` | A colour key |
 | `ZoomControls` | Zoom and fit buttons |
+| `Segmented` | One choice from a few options, as joined buttons |
+| `SidebarHeader` | A title, subtitle, links and the light and dark switch |
 
 Hovering a row in `LoopList` or `PathList` previews it on the graph. Clicking keeps it.
 
 `VersionSwitcher`, `Legend` and `DepthControl` take `bare`, which leaves out the panel so they can sit on the graph.
+
+For large graphs, `CausalProvider` takes `graphOptions`, such as `{ readableLabels: true }`, and `CausalGraph` takes `maxZoom`. `SelectionPanel` takes `loopOptions` to list the loops through each node.
 
 ### Read the state
 

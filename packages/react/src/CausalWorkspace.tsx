@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { DepthControl, SelectionPanel, VersionDiff } from "./analysis.tsx";
 import { CausalGraph } from "./CausalGraph.tsx";
 import { CausalProvider, useCausal, type CausalProviderProps } from "./CausalProvider.tsx";
-import { Legend, VersionSwitcher } from "./controls.tsx";
+import { Legend, SidebarHeader, VersionSwitcher } from "./controls.tsx";
 import { useCausalLabels } from "./labels.tsx";
 import { LoopList } from "./LoopList.tsx";
 import { NodeSearch } from "./NodeSearch.tsx";
@@ -41,14 +41,7 @@ function Workspace({ title, children }: Pick<CausalWorkspaceProps, "title" | "ch
       </CausalGraph>
 
       <aside className="cc-sidebar">
-        <div className="cc-spread">
-          <h1 className="cc-title">{title}</h1>
-          {toggleScheme && (
-            <button type="button" className="cc-button" onClick={toggleScheme}>
-              {scheme === "dark" ? labels.lightMode : labels.darkMode}
-            </button>
-          )}
-        </div>
+        <SidebarHeader title={title} scheme={scheme} onToggleScheme={toggleScheme} />
         {issues.length > 0 && (
           <pre role="alert" className="cc-panel cc-issues">
             {issues.join("\n")}

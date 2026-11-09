@@ -9,9 +9,12 @@ import {
   autoLayout,
   createCausalStyle,
   darkTheme,
+  easeStyles,
   exportImage,
   highlightChanges,
+  isTransitioning,
   lightTheme,
+  resolveMotion,
   savedLayout,
   type CausalStyleOptions,
   type CausalTheme,
@@ -30,7 +33,7 @@ import {
 } from "react";
 import { CausalLabelsProvider, type CausalLabels } from "./labels.tsx";
 import { CausalRoot, useColorScheme, type ColorScheme } from "./theme.tsx";
-import { useCausalGraph } from "./useCausalGraph.ts";
+import { useCausalGraph, type CausalGraphOptions } from "./useCausalGraph.ts";
 
 export interface CausalProviderProps {
   dataset: CausalDataset;
@@ -50,6 +53,8 @@ export interface CausalProviderProps {
   initialSelected?: string[];
   /** The snapshot to start on. Defaults to the first. */
   initialVersion?: string;
+  /** Extra options for `useCausalGraph`, such as for large graphs. */
+  graphOptions?: Pick<CausalGraphOptions, "readableLabels" | "focusZoom">;
   /** Keep the version and selection in the page address, so a link reopens the same view. */
   shareInUrl?: boolean;
   className?: string;
@@ -71,6 +76,7 @@ function useCausalState({
   maxSelected = 2,
   initialSelected = [],
   initialVersion,
+  graphOptions,
   shareInUrl = false,
 }: Omit<CausalProviderProps, "labels" | "className" | "children">) {
   const system = useColorScheme();
@@ -93,6 +99,7 @@ function useCausalState({
   const snapshot = dataset.snapshots.find(({ id }) => id === version)!;
 
   const graph = useCausalGraph({
+    ...graphOptions,
     maxSelected,
     motion: theme.motion,
     initialSelected: (shared.get("selected")?.split(",") ?? initialSelected).filter((id) =>
@@ -141,18 +148,19 @@ function useCausalState({
   useEffect(() => {
     const instance = cy.current;
     if (!instance || first === last) return;
-    if (!showChanges) {
-      highlightChanges(instance, [], []);
-      return;
-    }
     const diff = diffSnapshots(dataset, first, last);
     const ids = (items: { id: string }[]) => items.map(({ id }) => id);
-    if (version === last) {
-      highlightChanges(instance, [...ids(diff.addedNodes), ...ids(diff.addedLinks)], []);
-    } else {
-      highlightChanges(instance, [], [...ids(diff.removedNodes), ...ids(diff.removedLinks)]);
-    }
-  }, [cy, dataset, first, last, showChanges, version]);
+    const added = [...ids(diff.addedNodes), ...ids(diff.addedLinks)];
+    const removed = [...ids(diff.removedNodes), ...ids(diff.removedLinks)];
+    const change = () =>
+      highlightChanges(
+        instance,
+        showChanges && version === last ? added : [],
+        showChanges && version !== last ? removed : [],
+      );
+    if (isTransitioning(instance)) change();
+    else easeStyles(instance, change, resolveMotion(theme.motion).highlight);
+  }, [cy, dataset, first, last, showChanges, version, theme]);
 
   return {
     dataset,

@@ -18,8 +18,11 @@ export function CompareView({
   onReady,
   layout = autoLayout,
   positionCache: sharedCache,
+  format = (id) => id,
   ...others
 }: SharedProps & {
+  /** Turns a snapshot id into the label above its graph. */
+  format?: (snapshotId: string) => string;
   dataset: CausalDataset;
   left: string;
   right: string;
@@ -44,10 +47,10 @@ export function CompareView({
     [baseline, baselineKey, dataset, left, right],
   );
 
-  const pane = { flex: 1, minWidth: 0, height: "100%" };
   return (
-    <div style={{ display: "flex", gap: "1rem", width: "100%", height: "100%" }}>
-      <div style={pane}>
+    <div className="cc-compare">
+      <div className="cc-pane">
+        <span className="cc-pane-label">{format(left)}</span>
         <GraphView
           {...shared}
           dataset={dataset}
@@ -56,7 +59,8 @@ export function CompareView({
           onReady={(cy) => onReady?.(cy, left)}
         />
       </div>
-      <div style={pane}>
+      <div className="cc-pane">
+        <span className="cc-pane-label">{format(right)}</span>
         <GraphView
           {...shared}
           dataset={dataset}

@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3200",
     "build": "next build",
     "postbuild": "pagefind --site .next/server/app --output-path public/_pagefind",
-    "start": "next start",
+    "start": "next start -p 3200",
     "typecheck": "tsc --noEmit",
     "check:content": "node scripts/check-content.mjs",
     "test:e2e": "playwright test"

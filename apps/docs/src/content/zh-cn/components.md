@@ -86,10 +86,14 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `DepthControl` | 高亮的延伸范围 |
 | `Legend` | 颜色说明 |
 | `ZoomControls` | 缩放和适应按钮 |
+| `Segmented` | 从几个选项中选一个，显示为相连的按钮 |
+| `SidebarHeader` | 标题、副标题、链接和深浅色切换 |
 
 悬停 `LoopList` 或 `PathList` 的一行会在图上预览，点击后保持高亮。
 
 `VersionSwitcher`、`Legend` 和 `DepthControl` 支持 `bare`，去掉外层面板，可以直接放在图上。
+
+大型图可以给 `CausalProvider` 传 `graphOptions`，比如 `{ readableLabels: true }`，给 `CausalGraph` 传 `maxZoom`。`SelectionPanel` 的 `loopOptions` 会列出经过每个节点的回路。
 
 ### 读取状态
 

@@ -26,7 +26,11 @@ export function RouteButton({
       type="button"
       className="cc-row"
       aria-pressed={current === route}
-      onClick={() => toggle?.(route)}
+      onClick={() => {
+        // A click decides, so the row shouldn't keep showing a route that was just turned off
+        preview?.(null);
+        toggle?.(route);
+      }}
       onMouseEnter={() => preview?.(route)}
       onMouseLeave={() => preview?.(null)}
       onFocus={() => preview?.(route)}

@@ -2,7 +2,11 @@
 title: "案例：Perspectiva"
 ---
 
+import { OpenApp } from "../../components/OpenApp.tsx";
+
 # 案例：Perspectiva
+
+<OpenApp app="perspectiva">打开应用</OpenApp>
 
 Perspectiva 用于比较参与式工作坊中不同版本的因果回路图。每位参与者先画出第一版图，研究人员再整理出术语统一的最终版。研究问题是两者之间发生了什么变化。
 
@@ -63,3 +67,5 @@ npm run dev:perspectiva
 ```
 
 打开 `http://localhost:3100`。添加 `?dataset=expert_9` 选择数据集，添加 `?debug=1` 显示数据集选择器。
+
+构建文档时设置 `NEXT_PUBLIC_PERSPECTIVA_URL` 和 `NEXT_PUBLIC_EXPLORER_URL`，**打开应用**按钮就会指向已部署的应用。不设置时按钮打开本地服务，所以要先启动应用。

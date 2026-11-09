@@ -1,3 +1,4 @@
+export * from "./ease.ts";
 export * from "./elements.ts";
 export * from "./highlight.ts";
 export * from "./labels.ts";

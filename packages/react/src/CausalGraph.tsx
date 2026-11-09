@@ -11,10 +11,13 @@ const defaultTooltip = (node: CausalNode) => <NodeTooltip node={node} />;
 /** The graph of a `CausalProvider`, with zoom buttons. Children sit on top of the graph. */
 export function CausalGraph({
   renderTooltip = defaultTooltip,
+  maxZoom,
   className = "",
   children,
 }: {
   renderTooltip?: (node: CausalNode) => ReactNode;
+  /** Raise this on large graphs, so people can zoom in to read them. */
+  maxZoom?: number;
   className?: string;
   children?: ReactNode;
 }) {
@@ -29,6 +32,7 @@ export function CausalGraph({
         stylesheet={stylesheet}
         motion={theme.motion}
         positionCache={positionCache}
+        maxZoom={maxZoom}
         animateSnapshots
         renderTooltip={renderTooltip}
         onReady={(instance) => {

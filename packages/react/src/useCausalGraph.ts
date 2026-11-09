@@ -5,6 +5,8 @@ import {
   highlightCausalNeighbours,
   highlightRoute,
   keepLabelsReadable,
+  easeStyles,
+  isTransitioning,
   resolveMotion,
   zoomBy,
   type CausalMotion,
@@ -63,15 +65,20 @@ export function useCausalGraph({
     if (!instance || instance.destroyed()) return;
     const { selected, hovered, activeRoute, previewedRoute, depth } = latest.current;
     const route = previewedRoute ?? activeRoute;
-    if (route) {
-      highlightCausalNeighbours(instance, []);
-      highlightRoute(instance, route);
-    } else {
-      highlightRoute(instance, null);
-      const ids = selected.length ? selected : hovered ? [hovered] : [];
-      highlightCausalNeighbours(instance, ids, depth);
-    }
-  }, []);
+    const change = () => {
+      if (route) {
+        highlightCausalNeighbours(instance, []);
+        highlightRoute(instance, route);
+      } else {
+        highlightRoute(instance, null);
+        const ids = selected.length ? selected : hovered ? [hovered] : [];
+        highlightCausalNeighbours(instance, ids, depth);
+      }
+    };
+    // A snapshot change is animating these elements already
+    if (isTransitioning(instance)) change();
+    else easeStyles(instance, change, resolveMotion(motion).highlight);
+  }, [motion]);
 
   useEffect(() => {
     latest.current = { selected, hovered, activeRoute, previewedRoute, depth };

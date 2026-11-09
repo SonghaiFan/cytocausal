@@ -288,10 +288,8 @@ test("two selected nodes list the paths between them, and a path can be highligh
     .poll(() => nodesWith(page, ".route-node"))
     .toEqual(["customers", "queue", "revenue", "staff"]);
 
-  // The route stays as a preview until the pointer leaves it
   await longest.click();
   await expect(longest).toHaveAttribute("aria-pressed", "false");
-  await page.getByRole("heading", { name: "cytocausal starter" }).hover();
   await expect.poll(() => nodesWith(page, ".route-node")).toEqual([]);
 });
 
@@ -409,4 +407,74 @@ test("hovering a loop previews it, and clicking keeps it", async ({ page }) => {
   await loop.click();
   await page.getByRole("heading", { name: "cytocausal starter" }).hover();
   await expect.poll(async () => (await graph(page))?.routeNodes).toBe(3);
+});
+
+const inPage = <T,>(page: Page, script: string) =>
+  page.evaluate(`(async () => {
+    const cy = [...document.querySelectorAll("div")].find((d) => d._cyreg?.cy)._cyreg.cy;
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const opacity = (id) => +cy.getElementById(id).style("opacity");
+    ${script}
+  })()`) as Promise<T>;
+
+test("highlights fade in and reverse from where they are", async ({ page }) => {
+  await page.goto("/?version=final");
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+  const box = (await page.locator(".cc-graph").boundingBox())!;
+  const position = await inPage<{ x: number; y: number }>(
+    page,
+    `return cy.getElementById("revenue").renderedPosition();`,
+  );
+
+  // Staff is two steps from nothing: hovering Queue length leaves Revenue dimmed
+  await page.mouse.move(box.x + position.x, box.y + position.y);
+  const fading = await inPage<number[]>(
+    page,
+    `const samples = [];
+     for (let i = 0; i < 12; i++) { samples.push(opacity("queue")); await wait(25); }
+     return samples;`,
+  );
+  const partWay = fading.filter((value) => value > 0.2 && value < 0.95);
+  expect(partWay.length, fading.join()).toBeGreaterThan(1);
+
+  // Leaving half way turns the fade around, with no jump at the end
+  await page.mouse.move(box.x + 2, box.y + box.height / 2);
+  await expect.poll(() => inPage<number>(page, `return opacity("queue");`)).toBe(1);
+  await page.mouse.move(box.x + position.x, box.y + position.y);
+  await page.waitForTimeout(60);
+  await page.mouse.move(box.x + 2, box.y + box.height / 2);
+  const reversing = await inPage<number[]>(
+    page,
+    `const samples = [];
+     for (let i = 0; i < 14; i++) { await wait(25); samples.push(opacity("queue")); }
+     return samples;`,
+  );
+  const steps = reversing.slice(1).map((value, index) => value - reversing[index]);
+  expect(Math.min(...steps), reversing.join()).toBeGreaterThan(-0.02);
+  expect(Math.max(...steps), reversing.join()).toBeLessThan(0.5);
+  expect(reversing.at(-1)).toBe(1);
+});
+
+test("a fade cut off by a version change leaves nothing behind, and fades carry on", async ({ page }) => {
+  await page.goto("/?version=final");
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+  await choose(page, "customers", /^Customers/);
+  await page.getByRole("button", { name: "V1", exact: true }).click();
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+  await expect
+    .poll(() =>
+      inPage<number[]>(page, `return cy.elements().map((ele) => +ele.style("opacity"));`),
+    )
+    .toEqual([1, 1, 1, 1, 1, 1]);
+
+  // Highlights keep fading after a version change
+  await choose(page, "queue", /^Queue length/);
+  const part = await inPage<number[]>(
+    page,
+    `const samples = [];
+     for (let i = 0; i < 16; i++) { samples.push(opacity("satisfaction-customers")); await wait(20); }
+     return samples;`,
+  );
+  expect(part.filter((value) => value > 0.2 && value < 0.95).length, part.join()).toBeGreaterThan(0);
 });

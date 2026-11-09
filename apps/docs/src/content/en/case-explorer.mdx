@@ -2,7 +2,11 @@
 title: "Case study: Causal Explorer"
 ---
 
+import { OpenApp } from "../../components/OpenApp.tsx";
+
 # Case study: Causal Explorer
+
+<OpenApp app="explorer">Open the app</OpenApp>
 
 Causal Explorer shows the causal graph from the ACCESS benchmark, which covers abstract events in everyday life. Generalised event descriptions from the GLUCOSE dataset were clustered into abstract events, and annotators judged the causal links between them. The question is how events connect at scale.
 
@@ -70,3 +74,5 @@ npm run dev:explorer
 ```
 
 Open `http://localhost:3101`.
+
+Set `NEXT_PUBLIC_PERSPECTIVA_URL` and `NEXT_PUBLIC_EXPLORER_URL` when building the docs to point the **Open the app** buttons at deployed apps. Without them, the buttons open the local servers, so start the app first.

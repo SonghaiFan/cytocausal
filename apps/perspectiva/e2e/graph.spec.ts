@@ -83,7 +83,7 @@ for (const { id } of datasets) {
     const [left, right] = await settled(page, 2);
     expect(alignmentOffset(left, right, anchorsOf(id))).toBeLessThan(1);
 
-    await page.getByLabel("View Mode").selectOption("1 Graph");
+    await page.getByRole("button", { name: "Single", exact: true }).click();
     expectSamePositions((await settled(page, 1))[0], left);
     await page.evaluate(() => {
       const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
@@ -139,7 +139,7 @@ test("switching dataset in the page keeps alignment", async ({ page }) => {
 test("versions stay consistent without visiting the comparison first", async ({ page }) => {
   await page.goto("/?dataset=citizen_1&debug=1");
   await settled(page, 2);
-  await page.getByLabel("View Mode").selectOption("1 Graph");
+  await page.getByRole("button", { name: "Single", exact: true }).click();
   await settled(page, 1);
   await page.getByLabel("Dataset").selectOption("expert_2");
   await page.waitForTimeout(300);
@@ -225,7 +225,7 @@ test("a diagram without loops says so", async ({ page }) => {
 test("changing version clears the highlighted loop", async ({ page }) => {
   await page.goto("/?dataset=citizen_1");
   await settled(page, 2);
-  await page.getByLabel("View Mode").selectOption("1 Graph");
+  await page.getByRole("button", { name: "Single", exact: true }).click();
   await settled(page, 1);
   await page.getByLabel("Loops in V1").getByRole("button").first().click();
   expect((await highlighted(page))[0].nodes).toBeGreaterThan(0);
@@ -249,4 +249,24 @@ test("hovering a node shows its terms", async ({ page }) => {
   await page.mouse.move(point.x, point.y);
   await expect(page.getByText("Terms", { exact: true })).toBeVisible();
   await expect(page.getByText("Contributions", { exact: true })).toBeVisible();
+});
+
+test("the header links back to the docs", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "Docs" })).toHaveAttribute(
+    "href",
+    "http://localhost:3200/en/case-perspectiva/",
+  );
+});
+
+test("a phone starts on one graph and fits the screen", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Single", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+    .toBeLessThanOrEqual(390);
 });

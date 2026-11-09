@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createCausalStyle } from "../src/style.ts";
-import { darkTheme, lightTheme, themeVariables, type CausalTheme } from "../src/theme.ts";
+import { darkTheme, lightTheme, textOn, themeVariables } from "../src/theme.ts";
 
 type Rule = { selector: string; style: Record<string, unknown> };
 
@@ -29,21 +29,19 @@ for (const theme of [lightTheme, darkTheme]) {
     assert.ok(contrast(colors.nodeText, colors.node) >= 4.5, "text on a node");
   });
 
-  test(`${theme.name}: graph colours stand out from the background`, () => {
-    // Nodes aren't here: they carry their label inside, which the text test covers
-    const marks: (keyof CausalTheme["colors"])[] = [
-      "link",
-      "focus",
-      "cause",
-      "effect",
-      "reinforcing",
-      "balancing",
-      "added",
-      "conflict",
-      "clarification",
-    ];
-    for (const mark of marks) {
+  test(`${theme.name}: lines that stand alone stand out from the background`, () => {
+    for (const mark of ["link", "focus", "cause", "conflict"] as const) {
       assert.ok(contrast(colors[mark], colors.background) >= 3, mark);
+    }
+  });
+
+  test(`${theme.name}: labels stay readable on every fill`, () => {
+    const fills = ["node", "cause", "effect", "added", "conflict", "clarification"] as const;
+    for (const fill of fills) {
+      assert.ok(contrast(textOn(colors[fill]), colors[fill]) >= 4.5, fill);
+    }
+    for (const badge of ["reinforcing", "balancing"] as const) {
+      assert.ok(contrast(colors.nodeText, colors[badge]) >= 4.5, badge);
     }
   });
 

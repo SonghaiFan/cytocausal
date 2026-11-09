@@ -5,5 +5,5 @@ const prefersReducedMotion = () =>
 
 /** Applies the reader's system setting: durations are 0 if they prefer less motion. */
 export function resolveMotion(motion: CausalMotion = defaultMotion): CausalMotion {
-  return prefersReducedMotion() ? { fade: 0, move: 0, focus: 0, view: 0 } : motion;
+  return prefersReducedMotion() ? { fade: 0, move: 0, focus: 0, view: 0, highlight: 0 } : motion;
 }

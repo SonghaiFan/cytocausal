@@ -3,12 +3,15 @@ import {
   diffSnapshots,
   findCausalPaths,
   type CausalDataset,
+  type LoopOptions,
   type CausalNode,
   type Snapshot,
 } from "@cytocausal/core";
 import type { Route } from "@cytocausal/cytoscape";
 import { useMemo, type ReactNode } from "react";
-import { required, useCausal, useOptionalCausal } from "./CausalProvider.tsx";
+import { required, useOptionalCausal } from "./CausalProvider.tsx";
+import type { useCausalGraph } from "./useCausalGraph.ts";
+import { Segmented } from "./controls.tsx";
 import { useCausalLabels } from "./labels.tsx";
 import { NodeDetails } from "./NodeDetails.tsx";
 import { RouteButton } from "./RouteButton.tsx";
@@ -34,19 +37,7 @@ export function DepthControl({
   const choose = onChange ?? causal?.graph.setDepth;
 
   const buttons = (
-    <div role="group" aria-label={labels.depth} className="cc-segmented">
-      {steps.map((step) => (
-        <button
-          key={step}
-          type="button"
-          className="cc-button"
-          aria-pressed={step === current}
-          onClick={() => choose?.(step)}
-        >
-          {step}
-        </button>
-      ))}
-    </div>
+    <Segmented label={labels.depth} options={steps} value={current} onChange={choose} />
   );
   if (bare) {
     return (
@@ -130,11 +121,28 @@ export function PathList({
   );
 }
 
-/** Everything about the current selection: a prompt, each node's details and the paths. */
-export function SelectionPanel({ className = "" }: { className?: string }) {
+/**
+ * Everything about the current selection: a prompt, each node's details and the paths.
+ * Outside a provider, pass `graph` and `snapshot`.
+ */
+export function SelectionPanel({
+  graph: given,
+  snapshot: chosen,
+  loopOptions,
+  className = "",
+}: {
+  graph?: ReturnType<typeof useCausalGraph>;
+  snapshot?: Snapshot;
+  /** Lists the loops through each selected node, within these limits. */
+  loopOptions?: LoopOptions;
+  className?: string;
+}) {
   const labels = useCausalLabels();
-  const { graph } = useCausal();
+  const causal = useOptionalCausal();
+  const graph = required(given ?? causal?.graph, "SelectionPanel", "graph");
+  const snapshot = required(chosen ?? causal?.snapshot, "SelectionPanel", "snapshot");
   const { selected, clear } = graph;
+  const routes = { active: graph.activeRoute, onToggle: graph.toggleRoute };
 
   if (selected.length === 0) {
     return <p className={`cc-panel cc-hint ${className}`}>{labels.selectHint}</p>;
@@ -147,9 +155,26 @@ export function SelectionPanel({ className = "" }: { className?: string }) {
           {labels.clearSelection}
         </button>
       </div>
-      <PathList className={className} />
+      <PathList
+        snapshot={snapshot}
+        from={selected[0]}
+        to={selected[1]}
+        onPreview={graph.previewRoute}
+        className={className}
+        {...routes}
+      />
       {selected.map((id) => (
-        <NodeDetails key={id} nodeId={id} className={className} />
+        <NodeDetails
+          key={id}
+          snapshot={snapshot}
+          nodeId={id}
+          onSelect={graph.focus}
+          onClose={() => graph.toggle(id)}
+          loopOptions={loopOptions}
+          activeRoute={graph.activeRoute}
+          onToggleRoute={loopOptions ? graph.toggleRoute : undefined}
+          className={className}
+        />
       ))}
     </>
   );
@@ -272,7 +297,7 @@ function Differences({
             {labels.added}
           </li>
           <li>
-            <span className="cc-swatch" style={{ background: "var(--cc-clarification)" }} />
+            <span className="cc-swatch" style={{ background: "var(--cc-conflict)" }} />
             {labels.removed}
           </li>
         </ul>

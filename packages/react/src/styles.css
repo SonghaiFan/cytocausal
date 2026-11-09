@@ -2,12 +2,13 @@
   --cc-background: #ffffff;
   --cc-surface: #fafafa;
   --cc-border: #e5e5e5;
-  --cc-text: #252525;
+  --cc-text: #2f2e2c;
   --cc-muted-text: #737373;
-  --cc-cause: #c2410c;
-  --cc-effect: #047857;
-  --cc-reinforcing: #b91c1c;
-  --cc-balancing: #1d4ed8;
+  --cc-node-text: #050505;
+  --cc-cause: #2f2e2c;
+  --cc-effect: #679bf1;
+  --cc-reinforcing: #ffc40a;
+  --cc-balancing: #679bf1;
 
   /* These follow ROC UI's tokens when the page has them. */
   --cc-radius-surface: var(--roc-radius-surface, 12px);
@@ -20,7 +21,7 @@
 }
 
 .cc-workspace { display: flex; flex-wrap: wrap; min-height: 100vh; }
-.cc-graph { position: relative; flex: 1 1 500px; min-width: 0; min-height: 60vh; }
+.cc-graph { position: relative; flex: 1 1 500px; min-width: 0; min-height: 60vh; overflow: clip; }
 .cc-sidebar {
   display: flex; flex: 0 1 340px; flex-direction: column; gap: 12px;
   width: 100%; max-height: 100vh; padding: 16px; overflow: auto;
@@ -37,9 +38,12 @@
 .cc-spread { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
 .cc-heading { margin: 0 0 8px; font-size: var(--cc-text-body); font-weight: 550; }
 .cc-muted { margin: 4px 0; color: var(--cc-muted-text); font-size: 12px; }
-.cc-cause { color: var(--cc-cause); }
-.cc-effect { color: var(--cc-effect); }
-.cc-issues { margin: 0; color: var(--cc-reinforcing); white-space: pre-wrap; }
+.cc-cause::before, .cc-effect::before {
+  content: ""; display: inline-block; width: .625rem; height: .625rem; margin-right: 6px; border-radius: 50%;
+}
+.cc-cause::before { background: var(--cc-cause); }
+.cc-effect::before { background: var(--cc-effect); }
+.cc-issues { margin: 0; color: var(--cc-text); white-space: pre-wrap; }
 
 .cc-input {
   width: 100%; height: 38px; padding: 8px 11px; border: 1px solid var(--cc-border);
@@ -60,7 +64,7 @@
 
 .cc-badge {
   display: inline-flex; align-items: center; margin-right: 6px; padding: 1px 9px; border-radius: 999px;
-  color: var(--cc-background); font-size: 11px; line-height: 1.4;
+  color: var(--cc-node-text); font-size: 11px; line-height: 1.4;
 }
 .cc-badge-reinforcing { background: var(--cc-reinforcing); }
 .cc-badge-balancing { background: var(--cc-balancing); }
@@ -84,6 +88,21 @@
   bottom: 12px; right: calc(var(--cc-control-height) + 24px); justify-content: flex-start;
   gap: 8px 16px; font-size: var(--cc-text-body);
 }
+.cc-compare { display: flex; width: 100%; height: 100%; }
+.cc-pane { position: relative; flex: 1; min-width: 0; height: 100%; }
+.cc-pane + .cc-pane { border-left: 1px solid var(--cc-border); }
+.cc-pane-label {
+  position: absolute; z-index: 1; top: 60px; left: 12px; color: var(--cc-muted-text);
+  font-size: 12px; pointer-events: none;
+}
+.cc-check { display: inline-flex; align-items: center; gap: 8px; min-height: var(--cc-control-height); cursor: pointer; }
+.cc-select {
+  width: 100%; height: 38px; padding: 0 8px; border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-control); background: var(--cc-background); color: inherit; font: inherit;
+}
+.cc-disclosure summary { cursor: pointer; font-weight: 550; }
+.cc-disclosure p { margin: 8px 0 0; }
+.cc-disclosure a { text-decoration: underline; text-underline-offset: 3px; }
 .cc-hint { margin: 0; color: var(--cc-muted-text); }
 .cc-link {
   flex-shrink: 0; padding: 0; border: 0; background: none; color: var(--cc-muted-text); font: inherit;

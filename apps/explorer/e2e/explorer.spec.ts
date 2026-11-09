@@ -271,3 +271,11 @@ test("zoom controls work", async ({ page }) => {
   await page.getByLabel("Fit graph").click();
   await expect.poll(async () => Math.abs((await zoom()) - before)).toBeLessThan(0.01);
 });
+
+test("the header links back to the docs", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "Docs" })).toHaveAttribute(
+    "href",
+    "http://localhost:3200/en/case-explorer/",
+  );
+});

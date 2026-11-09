@@ -4,6 +4,69 @@ import type { ReactNode } from "react";
 import { required, useOptionalCausal } from "./CausalProvider.tsx";
 import { useCausalLabels } from "./labels.tsx";
 
+/** One choice from a few options, as a row of joined buttons. */
+export function Segmented<T extends string | number>({
+  label,
+  options,
+  value,
+  onChange,
+  format = String,
+}: {
+  label: string;
+  options: readonly T[];
+  value?: T;
+  onChange?: (value: T) => void;
+  format?: (option: T) => string;
+}) {
+  return (
+    <div role="group" aria-label={label} className="cc-segmented">
+      {options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          className="cc-button"
+          aria-pressed={option === value}
+          onClick={() => onChange?.(option)}
+        >
+          {format(option)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** The title at the top of a sidebar, with a light and dark switch and any links. */
+export function SidebarHeader({
+  title,
+  subtitle,
+  scheme,
+  onToggleScheme,
+  children,
+}: {
+  title?: ReactNode;
+  subtitle?: ReactNode;
+  scheme?: "light" | "dark";
+  onToggleScheme?: (() => void) | null;
+  /** Links, shown under the title. */
+  children?: ReactNode;
+}) {
+  const labels = useCausalLabels();
+  return (
+    <header className="cc-spread">
+      <div>
+        <h1 className="cc-title">{title}</h1>
+        {subtitle && <p className="cc-muted">{subtitle}</p>}
+        {children}
+      </div>
+      {onToggleScheme && (
+        <button type="button" className="cc-button" onClick={onToggleScheme}>
+          {scheme === "dark" ? labels.lightMode : labels.darkMode}
+        </button>
+      )}
+    </header>
+  );
+}
+
 /** Buttons for moving between snapshots. */
 export function VersionSwitcher({
   versions,
@@ -34,19 +97,13 @@ export function VersionSwitcher({
   if (shown.length < 2) return null;
 
   const buttons = (
-    <div role="group" aria-label={labels.version} className="cc-segmented">
-      {shown.map((version) => (
-        <button
-          key={version}
-          type="button"
-          className="cc-button"
-          aria-pressed={version === current}
-          onClick={() => choose?.(version)}
-        >
-          {format(version)}
-        </button>
-      ))}
-    </div>
+    <Segmented
+      label={labels.version}
+      options={shown}
+      value={current}
+      onChange={choose}
+      format={format}
+    />
   );
   if (bare) return <div className={className}>{buttons}</div>;
   return (

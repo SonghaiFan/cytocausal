@@ -3,6 +3,7 @@ import { Head, Search } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import { Footer, Layout, LocaleSwitch, Navbar } from "nextra-theme-docs";
 import "nextra-theme-docs/style.css";
+import { appLinks } from "./app-links.ts";
 
 export type Language = "en" | "zh-cn";
 
@@ -20,6 +21,12 @@ export async function DocsShell({ lang, children }: { lang: Language; children: 
         <Layout
           navbar={
             <Navbar logo={<b>cytocausal</b>} projectLink="https://github.com/SonghaiFan/cytocausal">
+              <a href={appLinks.perspectiva} target="_blank" rel="noreferrer">
+                Perspectiva ↗
+              </a>
+              <a href={appLinks.explorer} target="_blank" rel="noreferrer">
+                Explorer ↗
+              </a>
               <LocaleSwitch lite />
             </Navbar>
           }

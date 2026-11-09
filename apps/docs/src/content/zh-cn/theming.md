@@ -82,6 +82,8 @@ export function Page({ children }: { children: ReactNode }) {
 
 ## 动效
 
+默认配色是蓝、黄、黑。节点为黄色，标签在黑白之间切换，以保证在每种颜色上都清晰。自定义规则可以用 `textOn(color)` 来选择文字颜色。
+
 `theme.motion` 以毫秒为单位设置时长：
 
 | 时长 | 用途 |
@@ -90,6 +92,7 @@ export function Page({ children }: { children: ReactNode }) {
 | `move` | 节点在版本之间移动 |
 | `focus` | 把视图移动到节点 |
 | `view` | 缩放和适配视图 |
+| `highlight` | 悬停和选中时，高亮的淡入淡出 |
 
 把它作为 `motion` 传给 `GraphView`。如果读者的系统要求减少动态效果，cytocausal 会自动跳过这些动画。
 

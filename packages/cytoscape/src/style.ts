@@ -1,5 +1,5 @@
 import type { Stylesheet } from "cytoscape";
-import type { CausalTheme } from "./theme.ts";
+import { textOn, type CausalTheme } from "./theme.ts";
 
 export interface CausalStyleOptions {
   /** `dot` puts the label beside the node, and `pill` holds it inside. */
@@ -66,7 +66,8 @@ const linkStyles = ({ colors }: CausalTheme, { link = "flowing" }: CausalStyleOp
     color: colors.text,
   };
   if (link === "straight") {
-    return { ...shared, width: 1, "arrow-scale": 0.6, "curve-style": "straight" };
+    // Dense graphs need their links to recede until a highlight brings them forward
+    return { ...shared, width: 1, opacity: 0.35, "arrow-scale": 0.6, "curve-style": "straight" };
   }
   const labelled = {
     ...shared,
@@ -91,10 +92,11 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
   const { colors, dimmedOpacity, fontFamily } = theme;
   const { node = "pill", link = "flowing" } = options;
   // Labels inside a node need to stay readable when a highlight recolours it
-  const onColour = node === "pill" ? { color: colors.background } : {};
+  const onColour = (color: string) => (node === "pill" ? { color: textOn(color) } : {});
   const highlight = (color: string) => ({
     "line-color": color,
     "target-arrow-color": color,
+    opacity: 1,
     "z-index": 9,
   });
   const shownLabel = options.managedLabels ? { label: "data(label)" } : {};
@@ -124,11 +126,21 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     },
     {
       selector: "node.cause",
-      style: { ...shownLabel, ...onColour, "background-color": colors.cause, "z-index": 9 },
+      style: {
+        ...shownLabel,
+        ...onColour(colors.cause),
+        "background-color": colors.cause,
+        "z-index": 9,
+      },
     },
     {
       selector: "node.effect",
-      style: { ...shownLabel, ...onColour, "background-color": colors.effect, "z-index": 9 },
+      style: {
+        ...shownLabel,
+        ...onColour(colors.effect),
+        "background-color": colors.effect,
+        "z-index": 9,
+      },
     },
     { selector: "edge.cause-link", style: { ...highlight(colors.cause), width: 2 } },
     { selector: "edge.effect-link", style: { ...highlight(colors.effect), width: 2 } },
@@ -138,13 +150,16 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     },
     { selector: "edge.route-link", style: { ...highlight(colors.focus), width: 3 } },
     { selector: ".outside-loops", style: { display: "none" } },
-    { selector: "node.diff-added", style: { ...onColour, "background-color": colors.added } },
+    {
+      selector: "node.diff-added",
+      style: { ...onColour(colors.added), "background-color": colors.added },
+    },
     {
       selector: "node.diff-removed",
-      style: { ...onColour, "background-color": colors.clarification },
+      style: { ...onColour(colors.conflict), "background-color": colors.conflict },
     },
     { selector: "edge.diff-added", style: { ...highlight(colors.added), width: 3 } },
-    { selector: "edge.diff-removed", style: { ...highlight(colors.clarification), width: 3 } },
+    { selector: "edge.diff-removed", style: { ...highlight(colors.conflict), width: 3 } },
     {
       selector: "node.keyboard-cursor",
       style: { "outline-width": 3, "outline-color": colors.focus, "outline-offset": 3 },

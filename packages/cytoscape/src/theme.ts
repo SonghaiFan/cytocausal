@@ -24,6 +24,8 @@ export interface CausalMotion {
   move: number;
   focus: number;
   view: number;
+  /** How long a highlight takes to fade in or out. */
+  highlight: number;
 }
 
 export interface CausalTheme {
@@ -35,12 +37,21 @@ export interface CausalTheme {
   motion: CausalMotion;
 }
 
-export const defaultMotion: CausalMotion = { fade: 400, move: 800, focus: 600, view: 300 };
+export const defaultMotion: CausalMotion = { fade: 400, move: 800, focus: 600, view: 300, highlight: 200 };
 
 const shared = {
   fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   dimmedOpacity: 0.15,
   motion: defaultMotion,
+};
+
+const palette = {
+  blue: "#679bf1",
+  lightBlue: "#8ab9f1",
+  paleYellow: "#f8de7e",
+  yellow: "#ffc40a",
+  charcoal: "#2f2e2c",
+  black: "#050505",
 };
 
 export const lightTheme: CausalTheme = {
@@ -50,19 +61,19 @@ export const lightTheme: CausalTheme = {
     background: "#ffffff",
     surface: "#fafafa",
     border: "#e5e5e5",
-    text: "#252525",
+    text: palette.charcoal,
     mutedText: "#737373",
-    node: "#fbbf24",
-    nodeText: "#000000",
+    node: palette.yellow,
+    nodeText: palette.black,
     link: "#8e9196",
-    focus: "#111111",
-    cause: "#c2410c",
-    effect: "#047857",
-    reinforcing: "#b91c1c",
-    balancing: "#1d4ed8",
-    added: "#4d7c0f",
-    conflict: "#1d4ed8",
-    clarification: "#c2410c",
+    focus: palette.black,
+    cause: palette.charcoal,
+    effect: palette.blue,
+    reinforcing: palette.yellow,
+    balancing: palette.blue,
+    added: palette.lightBlue,
+    conflict: palette.black,
+    clarification: palette.paleYellow,
   },
 };
 
@@ -70,24 +81,35 @@ export const darkTheme: CausalTheme = {
   ...shared,
   name: "dark",
   colors: {
-    background: "#141416",
-    surface: "#1c1c1e",
-    border: "#3b3b3d",
-    text: "#eeeeee",
-    mutedText: "#a3a3a3",
-    node: "#fbbf24",
-    nodeText: "#000000",
+    background: palette.black,
+    surface: "#171716",
+    border: "#3b3a38",
+    text: "#f5f5f3",
+    mutedText: "#a3a29f",
+    node: palette.yellow,
+    nodeText: palette.black,
     link: "#8e9196",
-    focus: "#f5f5f5",
-    cause: "#fb923c",
-    effect: "#34d399",
-    reinforcing: "#f87171",
-    balancing: "#60a5fa",
-    added: "#a3e635",
-    conflict: "#60a5fa",
-    clarification: "#fb923c",
+    focus: "#ffffff",
+    cause: palette.paleYellow,
+    effect: palette.blue,
+    reinforcing: palette.yellow,
+    balancing: palette.blue,
+    added: palette.lightBlue,
+    conflict: "#f5f5f3",
+    clarification: palette.paleYellow,
   },
 };
+
+const luminance = (hex: string) => {
+  const channels = [1, 3, 5].map((start) => {
+    const value = parseInt(hex.slice(start, start + 2), 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+};
+
+/** Black or white, whichever reads better on a colour. Takes a six-digit hex colour. */
+export const textOn = (color: string) => (luminance(color) > 0.18 ? palette.black : "#ffffff");
 
 /** Exposes a theme to CSS as --cc-* variables, for the page around the graph. */
 export function themeVariables({ colors, fontFamily }: CausalTheme) {
