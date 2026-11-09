@@ -1,5 +1,6 @@
 "use client";
 import type { CausalDataset, CausalNode } from "@cytocausal/core";
+import { refreshLabels } from "@cytocausal/cytoscape";
 import {
   CausalGraph,
   CausalProvider,
@@ -81,6 +82,7 @@ function Explorer() {
         instance.nodes().filter((node) => !node.data("inFeedbackLoop")).addClass("outside-loops");
       }
     });
+    refreshLabels(instance);
     fit();
     keepSelected((id) => inScope(nodeById.get(id)!));
   }, [loopsOnly, inScope, nodeById, cy, fit, keepSelected]);

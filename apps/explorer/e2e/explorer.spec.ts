@@ -279,3 +279,54 @@ test("the header links back to the docs", async ({ page }) => {
     "http://localhost:3200/en/case-explorer/",
   );
 });
+
+test("a highlight labels what it reaches without stacking labels", async ({ page }) => {
+  await ready(page);
+  await clickNode(page, first.id);
+  await withCy(page, "cy.fit();");
+  const measure = () =>
+    withCy<{ labels: number; overlapping: number; dimmed: number; selected: number; outline: number }>(
+      page,
+      `const shown = cy.nodes(".labelled");
+       const boxes = shown.map((n) =>
+         n.renderedBoundingBox({ includeNodes: false, includeEdges: false, includeOverlays: false }));
+       let overlapping = 0;
+       boxes.forEach((a, i) => boxes.slice(i + 1).forEach((b) => {
+         if (a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2) overlapping++;
+       }));
+       return {
+         labels: shown.length,
+         overlapping,
+         dimmed: cy.nodes(".dimmed.labelled").length,
+         selected: cy.nodes(".focus.labelled").length,
+         outline: parseFloat(shown[0].style("text-outline-width")) * cy.zoom(),
+       };`,
+    );
+
+  for (const depth of ["1", "2", "3"]) {
+    await page.getByRole("button", { name: depth, exact: true }).click();
+    await page.waitForTimeout(300);
+    const { labels, overlapping, dimmed, selected, outline } = await measure();
+    expect(labels, `labels at depth ${depth}`).toBeGreaterThan(1);
+    expect(overlapping, `overlaps at depth ${depth}`).toBe(0);
+    expect(dimmed).toBe(0);
+    expect(selected).toBe(1);
+    expect(outline).toBeCloseTo(2, 1);
+  }
+
+  // Zoomed in, links and outlines stay as thin as they were
+  await withCy(page, `cy.zoom({ level: cy.zoom() * 4, renderedPosition: cy.getElementById("${first.id}").renderedPosition() });`);
+  await page.waitForTimeout(400);
+  const widths = await withCy<number[]>(
+    page,
+    "return cy.edges().map((edge) => parseFloat(edge.style('width')) * cy.zoom());",
+  );
+  expect(Math.max(...widths)).toBeLessThanOrEqual(3.01);
+  // Arrows too: Cytoscape draws them at least 29 units wide, times their scale
+  const arrows = await withCy<number[]>(
+    page,
+    "return cy.edges().map((edge) => 29 * parseFloat(edge.style('arrow-scale')) * cy.zoom());",
+  );
+  expect(Math.max(...arrows)).toBeLessThanOrEqual(14);
+  expect((await measure()).overlapping).toBe(0);
+});

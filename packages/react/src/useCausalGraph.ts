@@ -5,6 +5,7 @@ import {
   highlightCausalNeighbours,
   highlightRoute,
   keepLabelsReadable,
+  refreshLabels,
   easeStyles,
   isTransitioning,
   resolveMotion,
@@ -174,6 +175,7 @@ export function useCausalGraph({
       const node = instance.getElementById(id);
       instance.nodes().removeClass("keyboard-cursor");
       node.addClass("keyboard-cursor");
+      refreshLabels(instance);
       cursor.current = id;
       setHovered(id);
       setAnnouncement(String(node.data("label")));

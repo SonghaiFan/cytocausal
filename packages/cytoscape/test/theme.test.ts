@@ -107,3 +107,10 @@ test("support share starts at zero for claims nobody shares", () => {
   assert.deepEqual(shares([link("1", ["p"]), link("2", ["q"])]), [[1, 0], [1, 0]]);
   assert.deepEqual(shares([link("1", ["p"]), link("2", ["p", "q", "r"]), link("3", [])]), [[1, 0], [3, 1], [0, 0]]);
 });
+
+test("managed arrows map to a scale Cytoscape accepts", () => {
+  const rules = createCausalStyle(lightTheme, { node: "dot", link: "straight", managedLabels: true }) as unknown as Rule[];
+  const scale = String(rules.find((rule) => rule.selector === "edge")!.style["arrow-scale"]);
+  // arrow-scale must be above 0, so a mapping that starts at 0 would be dropped
+  assert.match(scale, /^mapData\(zoomScale, 0, 4, 0\.001, [\d.]+\)$/);
+});

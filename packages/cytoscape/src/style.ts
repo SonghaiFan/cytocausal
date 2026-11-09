@@ -11,8 +11,9 @@ export interface CausalStyleOptions {
   /** Draw links thicker the more people stated them, from their `supportShare` data. */
   weightBySupport?: boolean;
   /**
-   * For labels that are placed by code: only nodes with the `labelled` class show one, sized
-   * by their `labelSize` and `labelWidth` data.
+   * For labels that are placed by code, as `keepLabelsReadable` does: only nodes with the
+   * `labelled` class show one, sized and positioned by their `label…` data. Highlights don't
+   * force a label, so the placement decides what fits. Links keep a constant width on screen.
    */
   managedLabels?: boolean;
   /** App-specific rules. They go before the interaction states, so highlights still win. */
@@ -60,7 +61,30 @@ const nodeStyles = (
   };
 };
 
-const linkStyles = ({ colors }: CausalTheme, { link = "flowing", weightBySupport }: CausalStyleOptions) => {
+/** Mappings stop at their ends, so they cover zooming out to a quarter, where `zoomScale` is 4. */
+const ZOOM_RANGE = 4;
+
+/**
+ * A line width in screen pixels when labels are managed, which also keeps text a constant size,
+ * so links don't swell as people zoom in. `keepLabelsReadable` writes the `zoomScale` data.
+ */
+const strokeOf = ({ managedLabels }: CausalStyleOptions) => (pixels: number) =>
+  managedLabels ? `mapData(zoomScale, 0, ${ZOOM_RANGE}, 0, ${pixels * ZOOM_RANGE})` : pixels;
+
+/**
+ * Arrow size, kept constant on screen with managed labels. Cytoscape draws an arrow at least 29
+ * units wide whatever the line's width, so a thin line alone doesn't keep it small.
+ */
+const arrowOf = ({ managedLabels }: CausalStyleOptions) => (scale: number) =>
+  // Cytoscape rejects an arrow scale of 0, even as the start of a mapping, so it starts above
+  managedLabels ? `mapData(zoomScale, 0, ${ZOOM_RANGE}, 0.001, ${scale * ZOOM_RANGE})` : scale;
+
+const linkStyles = (
+  { colors }: CausalTheme,
+  { link = "flowing", weightBySupport, managedLabels }: CausalStyleOptions,
+) => {
+  const stroke = strokeOf({ managedLabels });
+  const arrow = arrowOf({ managedLabels });
   const weight = weightBySupport ? { width: "mapData(supportShare, 0, 1, 1.5, 7)" } : {};
   const shared = {
     "line-color": colors.link,
@@ -72,16 +96,17 @@ const linkStyles = ({ colors }: CausalTheme, { link = "flowing", weightBySupport
     // Dense graphs need their links to recede until a highlight brings them forward
     return {
       ...shared,
-      width: 1,
+      width: stroke(1),
       opacity: 0.35,
-      "arrow-scale": 0.6,
+      // Constant arrows can be smaller, as they no longer shrink when zoomed out
+      "arrow-scale": managedLabels ? arrow(0.45) : 0.6,
       "curve-style": "straight",
       ...weight,
     };
   }
   const labelled = {
     ...shared,
-    width: 2,
+    width: stroke(2),
     label: "data(label)",
     "text-outline-color": colors.background,
     "text-outline-width": "1px",
@@ -91,7 +116,7 @@ const linkStyles = ({ colors }: CausalTheme, { link = "flowing", weightBySupport
     ? {
         ...labelled,
         "curve-style": "unbundled-bezier",
-        "arrow-scale": 0.8,
+        "arrow-scale": arrow(0.8),
         "control-point-distances": [-20, 20],
         "control-point-weights": [0.5],
       }
@@ -110,9 +135,21 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     opacity: 1,
     "z-index": 9,
   });
-  const shownLabel = options.managedLabels ? { label: "data(label)" } : {};
+  // Managed labels are placed by `keepLabelsReadable`, which writes where each one goes
+  const shownLabel = options.managedLabels
+    ? {
+        label: "data(label)",
+        "text-outline-width": "data(labelOutline)",
+        "text-halign": "data(labelHalign)",
+        "text-valign": "data(labelValign)",
+        "text-margin-x": "data(labelMarginX)",
+        "text-margin-y": "data(labelMarginY)",
+        "line-height": 1.2,
+      }
+    : {};
   // A highlight recolours a link, but keeps the width that shows its support
-  const width = (value: number) => (options.weightBySupport ? {} : { width: value });
+  const stroke = strokeOf(options);
+  const width = (value: number) => (options.weightBySupport ? {} : { width: stroke(value) });
 
   return [
     { selector: "node", style: { "font-family": fontFamily, ...nodeStyles(theme, options) } },
@@ -130,7 +167,6 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     {
       selector: "node.focus",
       style: {
-        ...shownLabel,
         "border-width": node === "pill" ? 2 : 3,
         "border-color": colors.focus,
         "z-index": 10,
@@ -139,7 +175,6 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     {
       selector: "node.cause",
       style: {
-        ...shownLabel,
         ...onColour(colors.cause),
         "background-color": colors.cause,
         "z-index": 9,
@@ -148,7 +183,6 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     {
       selector: "node.effect",
       style: {
-        ...shownLabel,
         ...onColour(colors.effect),
         "background-color": colors.effect,
         "z-index": 9,
@@ -158,7 +192,7 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     { selector: "edge.effect-link", style: { ...highlight(colors.effect), ...width(2) } },
     {
       selector: "node.route-node",
-      style: { ...shownLabel, "border-width": 2, "border-color": colors.focus, "z-index": 9 },
+      style: { "border-width": 2, "border-color": colors.focus, "z-index": 9 },
     },
     { selector: "edge.route-link", style: { ...highlight(colors.focus), ...width(3) } },
     { selector: ".outside-loops", style: { display: "none" } },

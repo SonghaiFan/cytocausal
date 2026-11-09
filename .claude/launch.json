@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start", "-w", "@cytocausal/perspectiva"],
       "port": 3100
+    },
+    {
+      "name": "explorer",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "-w", "@cytocausal/explorer"],
+      "port": 3101
     }
   ]
 }

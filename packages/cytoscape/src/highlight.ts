@@ -1,5 +1,6 @@
 import { filterByContributors, type Snapshot } from "@cytocausal/core";
 import type { Core } from "cytoscape";
+import { refreshLabels } from "./labels.ts";
 import { resolveMotion } from "./motion.ts";
 import type { CausalMotion } from "./theme.ts";
 
@@ -42,6 +43,7 @@ export function highlightCausalNeighbours(cy: Core, ids: string[], depth = 1) {
     }
     for (const id of ids) cy.getElementById(id).removeClass("dimmed cause effect").addClass("focus");
   });
+  refreshLabels(cy);
 }
 
 /** Dims the graph except one route through it, such as a loop or a path, or clears it. */
@@ -53,6 +55,7 @@ export function highlightRoute(cy: Core, route: Route | null) {
     route.nodes.forEach((id) => cy.getElementById(id).removeClass("dimmed").addClass("route-node"));
     route.edges.forEach((id) => cy.getElementById(id).removeClass("dimmed").addClass("route-link"));
   });
+  refreshLabels(cy);
 }
 
 /** Marks what's new or gone in this version. Pass empty lists to clear it. */
@@ -78,6 +81,7 @@ export function hideExceptContributors(cy: Core, snapshot: Snapshot, contributor
       .filter((element) => !kept.has(element.id()))
       .addClass("contributor-hidden");
   });
+  refreshLabels(cy);
 }
 
 /** Moves the view to a node. */
