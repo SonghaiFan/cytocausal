@@ -80,6 +80,37 @@ export function Page({ children }: { children: ReactNode }) {
 
 `CausalRoot` exposes every colour as a CSS variable, such as `--cc-border` and `--cc-muted-text`, so your own CSS can use the same theme.
 
+## Line, arrow and text sizes
+
+These defaults come from reading Cytoscape 3.31's renderer, not from guessing. A few of its rules aren't in its documentation, and they decide what looks right.
+
+**Sizes are in model units.** Cytoscape's docs say sizes are "as specified at zoom 1". A 2 px line is 6 px wide at zoom 3. That suits a small diagram, which you look at whole. On a dense graph that people zoom into, lines, rings and text would swell, so `managedLabels` keeps them a constant size on screen instead.
+
+**Arrows have a minimum size.** The renderer draws a triangle `0.3 × size` long and wide, where:
+
+```
+size = max((width × 13.37) ^ 0.9, 29) × arrow-scale
+```
+
+Below a line width of about 3, the arrow ignores the line and depends on `arrow-scale` alone. That's why thinning a line doesn't shrink its arrow. Cytoscape's own default, a 3 px line with scale 1, draws an 8.7 px arrow, about three times the line. `arrowLength(width, scale)` works this out for you.
+
+**`<pos>-arrow-width` isn't the arrow's size.** It's the stroke width of a hollow arrow.
+
+**Transparency costs twice.** When a link's `opacity` is below 1, the renderer first erases the area under each arrow, then draws it, and overlapping links get darker where they cross. Receding links are drawn in a pale opaque colour instead, made with `mix(color, background, amount)`. Only a highlight's dimming uses `opacity`.
+
+**Clicks have a fixed reach.** A pointer counts as on a link within 8 screen pixels, or 24 on touch, at any zoom. So thin lines stay as easy to click as thick ones.
+
+**Arrows need `straight` or `bezier`.** `haystack` is Cytoscape's fastest edge, but it can't draw a target arrow, which a causal link needs.
+
+| | Line | Arrow | Ring on a selected node |
+| :--- | :--- | :--- | :--- |
+| Small diagrams (`flowing`) | 2 px | 7 px | 2 px |
+| Dense graphs (`straight`) | 1 px, pale | 6 px | 3 px |
+| Highlighted | 2 px, or 3 px for a route | Same as unhighlighted | Same |
+| `weightBySupport` | 1.5 to 7 px | Grows with lines over 3 px | Same |
+
+Labels drawn smaller than `min-zoomed-font-size` are skipped, as they can't be read and still cost time: 6 px for labels beside dots, and 3 px for the smaller text inside pills.
+
 ## Motion
 
 The default palette is blue, yellow and black. Nodes are yellow, and labels switch between black and white to stay readable on each colour. `textOn(color)` picks between them for your own rules.

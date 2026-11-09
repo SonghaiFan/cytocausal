@@ -111,6 +111,20 @@ const luminance = (hex: string) => {
 /** Black or white, whichever reads better on a colour. Takes a six-digit hex colour. */
 export const textOn = (color: string) => (luminance(color) > 0.18 ? palette.black : "#ffffff");
 
+/**
+ * A colour part way from `color` towards `background`, as an opaque hex colour. It looks like
+ * `color` at that opacity over the background, without the cost and build-up of transparency.
+ */
+export function mix(color: string, background: string, amount: number) {
+  const channel = (hex: string, start: number) => parseInt(hex.slice(start, start + 2), 16);
+  return `#${[1, 3, 5]
+    .map((start) => {
+      const value = channel(color, start) * amount + channel(background, start) * (1 - amount);
+      return Math.round(value).toString(16).padStart(2, "0");
+    })
+    .join("")}`;
+}
+
 /** Exposes a theme to CSS as --cc-* variables, for the page around the graph. */
 export function themeVariables({ colors, fontFamily }: CausalTheme) {
   const variables: Record<string, string> = { "--cc-font-family": fontFamily };

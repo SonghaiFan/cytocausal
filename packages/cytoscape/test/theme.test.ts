@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCausalStyle } from "../src/style.ts";
+import { arrowLength, createCausalStyle } from "../src/style.ts";
 import { toElements } from "../src/elements.ts";
-import { darkTheme, lightTheme, textOn, themeVariables } from "../src/theme.ts";
+import { darkTheme, lightTheme, mix, textOn, themeVariables } from "../src/theme.ts";
 
 type Rule = { selector: string; style: Record<string, unknown> };
 
@@ -113,4 +113,48 @@ test("managed arrows map to a scale Cytoscape accepts", () => {
   const scale = String(rules.find((rule) => rule.selector === "edge")!.style["arrow-scale"]);
   // arrow-scale must be above 0, so a mapping that starts at 0 would be dropped
   assert.match(scale, /^mapData\(zoomScale, 0, 4, 0\.001, [\d.]+\)$/);
+});
+
+const edgeRule = (options: object) =>
+  (createCausalStyle(lightTheme, options) as unknown as Rule[]).find(({ selector }) => selector === "edge")!.style;
+
+/** Reads a mapping as Cytoscape would at zoom 1, where `zoomScale` is 1. */
+const atZoomOne = (value: unknown) => {
+  const mapping = String(value).match(/^mapData\(zoomScale, 0, ([\d.]+), ([\d.]+), ([\d.]+)\)$/);
+  if (!mapping) return Number(value);
+  const [, range, low, high] = mapping.map(Number);
+  return low + (high - low) / range;
+};
+
+test("arrow size follows Cytoscape's renderer", () => {
+  // Cytoscape's default 3 px line with scale 1 draws an 8.7 px arrow
+  assert.equal(arrowLength(3, 1).toFixed(1), "8.7");
+  // Thin lines don't make arrows smaller, only the scale does
+  assert.equal(arrowLength(0.5, 1), arrowLength(2, 1));
+  assert.ok(arrowLength(7, 1) > arrowLength(3, 1));
+});
+
+test("arrows are about three times their line, in every link style", () => {
+  for (const options of [{ link: "straight" }, { link: "straight", managedLabels: true }, { link: "flowing" }]) {
+    const style = edgeRule(options);
+    const width = atZoomOne(style.width);
+    const arrow = arrowLength(width, atZoomOne(style["arrow-scale"]));
+    assert.ok(arrow >= 5.5 && arrow <= 7.5, `${JSON.stringify(options)}: ${arrow}`);
+    assert.ok(arrow / width >= 3, `${JSON.stringify(options)}: arrow ${arrow}, line ${width}`);
+  }
+});
+
+test("receding links are pale but opaque", () => {
+  const style = edgeRule({ link: "straight" });
+  assert.equal(style.opacity, undefined);
+  assert.equal(style["line-color"], mix(lightTheme.colors.link, lightTheme.colors.background, 0.35));
+  assert.equal(mix("#000000", "#ffffff", 0.5), "#808080");
+  assert.equal(mix("#123456", "#abcdef", 1), "#123456");
+});
+
+test("managed borders keep their size on screen", () => {
+  const rules = createCausalStyle(lightTheme, { node: "dot", managedLabels: true }) as unknown as Rule[];
+  const focus = rules.find(({ selector }) => selector === "node.focus")!.style;
+  assert.equal(atZoomOne(focus["border-width"]), 3);
+  assert.match(String(focus["border-width"]), /^mapData\(zoomScale/);
 });

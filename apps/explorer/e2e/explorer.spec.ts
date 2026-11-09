@@ -322,11 +322,22 @@ test("a highlight labels what it reaches without stacking labels", async ({ page
     "return cy.edges().map((edge) => parseFloat(edge.style('width')) * cy.zoom());",
   );
   expect(Math.max(...widths)).toBeLessThanOrEqual(3.01);
-  // Arrows too: Cytoscape draws them at least 29 units wide, times their scale
+  // Arrows too, sized as Cytoscape's renderer does: 0.3 × max((width × 13.37) ^ 0.9, 29) × scale
   const arrows = await withCy<number[]>(
     page,
-    "return cy.edges().map((edge) => 29 * parseFloat(edge.style('arrow-scale')) * cy.zoom());",
+    `return cy.edges().map((edge) => {
+       const width = parseFloat(edge.style("width"));
+       const size = Math.max(Math.pow(width * 13.37, 0.9), 29) * parseFloat(edge.style("arrow-scale"));
+       return 0.3 * size * cy.zoom();
+     });`,
   );
-  expect(Math.max(...arrows)).toBeLessThanOrEqual(14);
+  expect(Math.min(...arrows)).toBeGreaterThanOrEqual(5);
+  expect(Math.max(...arrows)).toBeLessThanOrEqual(8);
+  // The selected node's ring stays three pixels
+  const ring = await withCy<number>(
+    page,
+    `return parseFloat(cy.getElementById("${first.id}").style("border-width")) * cy.zoom();`,
+  );
+  expect(ring).toBeCloseTo(3, 0);
   expect((await measure()).overlapping).toBe(0);
 });

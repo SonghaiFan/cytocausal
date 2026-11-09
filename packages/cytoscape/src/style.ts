@@ -1,5 +1,5 @@
 import type { Stylesheet } from "cytoscape";
-import { textOn, type CausalTheme } from "./theme.ts";
+import { mix, textOn, type CausalTheme } from "./theme.ts";
 
 export interface CausalStyleOptions {
   /** `dot` puts the label beside the node, and `pill` holds it inside. */
@@ -13,7 +13,8 @@ export interface CausalStyleOptions {
   /**
    * For labels that are placed by code, as `keepLabelsReadable` does: only nodes with the
    * `labelled` class show one, sized and positioned by their `label…` data. Highlights don't
-   * force a label, so the placement decides what fits. Links keep a constant width on screen.
+   * force a label, so the placement decides what fits. Lines, arrows and borders also keep a
+   * constant size on screen, so nothing swells as people zoom in.
    */
   managedLabels?: boolean;
   /** App-specific rules. They go before the interaction states, so highlights still win. */
@@ -40,6 +41,9 @@ const nodeStyles = (
       "text-valign": "center",
       "text-halign": "center",
       "font-size": "6px",
+      // Text too small to see only costs time to draw, so Cytoscape skips it below this. Pill
+      // text is small to begin with, so the bar is low enough to keep it in a narrow window
+      "min-zoomed-font-size": 3,
     };
   }
   const size = sizeByScore ? "mapData(score, 0, 1, 5, 24)" : 20;
@@ -57,7 +61,7 @@ const nodeStyles = (
           "text-max-width": "data(labelWidth)",
           "text-wrap": "wrap",
         }
-      : { label: "data(label)", "font-size": 12, "text-margin-y": -4 }),
+      : { label: "data(label)", "font-size": 12, "text-margin-y": -4, "min-zoomed-font-size": 6 }),
   };
 };
 
@@ -72,12 +76,33 @@ const strokeOf = ({ managedLabels }: CausalStyleOptions) => (pixels: number) =>
   managedLabels ? `mapData(zoomScale, 0, ${ZOOM_RANGE}, 0, ${pixels * ZOOM_RANGE})` : pixels;
 
 /**
- * Arrow size, kept constant on screen with managed labels. Cytoscape draws an arrow at least 29
- * units wide whatever the line's width, so a thin line alone doesn't keep it small.
+ * How Cytoscape sizes an arrowhead, from its renderer: a triangle `0.3 × size` long and wide, where
+ * `size = max((width × 13.37) ^ 0.9, 29) × arrow-scale`. Below a width of about 3, the arrow
+ * ignores the line and depends on `arrow-scale` alone. Cytoscape's own default, a 3 px line with
+ * scale 1, gives an 8.7 px arrow, about three times the line.
  */
-const arrowOf = ({ managedLabels }: CausalStyleOptions) => (scale: number) =>
-  // Cytoscape rejects an arrow scale of 0, even as the start of a mapping, so it starts above
-  managedLabels ? `mapData(zoomScale, 0, ${ZOOM_RANGE}, 0.001, ${scale * ZOOM_RANGE})` : scale;
+export const arrowLength = (width: number, scale: number) =>
+  0.3 * Math.max((width * 13.37) ** 0.9, 29) * scale;
+
+/** The `arrow-scale` that draws an arrow this many pixels long on a thin line. */
+const scaleForArrow = (pixels: number) => pixels / (0.3 * 29);
+
+/**
+ * Arrow size in pixels, kept constant on screen with managed labels. A thin line alone doesn't
+ * keep the arrow small, because Cytoscape gives arrows a minimum size.
+ */
+const arrowOf =
+  ({ managedLabels }: CausalStyleOptions) =>
+  (pixels: number) => {
+    const scale = Number(scaleForArrow(pixels).toFixed(3));
+    // Cytoscape rejects an arrow scale of 0, even as the start of a mapping, so it starts above
+    return managedLabels
+      ? `mapData(zoomScale, 0, ${ZOOM_RANGE}, 0.001, ${scale * ZOOM_RANGE})`
+      : scale;
+  };
+
+/** How strongly a receding link shows, as if it were drawn at this opacity. */
+const RECEDING = 0.35;
 
 const linkStyles = (
   { colors }: CausalTheme,
@@ -93,13 +118,17 @@ const linkStyles = (
     color: colors.text,
   };
   if (link === "straight") {
-    // Dense graphs need their links to recede until a highlight brings them forward
+    // Dense graphs need their links to recede until a highlight brings them forward. A pale
+    // opaque colour does that without transparency, which makes Cytoscape draw every arrow
+    // twice and darkens wherever links cross
+    const receding = mix(colors.link, colors.background, RECEDING);
     return {
       ...shared,
+      "line-color": receding,
+      "target-arrow-color": receding,
       width: stroke(1),
-      opacity: 0.35,
-      // Constant arrows can be smaller, as they no longer shrink when zoomed out
-      "arrow-scale": managedLabels ? arrow(0.45) : 0.6,
+      // Six pixels, about Cytoscape's own ratio of arrow to line
+      "arrow-scale": arrow(6),
       "curve-style": "straight",
       ...weight,
     };
@@ -116,7 +145,7 @@ const linkStyles = (
     ? {
         ...labelled,
         "curve-style": "unbundled-bezier",
-        "arrow-scale": arrow(0.8),
+        "arrow-scale": arrow(7),
         "control-point-distances": [-20, 20],
         "control-point-weights": [0.5],
       }
@@ -164,10 +193,14 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     ...(options.baseRules ?? []),
     { selector: "node.labelled", style: shownLabel },
     { selector: ".dimmed", style: { opacity: dimmedOpacity } },
+    // Dimmed links fade from their full colour, as they did before receding links became pale
+    ...(link === "straight"
+      ? [{ selector: "edge.dimmed", style: { "line-color": colors.link, "target-arrow-color": colors.link } }]
+      : []),
     {
       selector: "node.focus",
       style: {
-        "border-width": node === "pill" ? 2 : 3,
+        "border-width": stroke(node === "pill" ? 2 : 3),
         "border-color": colors.focus,
         "z-index": 10,
       },
@@ -192,7 +225,7 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     { selector: "edge.effect-link", style: { ...highlight(colors.effect), ...width(2) } },
     {
       selector: "node.route-node",
-      style: { "border-width": 2, "border-color": colors.focus, "z-index": 9 },
+      style: { "border-width": stroke(2), "border-color": colors.focus, "z-index": 9 },
     },
     { selector: "edge.route-link", style: { ...highlight(colors.focus), ...width(3) } },
     { selector: ".outside-loops", style: { display: "none" } },
@@ -209,7 +242,7 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     { selector: "edge.diff-removed", style: { ...highlight(colors.conflict), ...width(3) } },
     {
       selector: "node.keyboard-cursor",
-      style: { "outline-width": 3, "outline-color": colors.focus, "outline-offset": 3 },
+      style: { "outline-width": stroke(3), "outline-color": colors.focus, "outline-offset": stroke(3) },
     },
   ] as unknown as Stylesheet[];
 }

@@ -192,8 +192,8 @@ export function keepLabelsReadable(cy: Core) {
         labelWidth: MAX_WIDTH / zoom,
         labelOutline: OUTLINE / zoom,
       });
-      // Links are styled from this, so they stay as thin on screen as they were drawn
-      cy.edges().data({ zoomScale: 1 / zoom });
+      // Lines, arrows and borders are styled from this, so they keep their size on screen
+      cy.elements().data({ zoomScale: 1 / zoom });
       for (const { id, side } of placements) {
         const { halign, valign, x, y } = ALIGN[side];
         cy.getElementById(id)
