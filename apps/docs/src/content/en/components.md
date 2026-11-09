@@ -32,6 +32,7 @@ import "@cytocausal/react/styles.css";
 | `themes` | `lightTheme`, `darkTheme` | The light and dark [themes](/en/theming/) |
 | `styleOptions` | None | Options for `createCausalStyle` |
 | `layout` | Automatic | Saved positions if every node has one, or else an automatic layout |
+| `layouts`, `initialLayout` | None, the first | Named layouts to choose between, in place of `layout`. The workspace shows a switch, and a shared link keeps the choice |
 | `maxSelected` | `2` | How many nodes can be selected. Selecting two lists the paths between them |
 | `scheme` | System | Sets `light` or `dark`, and hides the switch button |
 | `initialVersion`, `initialSelected` | First snapshot, none | Where to start |
@@ -78,6 +79,7 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `CausalGraph` | The graph, with zoom buttons. Children sit on top of it |
 | `NodeSearch` | Search box and results |
 | `VersionSwitcher` | Buttons for moving between snapshots |
+| `LayoutSwitcher` | A choice of the provider's `layouts`, as buttons, or a menu for more than four |
 | `SelectionPanel` | A prompt, then the selected nodes and the paths between them |
 | `NodeDetails` | One node's causes, effects and evidence, with a button to open each link |
 | `LinkDetails` | Who stated a link and their evidence, with any link that disagrees on its polarity |

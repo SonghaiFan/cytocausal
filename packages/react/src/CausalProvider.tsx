@@ -51,6 +51,14 @@ export interface CausalProviderProps {
   styleOptions?: CausalStyleOptions;
   /** Defaults to saved positions when every node has one, and otherwise an automatic layout. */
   layout?: LayoutOptions;
+  /**
+   * Layouts people can choose between, by name, such as some of `layouts` from
+   * `@cytocausal/cytoscape`. It takes the place of `layout`, and `LayoutSwitcher` shows the
+   * choice. Keep this stable between renders.
+   */
+  layouts?: Record<string, LayoutOptions>;
+  /** The layout to start with, from `layouts`. Defaults to the first. */
+  initialLayout?: string;
   /** How many nodes can be selected at once. */
   maxSelected?: number;
   /** Nodes to start with selected. */
@@ -84,6 +92,8 @@ function useCausalState({
   scheme: chosenScheme,
   styleOptions,
   layout,
+  layouts,
+  initialLayout,
   maxSelected = 2,
   initialSelected = [],
   initialLink,
@@ -110,6 +120,14 @@ function useCausalState({
     return known ? requested! : dataset.snapshots[0].id;
   });
   const snapshot = getSnapshot(dataset, version);
+
+  const layoutNames = useMemo(() => Object.keys(layouts ?? {}), [layouts]);
+  const [chosenLayout, setChosenLayout] = useState(() => {
+    const requested = shared.get("layout") ?? initialLayout;
+    return requested && layouts?.[requested] ? requested : layoutNames[0];
+  });
+  // A layout that's gone, such as after `layouts` changes, falls back to the first
+  const layoutName = layouts?.[chosenLayout] ? chosenLayout : layoutNames[0];
 
   const graph = useCausalGraph({
     ...graphOptions,
@@ -173,9 +191,11 @@ function useCausalState({
     else url.searchParams.delete("selected");
     if (selectedLink) url.searchParams.set("link", selectedLink);
     else url.searchParams.delete("link");
+    if (layoutName && layoutName !== layoutNames[0]) url.searchParams.set("layout", layoutName);
+    else url.searchParams.delete("layout");
     history.replaceState(null, "", url);
     setCopied(false);
-  }, [shareInUrl, version, selected, selectedLink]);
+  }, [shareInUrl, version, selected, selectedLink, layoutName, layoutNames]);
 
   useEffect(() => {
     const instance = cy.current;
@@ -215,7 +235,13 @@ function useCausalState({
     setContributors,
     /** Reapplies the contributor filter. `CausalGraph` calls it on each new graph. */
     applyFilter,
-    layout: layout ?? (hasPositions ? savedLayout : autoLayout),
+    layout: (layoutName && layouts?.[layoutName]) || layout || (hasPositions ? savedLayout : autoLayout),
+    /** The chosen layout's name in `layouts`, or undefined without them. */
+    layoutName,
+    /** Every name in `layouts`, in order. */
+    layoutNames,
+    /** Moves the graph into another of `layouts`. */
+    setLayoutName: setChosenLayout,
     positionCache,
     loops,
     loopsComplete: complete,

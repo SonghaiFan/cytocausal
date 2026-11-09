@@ -5,8 +5,16 @@ import type { Core } from "cytoscape";
  * depend on zoom, so each fit would change the next one.
  */
 export function fitNodes(cy: Core, duration = 0) {
+  fitBox(cy, cy.nodes(":visible").boundingBox({ includeLabels: false }), duration);
+}
+
+/** Fits an area of the graph, in model units, to the screen. */
+export function fitBox(
+  cy: Core,
+  box: { x1: number; x2: number; y1: number; y2: number; w: number; h: number },
+  duration = 0,
+) {
   const padding = 30;
-  const box = cy.nodes(":visible").boundingBox({ includeLabels: false });
   const zoom = Math.min(
     (cy.width() - 2 * padding) / box.w,
     (cy.height() - 2 * padding) / box.h,

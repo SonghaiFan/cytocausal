@@ -563,3 +563,32 @@ test("links are as thick as their support, and the filter shows one person's vie
   await filter.getByRole("button", { name: "Everyone" }).click();
   await expect.poll(async () => Object.values(await linkState(page)).some((s) => s.hidden)).toBe(false);
 });
+
+test("layouts can be switched, and flow runs causes into effects", async ({ page }) => {
+  await openFinal(page);
+  const positions = () =>
+    page.evaluate(() => {
+      const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+      return Object.fromEntries(div._cyreg.cy.nodes().map((n: any) => [n.id(), { ...n.position() }])) as Record<
+        string,
+        { x: number; y: number }
+      >;
+    });
+  const force = await positions();
+
+  await page.getByRole("button", { name: "Flow", exact: true }).click();
+  await expect(page).toHaveURL(/layout=flow/);
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+  await page.waitForTimeout(900);
+  const flow = await positions();
+  expect(flow.customers.x).toBeLessThan(flow.revenue.x);
+  expect(flow.revenue.x).toBeLessThan(flow.staff.x);
+
+  // Back to force, every node returns to where it was
+  await page.getByRole("button", { name: "Force", exact: true }).click();
+  await page.waitForTimeout(1200);
+  const back = await positions();
+  for (const [id, { x, y }] of Object.entries(force)) {
+    expect(Math.hypot(back[id].x - x, back[id].y - y), id).toBeLessThan(1);
+  }
+});

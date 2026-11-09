@@ -41,6 +41,7 @@ export function CausalGraph({
         positionCache={positionCache}
         maxZoom={maxZoom}
         animateSnapshots
+        animateLayouts
         renderTooltip={renderTooltip}
         renderLinkTooltip={renderLinkTooltip}
         onReady={(instance) => {

@@ -7,6 +7,7 @@ type Node = {
   label: string;
   evidence: { text: string }[];
   metadata: { score: number; inFeedbackLoop: boolean };
+  position: { x: number; y: number };
 };
 
 // Expected values come from the data, so these tests also pass on a regenerated sample
@@ -383,4 +384,141 @@ test("each zoom mode changes marks by its own rule", async ({ page }) => {
 
   // Managed labels stay readable in every mode
   for (const mode of [spread, balanced, magnify]) expect(mode.text).toBeCloseTo(1, 1);
+});
+
+/** Node positions once nothing is moving. */
+const settledPositions = async (page: Page) => {
+  let previous = "";
+  await expect
+    .poll(
+      async () => {
+        const now = await withCy<string>(
+          page,
+          `return cy.nodes().filter((n) => n.animated()).length > 0 ? "moving" :
+             JSON.stringify(cy.nodes().map((n) => [n.id(), Math.round(n.position().x), Math.round(n.position().y)]));`,
+        );
+        const stable = now !== "moving" && now === previous;
+        previous = now;
+        return stable;
+      },
+      { timeout: 15_000, intervals: [300] },
+    )
+    .toBe(true);
+  return new Map<string, [number, number]>(
+    (JSON.parse(previous) as [string, number, number][]).map(([id, x, y]) => [id, [x, y]]),
+  );
+};
+
+test("layouts can be switched on the same graph, and the original comes back exactly", async ({ page }) => {
+  await ready(page);
+  await withCy(page, `cy.scratch("same-graph", true);`);
+  const original = await settledPositions(page);
+  const fromData = new Map(nodes.map((node) => [node.id, node.position]));
+  const [id, [x, y]] = [...original][0];
+  expect(Math.abs(x - fromData.get(id)!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(y - fromData.get(id)!.y)).toBeLessThanOrEqual(1);
+
+  await page.getByRole("button", { name: "Force", exact: true }).click();
+  const force = await settledPositions(page);
+  const moved = [...force].filter(([node, [fx, fy]]) => {
+    const [ox, oy] = original.get(node)!;
+    return Math.hypot(fx - ox, fy - oy) > 5;
+  });
+  expect(moved.length).toBeGreaterThan(nodes.length / 2);
+
+  // The most central event sits nearest the middle
+  await page.getByRole("button", { name: "By centrality", exact: true }).click();
+  const rings = await settledPositions(page);
+  const xs = [...rings.values()].map(([px]) => px);
+  const ys = [...rings.values()].map(([, py]) => py);
+  const middle = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+  const distance = (node: string) => Math.hypot(rings.get(node)![0] - middle[0], rings.get(node)![1] - middle[1]);
+  const nearest = [...rings.keys()].sort((a, b) => distance(a) - distance(b))[0];
+  expect(nearest).toBe(first.id);
+
+  await page.getByRole("button", { name: "Original", exact: true }).click();
+  const back = await settledPositions(page);
+  for (const [node, [ox, oy]] of original) {
+    expect(Math.hypot(back.get(node)![0] - ox, back.get(node)![1] - oy), node).toBeLessThanOrEqual(1);
+  }
+  expect(await withCy<boolean>(page, `return cy.scratch("same-graph") === true;`)).toBe(true);
+
+  // Labels are placed again once the nodes arrive
+  const overlapping = await withCy<number>(
+    page,
+    `const boxes = cy.nodes(".labelled").map((n) =>
+       n.renderedBoundingBox({ includeNodes: false, includeEdges: false, includeOverlays: false }));
+     let count = 0;
+     boxes.forEach((a, i) => boxes.slice(i + 1).forEach((b) => {
+       if (a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2) count++;
+     }));
+     return count;`,
+  );
+  expect(overlapping).toBe(0);
+});
+
+test("with a computed layout, showing only loops lays out what's left", async ({ page }) => {
+  await ready(page);
+  await page.getByRole("button", { name: "Force", exact: true }).click();
+  const all = await settledPositions(page);
+  await page.getByLabel("Show only feedback loops").check();
+  const loops = await settledPositions(page);
+  const hidden = nodes.filter((node) => !node.metadata.inFeedbackLoop).map((node) => node.id);
+  const shown = nodes.filter((node) => node.metadata.inFeedbackLoop).map((node) => node.id);
+  // Hidden nodes stay put, and the loops move into a layout of their own
+  for (const node of hidden) expect(loops.get(node)).toEqual(all.get(node));
+  const movedLoops = shown.filter((node) => {
+    const [ax, ay] = all.get(node)!;
+    const [lx, ly] = loops.get(node)!;
+    return Math.hypot(lx - ax, ly - ay) > 5;
+  });
+  expect(movedLoops.length).toBeGreaterThan(0);
+});
+
+test("every layout fills the same space, so nodes stay on screen while they move", async ({ page }) => {
+  await ready(page);
+  const start = await withCy<number>(page, "return cy.zoom();");
+  for (const name of ["Force", "By centrality", "Original", "By centrality", "Force", "Original"]) {
+    await page.getByRole("button", { name, exact: true }).click();
+    // Sample the whole move, not just where it ends
+    const worst = await withCy<number>(
+      page,
+      `return new Promise((resolve) => {
+         let worst = 0;
+         const started = performance.now();
+         const sample = () => {
+           const box = cy.nodes().renderedBoundingBox({ includeLabels: false });
+           worst = Math.max(worst, -box.x1, -box.y1, box.x2 - cy.width(), box.y2 - cy.height());
+           if (performance.now() - started < 1500) requestAnimationFrame(sample);
+           else resolve(worst);
+         };
+         sample();
+       });`,
+    );
+    expect(worst, `pixels off screen switching to ${name}`).toBeLessThanOrEqual(2);
+    const zoom = await withCy<number>(page, "return cy.zoom();");
+    expect(zoom / start, `zoom after ${name}`).toBeGreaterThan(0.75);
+    expect(zoom / start, `zoom after ${name}`).toBeLessThan(1.34);
+  }
+});
+
+test("the flow layout runs causes into effects, and the address keeps the layout", async ({ page }) => {
+  await ready(page);
+  const forwards = () =>
+    withCy<number>(
+      page,
+      `const edges = cy.edges();
+       return edges.filter((e) => e.target().position("x") > e.source().position("x")).length / edges.length;`,
+    );
+  const before = await forwards();
+  await page.getByRole("button", { name: "Flow", exact: true }).click();
+  await expect(page).toHaveURL(/layout=flow/);
+  await settledPositions(page);
+  // Loops mean some links must run backwards, but far more go left to right than before
+  const after = await forwards();
+  expect(after).toBeGreaterThan(0.6);
+  expect(after - before).toBeGreaterThan(0.1);
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Flow", exact: true })).toHaveAttribute("aria-pressed", "true");
 });

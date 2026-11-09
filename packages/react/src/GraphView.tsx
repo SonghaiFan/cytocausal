@@ -15,6 +15,7 @@ import {
   lightTheme,
   placeAround,
   refreshLabels,
+  relayout,
   snapshotPositions,
   toElements,
   transitionToSnapshot,
@@ -51,6 +52,11 @@ export interface GraphViewProps {
   positionCache?: PositionCache;
   /** Animate between snapshots of a dataset instead of rebuilding the graph. */
   animateSnapshots?: boolean;
+  /**
+   * Move nodes into a new `layout` instead of rebuilding the graph. Positions each layout gave
+   * are kept, so switching back returns every node to where it was.
+   */
+  animateLayouts?: boolean;
   /** Skip the layout, staying hidden until `anchorPositions` arrive. */
   waitForAnchors?: boolean;
   anchorPositions?: Positions;
@@ -70,8 +76,17 @@ type Tooltip = { x: number; y: number } & (
 
 const defaultStylesheet = createCausalStyle(lightTheme);
 
+// Two layouts can share a name, such as concentric by centrality and by degree, so each
+// layout object gets its own key. Keep layouts stable between renders for the cache to work
+const layoutIds = new WeakMap<LayoutOptions, number>();
+let nextLayoutId = 1;
+const layoutKey = (layout: LayoutOptions) => {
+  if (!layoutIds.has(layout)) layoutIds.set(layout, nextLayoutId++);
+  return `${layout.name}#${layoutIds.get(layout)}`;
+};
+
 const cacheKeyOf = (dataset: string, layout: LayoutOptions, snapshot: string) =>
-  `${dataset}:${layout.name}:${snapshot}`;
+  `${dataset}:${layoutKey(layout)}:${snapshot}`;
 
 export function GraphView({
   dataset,
@@ -82,6 +97,7 @@ export function GraphView({
   maxZoom = 2,
   positionCache: sharedCache,
   animateSnapshots = false,
+  animateLayouts = false,
   waitForAnchors = false,
   anchorPositions,
   onLayoutComplete,
@@ -121,6 +137,33 @@ export function GraphView({
 
   useEffect(() => {
     const current = shown.current;
+    if (
+      animateLayouts &&
+      !waitForAnchors &&
+      cy.current &&
+      current?.dataset === dataset.id &&
+      current.snapshot === snapshotId &&
+      current.layout !== layout
+    ) {
+      setTooltip(null);
+      // A saved layout returns nodes to the positions in the data
+      const saved =
+        layout.name === "preset" && snapshot.nodes.every(({ position }) => position)
+          ? Object.fromEntries(snapshot.nodes.map(({ id, position }) => [id, position!]))
+          : undefined;
+      relayout(cy.current, layout, {
+        positions: positionCache.current[cacheKey] ?? saved,
+        motion: latest.current.motion,
+        onSettled: () => {
+          rememberPositions();
+          if (cy.current) {
+            latest.current.onLayoutComplete?.(snapshotPositions(cy.current, latest.current.snapshot));
+          }
+        },
+      });
+      shown.current = { dataset: dataset.id, layout, snapshot: snapshotId };
+      return;
+    }
     if (
       animateSnapshots &&
       cy.current &&
@@ -204,6 +247,7 @@ export function GraphView({
     layout,
     maxZoom,
     animateSnapshots,
+    animateLayouts,
     waitForAnchors,
     positionCache,
     rememberPositions,

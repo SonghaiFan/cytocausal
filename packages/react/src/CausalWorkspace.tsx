@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { DepthControl, SelectionPanel, VersionDiff } from "./analysis.tsx";
 import { CausalGraph } from "./CausalGraph.tsx";
 import { CausalProvider, useCausal, type CausalProviderProps } from "./CausalProvider.tsx";
-import { Legend, SidebarHeader, VersionSwitcher } from "./controls.tsx";
+import { LayoutSwitcher, Legend, SidebarHeader, VersionSwitcher } from "./controls.tsx";
 import { useCausalLabels } from "./labels.tsx";
 import { ContributorFilter } from "./ContributorFilter.tsx";
 import { LoopList } from "./LoopList.tsx";
@@ -23,7 +23,10 @@ function Workspace({ title, children }: Pick<CausalWorkspaceProps, "title" | "ch
     <>
       <CausalGraph>
         <div className="cc-overlay cc-overlay-top">
-          <VersionSwitcher bare />
+          <div className="cc-buttons">
+            <VersionSwitcher bare />
+            <LayoutSwitcher bare />
+          </div>
           <div className="cc-buttons">
             <button type="button" className="cc-button" onClick={exportImage}>
               {labels.exportImage}

@@ -18,7 +18,7 @@ Causal Explorer shows the causal graph from the ACCESS benchmark, which covers a
 | Size | 725 nodes and 1,494 edges |
 | Links | Directed, without polarity |
 | Evidence | 4,708 generalised event descriptions |
-| Positions | Precomputed |
+| Positions | Precomputed for the full benchmark, with force and centrality layouts worked out in the browser |
 
 The figures above describe the full benchmark. The public demo shows a sample of its 100 most central events, and the full benchmark is [available on request](https://github.com/isVy08/ACCESS).
 
@@ -61,6 +61,8 @@ The harder problem was keeping labels readable, which took collision handling.
 ## Result
 
 Search now finds words anywhere in labels and sentences. Clicking a node keeps its sentences, causes and effects in a side panel, and a second click compares two nodes. The analysis of the full graph also found something new: 213 of the 725 nodes form a single set of feedback loops, so the network isn't a simple chain of causes.
+
+The sample keeps positions worked out for all 725 nodes, so it has gaps where the others were. A force layout for the 100 nodes shown takes about 0.2 s, so the app offers one, along with rings by centrality. With a computed layout, showing only feedback loops lays out the loops on their own. Zooming spreads nodes apart while every mark keeps its size, and a switch compares this with the other [zoom modes](/en/theming/).
 
 ## Publication
 

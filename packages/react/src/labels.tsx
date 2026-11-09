@@ -57,6 +57,7 @@ export interface CausalLabels {
   contributorLinks: (count: number) => string;
   supportLegend: string;
   disagreement: string;
+  layout: string;
 }
 
 export const defaultLabels: CausalLabels = {
@@ -114,6 +115,7 @@ export const defaultLabels: CausalLabels = {
   contributorLinks: (count) => `${count} ${count === 1 ? "link" : "links"}`,
   supportLegend: "Thicker links: stated by more people",
   disagreement: "People disagree on this link's polarity",
+  layout: "Layout",
 };
 
 const LabelsContext = createContext(defaultLabels);

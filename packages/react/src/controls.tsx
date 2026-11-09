@@ -114,6 +114,62 @@ export function VersionSwitcher({
   );
 }
 
+const capitalise = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
+
+/**
+ * Chooses a layout from the provider's `layouts`, as joined buttons, or a menu when there are
+ * more than four. Outside a provider, pass `layouts`, `value` and `onChange`.
+ */
+export function LayoutSwitcher({
+  layouts: given,
+  value,
+  onChange,
+  format = capitalise,
+  bare = false,
+  className = "",
+}: {
+  layouts?: string[];
+  value?: string;
+  onChange?: (name: string) => void;
+  /** Turns a layout's name into text for its button. */
+  format?: (name: string) => string;
+  /** Leave out the panel and heading, to place it on the graph. */
+  bare?: boolean;
+  className?: string;
+}) {
+  const labels = useCausalLabels();
+  const causal = useOptionalCausal();
+  const names = required(given ?? causal?.layoutNames, "LayoutSwitcher", "layouts");
+  const current = value ?? causal?.layoutName;
+  const choose = required(onChange ?? causal?.setLayoutName, "LayoutSwitcher", "onChange");
+  if (names.length < 2) return null;
+
+  const control =
+    names.length > 4 ? (
+      <select
+        aria-label={labels.layout}
+        className="cc-select cc-layout-select"
+        value={current}
+        onChange={(event) => choose(event.target.value)}
+      >
+        {names.map((name) => (
+          <option key={name} value={name}>
+            {format(name)}
+          </option>
+        ))}
+      </select>
+    ) : (
+      <Segmented label={labels.layout} options={names} value={current} onChange={choose} format={format} />
+    );
+  if (bare) return <div className={className}>{control}</div>;
+  return (
+    <section className={`cc-panel ${className}`}>
+      <h3 className="cc-heading">{labels.layout}</h3>
+      {control}
+    </section>
+  );
+}
+
 export interface LegendItem {
   label: string;
   color: string;

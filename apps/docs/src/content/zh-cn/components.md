@@ -32,6 +32,7 @@ import "@cytocausal/react/styles.css";
 | `themes` | `lightTheme`、`darkTheme` | 浅色和深色[主题](/zh-cn/theming/) |
 | `styleOptions` | 无 | `createCausalStyle` 的选项 |
 | `layout` | 自动 | 所有节点都有位置时使用已保存的位置，否则自动布局 |
+| `layouts`、`initialLayout` | 无、第一个 | 可供选择的具名布局，取代 `layout`。工作区会显示切换按钮，分享的链接会保留所选布局 |
 | `maxSelected` | `2` | 可同时选中的节点数。选中两个节点时列出它们之间的路径 |
 | `scheme` | 跟随系统 | 指定 `light` 或 `dark`，并隐藏切换按钮 |
 | `initialVersion`、`initialSelected` | 第一个快照、无 | 初始状态 |
@@ -78,6 +79,7 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `CausalGraph` | 图和缩放按钮，子元素显示在图上方 |
 | `NodeSearch` | 搜索框和结果 |
 | `VersionSwitcher` | 切换快照的按钮 |
+| `LayoutSwitcher` | 在 provider 的 `layouts` 之间选择，最多四个时显示为按钮，更多时显示为菜单 |
 | `SelectionPanel` | 先显示提示，选中后显示节点详情和节点间的路径 |
 | `NodeDetails` | 单个节点的原因、结果和证据，每条连线旁边有打开它的按钮 |
 | `LinkDetails` | 连线的提出者和他们的证据，以及在极性上与它有分歧的连线 |

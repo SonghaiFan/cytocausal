@@ -80,6 +80,43 @@ Positions only make sense for the dataset and layout that produced them. `Compar
 
 `positionCache` is keyed by dataset, layout and snapshot. Every view writes to it, so the `1 Graph` view of a version matches the same version in the `2 Graphs` view exactly.
 
+## Choose a layout
+
+`layouts` from `@cytocausal/cytoscape` holds every layout Cytoscape ships, and the extensions this package registers, each set up for causal graphs. Pass one as `layout`, or several as `layouts` to let people choose.
+
+| Name | What it does | Suits |
+| :--- | :--- | :--- |
+| `fcose` | Force-directed, fast and even | Most graphs, and anchoring versions |
+| `cola` | Force-directed, animated as it settles | Small graphs where watching it settle helps |
+| `dagre` | Ranks running causes into effects from left to right, with loops broken where they must be | Reading causal order |
+| `breadthfirst` | Trees grown downwards from what nothing causes | Graphs with few loops and clear starting causes |
+| `concentric` | Rings, with the most central nodes in the middle, by `score` data or else degree | Finding the hubs |
+| `cose` | Cytoscape's built-in force layout | When fcose isn't available. fcose is usually better |
+| `circle`, `grid` | One circle or a grid, ordered by how central each node is | Comparing nodes, not structure |
+| `random` | Random positions | Testing |
+
+```tsx
+import { layouts } from "@cytocausal/cytoscape";
+import { CausalWorkspace } from "@cytocausal/react";
+
+// Defined once, so the choice keeps its positions
+const choices = { force: layouts.fcose, flow: layouts.dagre, hubs: layouts.concentric };
+
+export const App = ({ dataset }) => <CausalWorkspace dataset={dataset} layouts={choices} />;
+```
+
+Any other Cytoscape layout works too. Register its extension once with `cytoscape.use`, then pass its options. Keep layout objects stable between renders: positions are cached for each one, so two set-ups of the same layout, such as concentric by centrality and by degree, each keep their own.
+
+## Switch layouts on the same graph
+
+Pass `animateLayouts` to `GraphView` to move nodes into a new `layout` instead of rebuilding the graph. `CausalGraph` does this for you, so changing `layout` on `CausalProvider` is enough. Each layout's positions go in the position cache, so switching back returns every node to where it was. A saved layout returns nodes to the positions in the data.
+
+Layouts each pick their own origin and spacing. Concentric centres on the canvas, so its nodes would fly off screen before the view caught up. So a layout is worked out first, then moved and scaled to fill the space the nodes fill now, and the view moves with the nodes. `measureLayout(cy, layout)` gives those positions on their own.
+
+`relayout(cy, layout)` does the same on any graph. It lays out only visible nodes, so after a filter hides some, the rest can be laid out on their own. Hidden nodes keep their place for when the filter is cleared.
+
+Causal Explorer offers four: its original positions, a force layout for the nodes shown, rings by centrality, and a left-to-right flow.
+
 ## Limits
 
 Anchored positions are exact, but some overlap can remain. A label that grew between versions makes its node wider, and it can't move without losing its place. The two graphs also fit their own bounds, so they can open at different zoom levels even when coordinates match.

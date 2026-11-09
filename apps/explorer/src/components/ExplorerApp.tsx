@@ -1,11 +1,13 @@
 "use client";
 import type { CausalDataset, CausalNode } from "@cytocausal/core";
-import { refreshLabels } from "@cytocausal/cytoscape";
+import { refreshLabels, relayout } from "@cytocausal/cytoscape";
+import type { LayoutOptions } from "cytoscape";
 import {
   CausalGraph,
   CausalProvider,
   DepthControl,
   Legend,
+  LayoutSwitcher,
   NodeSearch,
   Segmented,
   SelectionPanel,
@@ -13,8 +15,8 @@ import {
   useCausal,
   useCausalLabels,
 } from "@cytocausal/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { styleOptions, ZOOM_MODES } from "@/graph-style";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LAYOUT_NAMES, layoutChoices, styleOptions, ZOOM_MODES } from "@/graph-style";
 import type { ZoomMode } from "@cytocausal/cytoscape";
 
 // The largest group of loops is too big to list, so panels show the shortest ones
@@ -49,6 +51,7 @@ export function ExplorerApp() {
       dataset={dataset}
       labels={labels}
       styleOptions={styleOptions[zoom]}
+      layouts={layoutChoices}
       graphOptions={GRAPH_OPTIONS}
       shareInUrl
       className="cc-workspace h-screen"
@@ -60,13 +63,19 @@ export function ExplorerApp() {
 
 const zoomName = (mode: ZoomMode) => mode.charAt(0).toUpperCase() + mode.slice(1);
 
+const layoutName = (name: string) => LAYOUT_NAMES[name] ?? name;
+
 function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode: ZoomMode) => void }) {
   const text = useCausalLabels();
-  const { dataset, snapshot, graph, scheme, toggleScheme, exportImage, copyLink, copied } =
+  const { dataset, snapshot, graph, scheme, toggleScheme, exportImage, copyLink, copied, theme, layout } =
     useCausal();
   const { nodes, edges } = snapshot;
   const { keepSelected, fit, cy } = graph;
   const [loopsOnly, setLoopsOnly] = useState(false);
+  // Read when the filter changes, not as a reason to run it
+  const shownLayout = useRef<LayoutOptions>(layout);
+  shownLayout.current = layout;
+  const firstFilter = useRef(true);
 
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const inScope = useCallback(
@@ -89,9 +98,17 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
       }
     });
     refreshLabels(instance);
-    fit();
+    // A computed layout is worked out again for what's left, so the loops sit close together.
+    // The original positions come from the data, so those only need fitting to the screen
+    const current = shownLayout.current;
+    if (!firstFilter.current && current.name !== "preset") {
+      relayout(instance, current, { motion: theme.motion });
+    } else {
+      fit();
+    }
+    firstFilter.current = false;
     keepSelected((id) => inScope(nodeById.get(id)!));
-  }, [loopsOnly, inScope, nodeById, cy, fit, keepSelected]);
+  }, [loopsOnly, inScope, nodeById, cy, fit, keepSelected, theme]);
 
   return (
     <>
@@ -106,6 +123,7 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
             Show only feedback loops
           </label>
           <div className="cc-buttons">
+            <LayoutSwitcher bare format={layoutName} />
             <Segmented
               label="Zoom"
               options={ZOOM_MODES}

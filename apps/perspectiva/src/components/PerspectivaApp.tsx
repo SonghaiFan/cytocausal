@@ -50,7 +50,8 @@ const datasets = datasetsJson as CausalDataset[];
 const LEFT = "V1";
 const RIGHT = "final";
 const VIEWS = ["Compare", "Single"] as const;
-const LAYOUTS = Object.keys(layouts) as (keyof typeof layouts)[];
+// Force layouts keep anchored nodes comparable between versions, so only those are offered
+const LAYOUTS = ["cola", "fcose"] as const;
 const DOCS_URL = `${process.env.NEXT_PUBLIC_DOCS_URL ?? "http://localhost:3200"}/en/case-perspectiva/`;
 
 const WORKSHOP = "workshop";
@@ -80,7 +81,7 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
     [theme, combined],
   );
   const [contributors, setContributors] = useState<string[] | null>(null);
-  const [layoutName, setLayoutName] = useState<keyof typeof layouts>("fcose");
+  const [layoutName, setLayoutName] = useState<(typeof LAYOUTS)[number]>("fcose");
   // Two graphs side by side are too small to read on a phone
   const [view, setView] = useState<(typeof VIEWS)[number]>(() =>
     window.matchMedia("(max-width: 800px)").matches ? "Single" : "Compare",
