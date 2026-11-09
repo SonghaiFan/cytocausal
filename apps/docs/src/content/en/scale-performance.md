@@ -35,14 +35,14 @@ Explorer's `import-data` script does this along with its analysis. Choose a coor
 
 Cytoscape's `min-zoomed-font-size` looks like the right tool for hiding labels, but a dense graph needs more. Label size grows with zoom, so most labels pass the threshold at about the same moment. In Explorer, one zoom step took the view from a handful of labels to all of them, stacked unreadably.
 
-`apps/explorer/src/labels.ts` does what Sigma's label grid does:
+`keepLabelsReadable` does what Sigma's label grid does. Turn it on with `readableLabels` in [`useCausalGraph`](/en/interactions/):
 
 1. Rank nodes by importance.
 2. Place labels in that order, skipping any that would overlap one already placed.
 3. Set the font size to a constant divided by zoom, so text stays readable.
 4. Repeat only after zooming stops, because restyling every frame is slow.
 
-Node positions and sizes are known, but label widths are estimated from text length. Add a margin for that.
+Label sizes are first estimated from text length, because that's fast. Wrapped text can't be estimated exactly, so the labels chosen are then checked against the boxes Cytoscape actually drew.
 
 ## Look at the result
 

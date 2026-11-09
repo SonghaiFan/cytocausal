@@ -2,13 +2,11 @@ import { expect, test, type Page } from "@playwright/test";
 
 const languages = ["en", "zh-cn"];
 const guides = [
-  "setup",
-  "elements",
-  "layouts",
-  "styles",
-  "events",
-  "algorithms",
-  "data",
+  "getting-started",
+  "showcase",
+  "components",
+  "theming",
+  "interactions",
   "data-model",
   "react-lifecycle",
   "stable-layouts",
@@ -52,9 +50,7 @@ for (const lang of languages) {
     for (const href of links) {
       const response = await context.request.get(href);
       expect(response.status(), href).toBe(200);
-      if (!/^\/(examples|$)/.test(href)) {
-        expect(new URL(response.url()).pathname, href).toMatch(new RegExp(`^/${lang}/`));
-      }
+      expect(new URL(response.url()).pathname, href).toMatch(new RegExp(`^/${lang}/`));
     }
     expect(errors).toEqual([]);
   });
@@ -71,12 +67,12 @@ for (const lang of languages) {
 }
 
 test("the language switch keeps the chapter and later links follow it", async ({ page }) => {
-  await page.goto("/en/styles/");
+  await page.goto("/en/data-model/");
   await page.getByTitle("Change language").filter({ visible: true }).first().click();
   await page.getByText("简体中文", { exact: true }).filter({ visible: true }).first().click();
-  await expect(page).toHaveURL("/zh-cn/styles/");
-  await sidebarLink(page, "/events/").click();
-  await expect(page).toHaveURL("/zh-cn/events/");
+  await expect(page).toHaveURL("/zh-cn/data-model/");
+  await sidebarLink(page, "/causal-analysis/").click();
+  await expect(page).toHaveURL("/zh-cn/causal-analysis/");
 });
 
 test("reading in Chinese survives link prefetching", async ({ page }) => {
@@ -86,23 +82,8 @@ test("reading in Chinese survives link prefetching", async ({ page }) => {
   await expect(page).toHaveURL("/zh-cn/");
 });
 
-test("demo sidebars go to guides in the demo's language", async ({ page }) => {
-  await page.goto("/en/");
-  await page.goto("/examples/vanilla/en/styles/");
-  await sidebarLink(page, "/en/events/").click();
-  await expect(page).toHaveURL("/en/events/");
-
-  await page.goto("/examples/react/styles/");
-  await expect(page.locator("canvas").first()).toBeAttached();
-  await sidebarLink(page, "/zh-cn/events/").click();
-  await expect(page).toHaveURL("/zh-cn/events/");
-});
-
-test("old and unknown URLs behave", async ({ request }) => {
-  expect((await request.get("/en/1-setup/")).url()).toContain("/en/setup/");
-  expect((await request.get("/examples/1-setup/")).url()).toContain("/examples/react/setup/");
-  expect((await request.get("/")).url()).toContain("/en/");
-  for (const url of ["/nope/", "/en/nope/", "/examples/react/nope/", "/examples/vanilla/fr/setup/"]) {
+test("unknown URLs return 404", async ({ request }) => {
+  for (const url of ["/nope/", "/en/nope/", "/en/styles/"]) {
     expect((await request.get(url)).status(), url).toBe(404);
   }
 });
@@ -125,4 +106,57 @@ test("guides fit a phone", async ({ page }) => {
   await page.goto("/zh-cn/stable-layouts/");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   expect(overflow).toBe(false);
+});
+
+const demoGraph = (page: Page, frame: string) =>
+  page.evaluate((frame) => {
+    const div = [...document.querySelectorAll<any>(`${frame} div`)].find((d) => d._cyreg?.cy);
+    const cy = div?._cyreg.cy;
+    return cy && { nodes: cy.nodes().length, focus: cy.nodes(".focus").map((n: any) => n.id()) };
+  }, frame);
+
+test("the showcase runs live demos in both languages", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+
+  for (const lang of languages) {
+    await page.goto(`/${lang}/showcase/`);
+    await expect.poll(async () => (await demoGraph(page, ".showcase-workspace"))?.nodes).toBe(3);
+    await expect.poll(async () => (await demoGraph(page, ".showcase-style"))?.nodes).toBe(5);
+    await expect.poll(async () => (await demoGraph(page, ".showcase-compare"))?.nodes).toBe(3);
+    await expect.poll(async () => (await demoGraph(page, ".showcase-gallery"))?.focus).toEqual([
+      "customers",
+      "queue",
+    ]);
+  }
+
+  const gallery = page.locator(".showcase-gallery");
+  await gallery.getByRole("button", { name: /Revenue/ }).first().click();
+  await expect(gallery.getByRole("button", { name: /Revenue/ }).first()).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.getByRole("button", { name: "flowing" }).click();
+  await expect(page.getByText('link: "flowing"')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("the docs link to both example apps", async ({ page }) => {
+  for (const [guide, port, name] of [
+    ["case-perspectiva", 3100, "Open the app"],
+    ["case-explorer", 3101, "Open the app"],
+  ] as const) {
+    await page.goto(`/en/${guide}/`);
+    await expect(page.locator("article").getByRole("link", { name })).toHaveAttribute(
+      "href",
+      `http://localhost:${port}`,
+    );
+  }
+  await page.goto("/zh-cn/case-perspectiva/");
+  await expect(page.locator("article").getByRole("link", { name: "打开应用" })).toBeVisible();
+
+  const navbar = page.locator("nav").filter({ hasText: "cytocausal" }).first();
+  await expect(navbar.getByRole("link", { name: /Perspectiva/ })).toBeVisible();
+  await expect(navbar.getByRole("link", { name: /Explorer/ })).toBeVisible();
 });

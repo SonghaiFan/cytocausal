@@ -1,13 +1,13 @@
 "use client";
 import type { CausalDataset } from "@cytocausal/core";
-import { alignPositions, getCounterparts, type Positions } from "@cytocausal/cytoscape";
+import { alignPositions, autoLayout, getCounterparts, type Positions } from "@cytocausal/cytoscape";
 import type { Core } from "cytoscape";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { GraphView, type GraphViewProps } from "./GraphView.tsx";
 
 type SharedProps = Pick<
   GraphViewProps,
-  "layout" | "stylesheet" | "positionCache" | "renderTooltip" | "className"
+  "layout" | "stylesheet" | "motion" | "maxZoom" | "positionCache" | "renderTooltip" | "className"
 >;
 
 /** Shows two snapshots side by side, with matching nodes in the same place. */
@@ -16,14 +16,21 @@ export function CompareView({
   left,
   right,
   onReady,
-  ...shared
+  layout = autoLayout,
+  positionCache: sharedCache,
+  format = (id) => id,
+  ...others
 }: SharedProps & {
+  /** Turns a snapshot id into the label above its graph. */
+  format?: (snapshotId: string) => string;
   dataset: CausalDataset;
   left: string;
   right: string;
   onReady?: (cy: Core, snapshotId: string) => void;
 }) {
-  const baselineKey = `${dataset.id}:${left}:${shared.layout.name}`;
+  const ownCache = useRef<Record<string, Positions>>({});
+  const shared = { ...others, layout, positionCache: sharedCache ?? ownCache };
+  const baselineKey = `${dataset.id}:${left}:${layout.name}`;
   const [baseline, setBaseline] = useState<{ key: string; positions: Positions } | null>(null);
 
   const onLayoutComplete = useCallback(
@@ -40,10 +47,10 @@ export function CompareView({
     [baseline, baselineKey, dataset, left, right],
   );
 
-  const pane = { flex: 1, minWidth: 0, height: "100%" };
   return (
-    <div style={{ display: "flex", gap: "1rem", width: "100%", height: "100%" }}>
-      <div style={pane}>
+    <div className="cc-compare">
+      <div className="cc-pane">
+        <span className="cc-pane-label">{format(left)}</span>
         <GraphView
           {...shared}
           dataset={dataset}
@@ -52,7 +59,8 @@ export function CompareView({
           onReady={(cy) => onReady?.(cy, left)}
         />
       </div>
-      <div style={pane}>
+      <div className="cc-pane">
+        <span className="cc-pane-label">{format(right)}</span>
         <GraphView
           {...shared}
           dataset={dataset}

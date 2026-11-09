@@ -1,12 +1,17 @@
 "use client";
 import type { CausalDataset, CausalNode } from "@cytocausal/core";
 import {
+  autoLayout,
+  createCausalStyle,
+  fitNodes,
   getCounterparts,
   isTransitioning,
+  lightTheme,
   placeAround,
   snapshotPositions,
   toElements,
   transitionToSnapshot,
+  type CausalMotion,
   type Positions,
 } from "@cytocausal/cytoscape";
 import cytoscape, { type Core, type LayoutOptions, type Layouts, type Stylesheet } from "cytoscape";
@@ -25,10 +30,15 @@ export type PositionCache = RefObject<Record<string, Positions>>;
 export interface GraphViewProps {
   dataset: CausalDataset;
   snapshotId: string;
-  layout: LayoutOptions;
-  stylesheet: Stylesheet[];
-  /** Shared between views, so every view of a snapshot agrees. */
-  positionCache: PositionCache;
+  /** Defaults to an automatic layout. */
+  layout?: LayoutOptions;
+  /** Changing this restyles the graph in place, so nodes stay where they are. */
+  stylesheet?: Stylesheet[];
+  motion?: CausalMotion;
+  /** Stops small graphs being blown up to fill the screen. */
+  maxZoom?: number;
+  /** Pass one to several views, so every view of a snapshot agrees. */
+  positionCache?: PositionCache;
   /** Animate between snapshots of a dataset instead of rebuilding the graph. */
   animateSnapshots?: boolean;
   /** Skip the layout, staying hidden until `anchorPositions` arrive. */
@@ -41,15 +51,19 @@ export interface GraphViewProps {
   className?: string;
 }
 
+const defaultStylesheet = createCausalStyle(lightTheme);
+
 const cacheKeyOf = (dataset: string, layout: LayoutOptions, snapshot: string) =>
   `${dataset}:${layout.name}:${snapshot}`;
 
 export function GraphView({
   dataset,
   snapshotId,
-  layout,
-  stylesheet,
-  positionCache,
+  layout = autoLayout,
+  stylesheet = defaultStylesheet,
+  motion,
+  maxZoom = 2,
+  positionCache: sharedCache,
   animateSnapshots = false,
   waitForAnchors = false,
   anchorPositions,
@@ -58,6 +72,8 @@ export function GraphView({
   renderTooltip,
   className,
 }: GraphViewProps) {
+  const ownCache = useRef<Record<string, Positions>>({});
+  const positionCache = sharedCache ?? ownCache;
   const container = useRef<HTMLDivElement>(null);
   const cy = useRef<Core | null>(null);
   const anchoredLayout = useRef<Layouts | null>(null);
@@ -71,9 +87,9 @@ export function GraphView({
   const cacheKey = cacheKeyOf(dataset.id, layout, snapshotId);
 
   // Listeners outlive a snapshot change, so they read the latest values
-  const latest = useRef({ cacheKey, snapshot, onLayoutComplete, onReady });
+  const latest = useRef({ cacheKey, snapshot, stylesheet, motion, onLayoutComplete, onReady });
   useEffect(() => {
-    latest.current = { cacheKey, snapshot, onLayoutComplete, onReady };
+    latest.current = { cacheKey, snapshot, stylesheet, motion, onLayoutComplete, onReady };
   });
 
   const rememberPositions = useCallback(() => {
@@ -98,6 +114,7 @@ export function GraphView({
       transitionToSnapshot(cy.current, snapshot, {
         counterparts: getCounterparts(dataset, current.snapshot, snapshotId),
         positions: positionCache.current[cacheKey],
+        motion: latest.current.motion,
         onSettled: rememberPositions,
       });
       shown.current = { dataset: dataset.id, layout, snapshot: snapshotId };
@@ -121,8 +138,9 @@ export function GraphView({
     const instance = cytoscape({
       container: container.current,
       elements: [...nodes, ...edges],
-      style: stylesheet,
+      style: latest.current.stylesheet,
       layout: { name: "preset" },
+      maxZoom,
     });
     cy.current = instance;
 
@@ -163,12 +181,31 @@ export function GraphView({
     snapshot,
     snapshotId,
     layout,
-    stylesheet,
+    maxZoom,
     animateSnapshots,
     waitForAnchors,
     positionCache,
     rememberPositions,
   ]);
+
+  useEffect(() => {
+    cy.current?.style(stylesheet as unknown as Stylesheet);
+  }, [stylesheet]);
+
+  // Keeps the graph in view when its space changes, such as on rotating a phone
+  useEffect(() => {
+    let previous = "";
+    const observer = new ResizeObserver(([{ contentRect }]) => {
+      const size = `${contentRect.width}x${contentRect.height}`;
+      if (previous && previous !== size && cy.current && !cy.current.destroyed()) {
+        cy.current.resize();
+        fitNodes(cy.current);
+      }
+      previous = size;
+    });
+    observer.observe(container.current!);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!waitForAnchors || !anchorPositions || !cy.current) return;

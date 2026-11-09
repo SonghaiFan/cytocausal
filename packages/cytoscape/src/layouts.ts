@@ -50,3 +50,14 @@ export const fcoseLayout = {
 } as LayoutOptions;
 
 export const layouts = { cola: colaLayout, fcose: fcoseLayout };
+
+/** Lays out any small graph with no coordinates to write. Random starts keep cycles open. */
+export const autoLayout = {
+  ...fcoseLayout,
+  randomize: true,
+  padding: 30,
+  idealEdgeLength: () => 90,
+} as LayoutOptions;
+
+/** Uses the positions already on each node. */
+export const savedLayout = { name: "preset", fit: true, padding: 30 } as LayoutOptions;

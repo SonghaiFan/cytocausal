@@ -93,7 +93,7 @@ The number of loops can grow very quickly with graph size. Set `maxLength` on la
 
 These counts, and every Perspectiva loop and type, match NetworkX's `simple_cycles`.
 
-To show a loop, pass it to `highlightLoop(cy, loop)`, which adds `loop-node` and `loop-link` classes and dims everything else. Pass `null` to clear it.
+To show a loop, pass it to `highlightRoute(cy, loop)`, which adds `route-node` and `route-link` classes and dims everything else. Pass `null` to clear it.
 
 ## Causes and effects
 
@@ -116,3 +116,44 @@ export function followSelection(cy: Core, selected: string[]) {
 | `dimmed` | Everything else |
 
 Use `node.incomers()` and `node.outgoers()` for this. `node.neighborhood()` ignores direction.
+
+Pass a depth to reach further: `highlightCausalNeighbours(cy, selected, 2)` also marks the causes of causes and the effects of effects. In a loop, a node can be both.
+
+## Paths
+
+`findCausalPaths` lists the routes from one node to another, following the direction of each link. No route visits a node twice.
+
+```ts
+import { findCausalPaths, type Snapshot } from "@cytocausal/core";
+
+export function routes(snapshot: Snapshot) {
+  const { paths, complete } = findCausalPaths(snapshot, "customers", "queue", {
+    maxLength: 8,
+    limit: 50,
+  });
+  return complete ? paths : paths.slice(0, 10);
+}
+```
+
+Paths come shortest first. `maxLength` counts nodes. `complete` is `false` when `maxLength` or `limit` may have hidden some paths.
+
+## Version differences
+
+`diffSnapshots` compares two snapshots. It uses the dataset's correspondences, and falls back to matching ids when there are none.
+
+```ts
+import { diffSnapshots, type CausalDataset } from "@cytocausal/core";
+
+export function summary(dataset: CausalDataset) {
+  const diff = diffSnapshots(dataset, "V1", "final");
+  return `${diff.addedNodes.length} added, ${diff.removedNodes.length} removed`;
+}
+```
+
+| Field | Contains |
+| :--- | :--- |
+| `addedNodes`, `removedNodes` | Nodes with no counterpart |
+| `renamedNodes` | Nodes whose label changed, as `{ from, to }` |
+| `mergedNodes` | Several nodes that became one, as `{ from, to }` |
+| `addedLinks`, `removedLinks` | Links with no counterpart |
+| `changedLinks` | Links whose polarity changed, as `{ from, to, polarity }` |

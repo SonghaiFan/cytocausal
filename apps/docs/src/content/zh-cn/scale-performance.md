@@ -35,14 +35,14 @@ Explorer 的 `import-data` 脚本在分析时一并完成这一步。请选择�
 
 Cytoscape 的 `min-zoomed-font-size` 看起来很适合隐藏标签，但密集的图需要更多处理。标签大小随缩放增长，大多数标签几乎同时超过阈值。在 Explorer 中，缩放一步就从少量标签变成全部标签，堆叠得无法阅读。
 
-`apps/explorer/src/labels.ts` 采用与 Sigma 标签网格相同的思路：
+`keepLabelsReadable` 采用与 Sigma 标签网格相同的思路。在 [`useCausalGraph`](/zh-cn/interactions/) 中启用 `readableLabels` 即可：
 
 1. 按重要性给节点排序。
 2. 依次放置标签，跳过会与已放置标签重叠的标签。
 3. 把字体大小设为常量除以缩放比例，让文字始终可读。
 4. 只在缩放结束后重新计算，因为每帧更新样式太慢。
 
-节点位置和大小是已知的，但标签宽度要根据文本长度估算，所以请留出边距。
+标签大小先根据文本长度估算，因为这样很快。换行后的文字无法精确估算，所以选出的标签还要再用 Cytoscape 实际绘制的边界检查一遍。
 
 ## 亲眼看结果
 

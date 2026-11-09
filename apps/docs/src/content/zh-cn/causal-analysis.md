@@ -93,7 +93,7 @@ console.log(complete); // true
 
 这些数量，以及 Perspectiva 的每个回路及其类型，都与 NetworkX 的 `simple_cycles` 一致。
 
-要显示回路，请把它传给 `highlightLoop(cy, loop)`。它会添加 `loop-node` 和 `loop-link` 类并淡化其他元素。传入 `null` 可清除高亮。
+要显示回路，请把它传给 `highlightRoute(cy, loop)`。它会添加 `route-node` 和 `route-link` 类并淡化其他元素。传入 `null` 可清除高亮。
 
 ## 原因和结果
 
@@ -116,3 +116,44 @@ export function followSelection(cy: Core, selected: string[]) {
 | `dimmed` | 其他所有元素 |
 
 请使用 `node.incomers()` 和 `node.outgoers()`。`node.neighborhood()` 会忽略方向。
+
+传入深度可以延伸得更远：`highlightCausalNeighbours(cy, selected, 2)` 还会标记原因的原因和结果的结果。在回路中，一个节点可能同时是两者。
+
+## 路径
+
+`findCausalPaths` 沿着每条连线的方向，列出从一个节点到另一个节点的路线。每条路线不会重复经过同一节点。
+
+```ts
+import { findCausalPaths, type Snapshot } from "@cytocausal/core";
+
+export function routes(snapshot: Snapshot) {
+  const { paths, complete } = findCausalPaths(snapshot, "customers", "queue", {
+    maxLength: 8,
+    limit: 50,
+  });
+  return complete ? paths : paths.slice(0, 10);
+}
+```
+
+路径按从短到长排列。`maxLength` 按节点计数。`maxLength` 或 `limit` 可能隐藏了部分路径时，`complete` 为 `false`。
+
+## 版本差异
+
+`diffSnapshots` 比较两个快照。它使用数据集中的对应关系，没有时按相同 id 匹配。
+
+```ts
+import { diffSnapshots, type CausalDataset } from "@cytocausal/core";
+
+export function summary(dataset: CausalDataset) {
+  const diff = diffSnapshots(dataset, "V1", "final");
+  return `${diff.addedNodes.length} added, ${diff.removedNodes.length} removed`;
+}
+```
+
+| 字段 | 内容 |
+| :--- | :--- |
+| `addedNodes`、`removedNodes` | 没有对应项的节点 |
+| `renamedNodes` | 标签改变的节点，格式为 `{ from, to }` |
+| `mergedNodes` | 合并为一个的多个节点，格式为 `{ from, to }` |
+| `addedLinks`、`removedLinks` | 没有对应项的连线 |
+| `changedLinks` | 极性改变的连线，格式为 `{ from, to, polarity }` |

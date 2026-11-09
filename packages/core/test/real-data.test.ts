@@ -4,6 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import {
   analyzeSnapshot,
+  diffSnapshots,
   findFeedbackLoops,
   importExplorer,
   importPerspectiva,
@@ -73,3 +74,41 @@ test("Explorer imports and matches the known analysis", { skip: !existsSync(expl
   assert.equal(complete, false);
   assert.ok(loops.every(({ type }) => type === "unknown"));
 });
+
+test(
+  "Perspectiva's versions differ by the counts worked out separately from the source data",
+  { skip: !perspectivaFiles.every(existsSync) },
+  () => {
+    const datasets = importPerspectiva(
+      evaluate(perspectivaFiles[0], "allCyDataSets"),
+      evaluate(perspectivaFiles[1], "nodeAnchors"),
+    );
+    const counts = Object.fromEntries(
+      datasets.map((dataset) => {
+        const diff = diffSnapshots(dataset, "V1", "final");
+        return [
+          dataset.id,
+          [
+            diff.addedNodes.length,
+            diff.removedNodes.length,
+            diff.renamedNodes.length,
+            diff.mergedNodes.length,
+            diff.addedLinks.length,
+            diff.removedLinks.length,
+            diff.changedLinks.length,
+          ],
+        ];
+      }),
+    );
+    assert.deepEqual(counts, {
+      advocate_7: [10, 1, 9, 1, 12, 2, 0],
+      citizen_1: [3, 0, 13, 0, 7, 2, 1],
+      expert_2: [8, 2, 12, 0, 22, 14, 2],
+      citizen_3: [7, 1, 13, 2, 18, 9, 1],
+      citizen_4: [4, 0, 10, 0, 13, 6, 1],
+      citizen_5: [2, 1, 10, 1, 6, 6, 1],
+      advocate_6: [10, 2, 9, 0, 17, 6, 0],
+      expert_9: [10, 2, 9, 1, 22, 11, 1],
+    });
+  },
+);

@@ -4,7 +4,7 @@ title: "React lifecycle"
 
 # React lifecycle
 
-Cytoscape and React both want to own what's on screen. cytocausal keeps them apart: React decides what to show, and one long-lived Cytoscape instance draws it. `GraphView` in `@cytocausal/react` does this for you, and this chapter explains why it works the way it does.
+Cytoscape and React both want to own what's on screen. cytocausal keeps them apart: React decides what to show, and one long-lived Cytoscape instance draws it. `GraphView` in `@cytocausal/react` does this for you, and this guide explains why it works the way it does.
 
 ## Render in the browser only
 
@@ -84,7 +84,7 @@ This caused a real bug in Perspectiva. A `layoutstop` listener held on to the ol
 
 ## Use onReady for custom behaviour
 
-`GraphView` passes each new Cytoscape instance to `onReady`. Attach listeners there, and store the instance in a ref for later calls such as zooming to a node. A new instance arrives after every rebuild, so don't assume there's only one.
+For the usual selection and view controls, use [`useCausalGraph`](/en/interactions/). For anything else, `GraphView` passes each new Cytoscape instance to `onReady`. Attach listeners there, and store the instance in a ref for later calls such as zooming to a node. A new instance arrives after every rebuild, so don't assume there's only one.
 
 ## Hidden tabs stop animations
 

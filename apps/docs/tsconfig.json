@@ -10,6 +10,7 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -29,6 +30,7 @@
     }
   },
   "include": [
+    "../../packages/cytoscape/src/extensions.d.ts",
     "next-env.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx",

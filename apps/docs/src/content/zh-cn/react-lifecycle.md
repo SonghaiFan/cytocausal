@@ -4,7 +4,7 @@ title: "React 生命周期"
 
 # React 生命周期
 
-Cytoscape 和 React 都想掌控屏幕上的内容。cytocausal 让两者分工：React 决定显示什么，一个长期存在的 Cytoscape 实例负责绘制。`@cytocausal/react` 中的 `GraphView` 已经处理好这些，本章解释它为什么这样工作。
+Cytoscape 和 React 都想掌控屏幕上的内容。cytocausal 让两者分工：React 决定显示什么，一个长期存在的 Cytoscape 实例负责绘制。`@cytocausal/react` 中的 `GraphView` 已经处理好这些，本指南解释它为什么这样工作。
 
 ## 只在浏览器中渲染
 
@@ -84,7 +84,7 @@ export function useNodeClicks(cy: Core | null, onClick: (id: string) => void) {
 
 ## 用 onReady 添加自定义行为
 
-`GraphView` 会把每个新的 Cytoscape 实例传给 `onReady`。在这里绑定监听器，并把实例存入 ref，以便之后执行缩放到节点等操作。每次重建都会产生新实例，所以不要假设只有一个。
+常用的选中和视图控制可以直接使用 [`useCausalGraph`](/zh-cn/interactions/)。其他情况下，`GraphView` 会把每个新的 Cytoscape 实例传给 `onReady`。在这里绑定监听器，并把实例存入 ref，以便之后执行缩放到节点等操作。每次重建都会产生新实例，所以不要假设只有一个。
 
 ## 隐藏的页面会暂停动画
 

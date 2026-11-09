@@ -1,67 +1,28 @@
+import { createCausalStyle, textOn, type CausalTheme } from "@cytocausal/cytoscape";
 import type { Stylesheet } from "cytoscape";
 
-export const colorSchema = [
-  { index: "2", label: "Relationship needs clarification", color: "#e97451" },
-  { index: "3", label: "Conflict with other participants", color: "#2a79ef" },
-  { index: "1", label: "Added", color: "#809b88" },
-];
+/** What each annotation in the source data means, and the theme colour that shows it. */
+export const annotations = [
+  { index: "2", label: "Needs clarification", color: "clarification" },
+  { index: "3", label: "Conflict", color: "conflict" },
+  { index: "1", label: "Added", color: "added" },
+] as const;
 
-export const graphStyles = [
-  {
-    selector: "node",
-    style: {
-      shape: "round-rectangle",
-      width: "label",
-      height: "label",
-      padding: "5px",
-      "background-color": "#fbbf24",
-      "border-color": "#f8fafc",
-      "border-width": "1px",
-      label: "data(label)",
-      "text-wrap": "wrap",
-      "text-max-width": "50px",
-      "text-valign": "center",
-      "text-halign": "center",
-      "font-size": "6px",
+// Pale yellow fills a node well, but a thin line of it disappears on white
+const linkColor = (theme: CausalTheme, color: (typeof annotations)[number]["color"]) =>
+  color === "clarification" ? theme.colors.node : theme.colors[color];
+
+/** The framework's default style, with the workshop's annotations added. */
+export function graphStyles(theme: CausalTheme) {
+  const rules = annotations.flatMap(({ index, color }) => [
+    {
+      selector: `node[color = "${index}"]`,
+      style: { "background-color": theme.colors[color], color: textOn(theme.colors[color]) },
     },
-  },
-  { selector: "node.selected", style: { "border-color": "#000", "border-width": "2px" } },
-  ...colorSchema.map(({ index, color }) => ({
-    selector: `node[color = "${index}"]`,
-    style: { "background-color": color },
-  })),
-  {
-    selector: "edge",
-    style: {
-      width: 2,
-      "curve-style": "unbundled-bezier",
-      "line-color": "#d9dadc",
-      "target-arrow-color": "#d9dadc",
-      "target-arrow-shape": "triangle",
-      "arrow-scale": 0.8,
-      "control-point-distances": [-20, 20],
-      "control-point-weights": [0.5],
-      label: "data(label)",
-      "text-outline-color": "#fff",
-      "text-outline-width": "1px",
+    {
+      selector: `edge[color="${index}"]`,
+      style: { "line-color": linkColor(theme, color), "target-arrow-color": linkColor(theme, color) },
     },
-  },
-  ...colorSchema.map(({ index, color }) => ({
-    selector: `edge[color="${index}"]`,
-    style: { "line-color": color, "target-arrow-color": color },
-  })),
-  {
-    selector: 'edge[polarity="negative"]',
-    style: {
-      "line-style": "dashed",
-      "control-point-distances": [20, -20],
-      "control-point-weights": [0.5],
-    },
-  },
-  { selector: ".dimmed", style: { opacity: 0.15 } },
-  { selector: "node.loop-node", style: { "border-color": "#111", "border-width": "2px" } },
-  {
-    selector: "edge.loop-link",
-    style: { width: 3, "line-color": "#111", "target-arrow-color": "#111" },
-  },
-] as unknown as Stylesheet[];
+  ]) as unknown as Stylesheet[];
+  return createCausalStyle(theme, { baseRules: rules });
+}

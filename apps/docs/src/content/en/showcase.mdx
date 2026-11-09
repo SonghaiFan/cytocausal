@@ -1,0 +1,49 @@
+---
+title: Showcase
+---
+
+import { CompareDemo, GalleryDemo, StyleDemo, WorkspaceDemo } from "../../components/showcase/index.tsx";
+
+# Showcase
+
+Everything on this page is live. It all runs on a small made-up model of a coffee shop.
+
+## The whole interface
+
+This is what `<CausalWorkspace dataset={dataset} />` gives you. Try these:
+
+- Click a node, then a second one, to see the paths between them.
+- Switch from **V1** to **final** to watch the graph change.
+- Click the graph, then use the arrow keys and Enter.
+
+<WorkspaceDemo />
+
+See [Components](/en/components/) for its props.
+
+## Styles
+
+The same graph with different options. See [Themes and styles](/en/theming/).
+
+<StyleDemo />
+
+## Comparing versions
+
+`CompareView` keeps matching nodes in the same arrangement, so you can see what's new.
+
+<CompareDemo />
+
+## Every panel
+
+Use the panels on their own to build your own layout. Inside a `CausalProvider`, each panel connects itself, so none of these has any props:
+
+```tsx
+<CausalProvider dataset={dataset}>
+  <CausalGraph />
+  <NodeSearch />
+  <SelectionPanel />
+  <LoopList />
+  <VersionDiff />
+</CausalProvider>
+```
+
+<GalleryDemo />
