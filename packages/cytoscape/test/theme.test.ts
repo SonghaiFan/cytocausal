@@ -158,3 +158,29 @@ test("managed borders keep their size on screen", () => {
   assert.equal(atZoomOne(focus["border-width"]), 3);
   assert.match(String(focus["border-width"]), /^mapData\(zoomScale/);
 });
+
+test("each zoom mode sizes marks from its own factor", () => {
+  const style = (zoom: string) =>
+    createCausalStyle(lightTheme, { node: "dot", link: "straight", sizeByScore: true, zoom } as never) as unknown as Rule[];
+  const rule = (zoom: string, selector: string) => style(zoom).find((item) => item.selector === selector)!.style;
+
+  assert.equal(rule("magnify", "edge").width, 1);
+  assert.match(String(rule("spread", "edge").width), /^mapData\(zoomScale, /);
+  assert.match(String(rule("balanced", "edge").width), /^mapData\(zoomRoot, /);
+  assert.equal(rule("magnify", "node").width, "mapData(score, 0, 1, 5, 24)");
+
+  // Dots combine centrality and zoom: at zoom 2, a spread dot is half as big in model units
+  const size = (zoom: string, data: Record<string, number>) =>
+    (rule(zoom, "node").width as (ele: { data: (key: string) => number }) => number)({ data: (key) => data[key] });
+  assert.equal(size("spread", { score: 1, zoomScale: 0.5, zoomRoot: Math.SQRT1_2 }), 12);
+  assert.equal(size("balanced", { score: 0, zoomScale: 0.25, zoomRoot: 0.5 }), 2.5);
+});
+
+test("managed labels default to spread, and weights follow the zoom mode", () => {
+  const managed = createCausalStyle(lightTheme, { node: "dot", link: "straight", managedLabels: true }) as unknown as Rule[];
+  assert.match(String(managed.find((rule) => rule.selector === "edge")!.style.width), /zoomScale/);
+
+  const weighted = (createCausalStyle(lightTheme, { weightBySupport: true, zoom: "spread" }) as unknown as Rule[])
+    .find((rule) => rule.selector === "edge")!.style.width as (ele: { data: (key: string) => number }) => number;
+  assert.equal(weighted({ data: (key) => ({ supportShare: 1, zoomScale: 0.5 })[key]! }), 3.5);
+});

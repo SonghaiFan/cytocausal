@@ -9,3 +9,4 @@ export * from "./style.ts";
 export * from "./theme.ts";
 export * from "./transition.ts";
 export * from "./view.ts";
+export * from "./zoom.ts";

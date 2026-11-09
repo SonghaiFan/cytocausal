@@ -1,13 +1,14 @@
 import type { Core, NodeSingular } from "cytoscape";
+import { keepConstantSize, LABEL, writeZoomSizes } from "./zoom.ts";
 
-const FONT_SIZE = 12;
+const FONT_SIZE = LABEL.fontSize;
 const LINE_HEIGHT = 1.2;
-const OUTLINE = 2;
+const OUTLINE = LABEL.outline;
 /** Space between a node and its label, and around each label. */
-const GAP = 3;
+const GAP = LABEL.gap;
 // At least the outline, which Cytoscape counts as part of the label
 const MARGIN = OUTLINE + 1;
-const MAX_WIDTH = 160;
+const MAX_WIDTH = LABEL.maxWidth;
 const MAX_LABELS = 60;
 const SETTLE_MS = 120;
 const SCRATCH_KEY = "cytocausal-labels";
@@ -185,27 +186,17 @@ export function keepLabelsReadable(cy: Core) {
   const update = () => {
     if (cy.destroyed()) return;
     const placements = placeLabels(cy, measure);
-    const zoom = cy.zoom();
     cy.batch(() => {
-      cy.nodes().removeClass("labelled").data({
-        labelSize: FONT_SIZE / zoom,
-        labelWidth: MAX_WIDTH / zoom,
-        labelOutline: OUTLINE / zoom,
-      });
-      // Lines, arrows and borders are styled from this, so they keep their size on screen
-      cy.elements().data({ zoomScale: 1 / zoom });
+      cy.nodes().removeClass("labelled");
       for (const { id, side } of placements) {
         const { halign, valign, x, y } = ALIGN[side];
         cy.getElementById(id)
           .addClass("labelled")
-          .data({
-            labelHalign: halign,
-            labelValign: valign,
-            labelMarginX: (x * GAP) / zoom,
-            labelMarginY: (y * GAP) / zoom,
-          });
+          .data({ labelHalign: halign, labelValign: valign, labelSideX: x, labelSideY: y });
       }
     });
+    // Sizes follow every zoom step, so labels don't swell while zooming and snap back after
+    writeZoomSizes(cy);
 
     // Wrapping can differ slightly from the estimate, so check the labels as Cytoscape drew
     // them, and drop a less important one that clashes
@@ -221,6 +212,7 @@ export function keepLabelsReadable(cy: Core) {
     }
   };
 
+  keepConstantSize(cy);
   let timer: ReturnType<typeof setTimeout>;
   cy.on("viewport", () => {
     clearTimeout(timer);

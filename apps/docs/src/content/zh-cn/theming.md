@@ -80,11 +80,33 @@ export function Page({ children }: { children: ReactNode }) {
 
 `CausalRoot` 会把每种颜色都暴露为 CSS 变量，比如 `--cc-border` 和 `--cc-muted-text`，你的 CSS 也可以使用同一套主题。
 
+## 缩放时会发生什么
+
+`createCausalStyle` 的 `zoom` 选项（或 `CausalProvider` 的 `styleOptions` 中的 `zoom`）为所有标记统一设定一条规则，包括圆点、文字、线、箭头和边框。
+
+| 模式 | 放大 4 倍时，标记会 | 适合 |
+| :--- | :--- | :--- |
+| `magnify` | 变大 4 倍，像放大照片 | 整体浏览、标签在节点内部的小型图，比如 Perspectiva |
+| `balanced` | 按缩放的平方根变大 2 倍，与 Sigma.js 相同 | 两者之间 |
+| `spread` | 屏幕尺寸不变，只有节点之间的距离被拉开 | 需要放大来分开拥挤节点的密集网络，比如 Causal Explorer |
+
+```ts
+import { createCausalStyle, lightTheme } from "@cytocausal/cytoscape";
+
+export const stylesheet = createCausalStyle(lightTheme, { node: "dot", link: "straight", zoom: "spread" });
+```
+
+使用 `managedLabels` 时默认为 `spread`，否则为 `magnify`。在任何模式下，托管标签的文字都保持固定大小，以便阅读。
+
+Cytoscape 的所有尺寸都以模型单位计算，所以 `spread` 和 `balanced` 需要在每次缩放时写入对应的尺寸。`keepConstantSize(cy)` 会在每一步缩放时完成这件事，标记不会先变大再弹回原样。`keepLabelsReadable` 以及 `useCausalGraph` 的 `readableLabels` 会自动开启它。Causal Explorer 提供了一个切换按钮，可以对比这三种模式。
+
+不要混用规则。Explorer 早先的版本让线和文字保持固定，圆点却会放大，结果放大后就成了大圆点之间连着发丝般细的线。
+
 ## 线条、箭头和文字的尺寸
 
 这些默认值来自阅读 Cytoscape 3.31 的渲染代码，而不是凭感觉设定的。其中有几条规则文档里没有写，但它们决定了图看起来对不对。
 
-**尺寸以模型单位计算。** Cytoscape 文档说尺寸是"缩放为 1 时的值"。2 px 的线在缩放为 3 时会变成 6 px。小型图通常整体浏览，这样没有问题。但在需要放大查看的密集图上，线条、边框和文字都会跟着变粗变大，所以 `managedLabels` 会让它们在屏幕上保持固定尺寸。
+**尺寸以模型单位计算。** Cytoscape 文档说尺寸是"缩放为 1 时的值"。2 px 的线在缩放为 3 时会变成 6 px。小型图通常整体浏览，这样没有问题。但在需要放大查看的密集图上，线条、边框和文字都会跟着变粗变大，所以 `spread` 会让它们在屏幕上保持固定尺寸。
 
 **箭头有最小尺寸。** 渲染器画的是一个长宽均为 `0.3 × size` 的三角形，其中：
 
@@ -108,6 +130,8 @@ size = max((width × 13.37) ^ 0.9, 29) × arrow-scale
 | 密集图（`straight`） | 1 px，浅色 | 6 px | 3 px |
 | 高亮时 | 2 px，路线为 3 px | 与未高亮时相同 | 相同 |
 | `weightBySupport` | 1.5 到 7 px | 线宽超过 3 px 后随之变大 | 相同 |
+
+这些是缩放为 1 时的尺寸。使用 `spread` 时，它们在任何缩放下都不变；使用 `balanced` 时，它们按缩放的平方根变大。
 
 绘制尺寸小于 `min-zoomed-font-size` 的标签会被跳过，因为它们看不清，却仍要花时间绘制：点旁边的标签阈值为 6 px，胶囊内较小的文字为 3 px。
 

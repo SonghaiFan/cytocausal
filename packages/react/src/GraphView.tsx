@@ -14,6 +14,7 @@ import {
   isTransitioning,
   lightTheme,
   placeAround,
+  refreshLabels,
   snapshotPositions,
   toElements,
   transitionToSnapshot,
@@ -209,7 +210,10 @@ export function GraphView({
   ]);
 
   useEffect(() => {
-    cy.current?.style(stylesheet as unknown as Stylesheet);
+    if (!cy.current) return;
+    cy.current.style(stylesheet as unknown as Stylesheet);
+    // A new style can change node sizes, such as a different zoom mode, so labels move with them
+    refreshLabels(cy.current);
   }, [stylesheet]);
 
   // Keeps the graph in view when its space changes, such as on rotating a phone

@@ -13,40 +13,83 @@ export interface CausalStyleOptions {
   /**
    * For labels that are placed by code, as `keepLabelsReadable` does: only nodes with the
    * `labelled` class show one, sized and positioned by their `label…` data. Highlights don't
-   * force a label, so the placement decides what fits. Lines, arrows and borders also keep a
-   * constant size on screen, so nothing swells as people zoom in.
+   * force a label, so the placement decides what fits.
    */
   managedLabels?: boolean;
+  /**
+   * What zooming does to marks: dots, text, lines, arrows and rings, together.
+   * - `magnify` scales them all with the graph, like a photo. It suits a small diagram read whole.
+   * - `spread` keeps them a constant size on screen and only moves nodes apart. It suits a dense
+   *   network people zoom into to separate crowded nodes.
+   * - `balanced` scales them by the square root of the zoom, as Sigma.js does: zooming in 4 times
+   *   makes them twice as big.
+   * Defaults to `spread` with managed labels, else `magnify`. Managed labels keep their text a
+   * constant size in every mode. `spread` and `balanced` need `keepConstantSize`, which
+   * `keepLabelsReadable` turns on.
+   */
+  zoom?: ZoomMode;
   /** App-specific rules. They go before the interaction states, so highlights still win. */
   baseRules?: Stylesheet[];
 }
 
+export type ZoomMode = "magnify" | "balanced" | "spread";
+
+/** The zoom mode in effect, given the default for managed labels. */
+const zoomMode = ({ zoom, managedLabels }: CausalStyleOptions): ZoomMode =>
+  zoom ?? (managedLabels ? "spread" : "magnify");
+
+/** The data field `keepConstantSize` writes for a mode: 1/zoom, or 1/√zoom. */
+const FACTOR: Record<ZoomMode, string | null> = {
+  magnify: null,
+  spread: "zoomScale",
+  balanced: "zoomRoot",
+};
+
+/** Pills hold small text that's read zoomed in, so spread pills draw it larger to start with. */
+const PILL_SPREAD = 11 / 6;
+
+/** A dot's diameter in pixels: by centrality from 5 to 24, or 20. */
+const dotSize = (score: unknown, sizeByScore?: boolean) =>
+  sizeByScore ? 5 + 19 * Math.min(1, Math.max(0, Number(score) || 0)) : 20;
+
 const nodeStyles = (
   { colors }: CausalTheme,
-  { node = "pill", sizeByScore, managedLabels }: CausalStyleOptions,
+  options: CausalStyleOptions,
 ) => {
+  const { node = "pill", sizeByScore, managedLabels } = options;
+  const mode = zoomMode(options);
+  const field = FACTOR[mode];
+  const spread = field !== null;
+  const stroke = strokeOf(mode);
   if (node === "pill") {
+    const pill = (pixels: number) => (spread ? stroke(pixels * PILL_SPREAD) : `${pixels}px`);
     return {
       shape: "round-rectangle",
       width: "label",
       height: "label",
-      padding: "5px",
+      padding: pill(5),
       "background-color": colors.node,
       "border-color": colors.background,
-      "border-width": "1px",
+      "border-width": spread ? stroke(1) : "1px",
       color: colors.nodeText,
       label: "data(label)",
       "text-wrap": "wrap",
-      "text-max-width": "50px",
+      "text-max-width": pill(50),
       "text-valign": "center",
       "text-halign": "center",
-      "font-size": "6px",
+      "font-size": pill(6),
       // Text too small to see only costs time to draw, so Cytoscape skips it below this. Pill
       // text is small to begin with, so the bar is low enough to keep it in a narrow window
       "min-zoomed-font-size": 3,
     };
   }
-  const size = sizeByScore ? "mapData(score, 0, 1, 5, 24)" : 20;
+  // Dots combine two data fields, which a mapper can't, so a function sizes them
+  const size = field
+    ? (ele: { data: (key: string) => unknown }) =>
+        dotSize(ele.data("score"), sizeByScore) * (Number(ele.data(field)) || 1)
+    : sizeByScore
+      ? "mapData(score, 0, 1, 5, 24)"
+      : 20;
   return {
     width: size,
     height: size,
@@ -54,26 +97,37 @@ const nodeStyles = (
     color: colors.text,
     // Keeps labels readable where they cross a link
     "text-outline-color": colors.background,
-    "text-outline-width": 2,
+    "text-outline-width": stroke(2),
     ...(managedLabels
       ? {
           "font-size": "data(labelSize)",
           "text-max-width": "data(labelWidth)",
           "text-wrap": "wrap",
         }
-      : { label: "data(label)", "font-size": 12, "text-margin-y": -4, "min-zoomed-font-size": 6 }),
+      : {
+          label: "data(label)",
+          "font-size": stroke(12),
+          "text-margin-y": field ? `mapData(${field}, 0, ${ZOOM_RANGE}, 0, ${-4 * ZOOM_RANGE})` : -4,
+          "min-zoomed-font-size": 6,
+        }),
   };
 };
 
-/** Mappings stop at their ends, so they cover zooming out to a quarter, where `zoomScale` is 4. */
+/**
+ * Mappings stop at their ends, so they cover a factor up to 4: zooming out to a quarter for
+ * `spread`, or to a sixteenth for `balanced`.
+ */
 const ZOOM_RANGE = 4;
 
 /**
  * A line width in screen pixels when labels are managed, which also keeps text a constant size,
  * so links don't swell as people zoom in. `keepLabelsReadable` writes the `zoomScale` data.
  */
-const strokeOf = ({ managedLabels }: CausalStyleOptions) => (pixels: number) =>
-  managedLabels ? `mapData(zoomScale, 0, ${ZOOM_RANGE}, 0, ${pixels * ZOOM_RANGE})` : pixels;
+function strokeOf(mode: ZoomMode) {
+  const field = FACTOR[mode];
+  return (pixels: number) =>
+    field ? `mapData(${field}, 0, ${ZOOM_RANGE}, 0, ${pixels * ZOOM_RANGE})` : pixels;
+}
 
 /**
  * How Cytoscape sizes an arrowhead, from its renderer: a triangle `0.3 × size` long and wide, where
@@ -92,13 +146,12 @@ const scaleForArrow = (pixels: number) => pixels / (0.3 * 29);
  * keep the arrow small, because Cytoscape gives arrows a minimum size.
  */
 const arrowOf =
-  ({ managedLabels }: CausalStyleOptions) =>
+  (mode: ZoomMode) =>
   (pixels: number) => {
     const scale = Number(scaleForArrow(pixels).toFixed(3));
+    const field = FACTOR[mode];
     // Cytoscape rejects an arrow scale of 0, even as the start of a mapping, so it starts above
-    return managedLabels
-      ? `mapData(zoomScale, 0, ${ZOOM_RANGE}, 0.001, ${scale * ZOOM_RANGE})`
-      : scale;
+    return field ? `mapData(${field}, 0, ${ZOOM_RANGE}, 0.001, ${scale * ZOOM_RANGE})` : scale;
   };
 
 /** How strongly a receding link shows, as if it were drawn at this opacity. */
@@ -106,11 +159,22 @@ const RECEDING = 0.35;
 
 const linkStyles = (
   { colors }: CausalTheme,
-  { link = "flowing", weightBySupport, managedLabels }: CausalStyleOptions,
+  options: CausalStyleOptions,
 ) => {
-  const stroke = strokeOf({ managedLabels });
-  const arrow = arrowOf({ managedLabels });
-  const weight = weightBySupport ? { width: "mapData(supportShare, 0, 1, 1.5, 7)" } : {};
+  const { link = "flowing", weightBySupport } = options;
+  const mode = zoomMode(options);
+  const stroke = strokeOf(mode);
+  const arrow = arrowOf(mode);
+  const field = FACTOR[mode];
+  // Support and zoom are two data fields, which a mapper can't combine, so a function does
+  const weight = weightBySupport
+    ? {
+        width: field
+          ? (ele: { data: (key: string) => unknown }) =>
+              (1.5 + 5.5 * (Number(ele.data("supportShare")) || 0)) * (Number(ele.data(field)) || 1)
+          : "mapData(supportShare, 0, 1, 1.5, 7)",
+      }
+    : {};
   const shared = {
     "line-color": colors.link,
     "target-arrow-color": colors.link,
@@ -138,7 +202,7 @@ const linkStyles = (
     width: stroke(2),
     label: "data(label)",
     "text-outline-color": colors.background,
-    "text-outline-width": "1px",
+    "text-outline-width": field ? stroke(1) : "1px",
     ...weight,
   };
   return link === "flowing"
@@ -177,7 +241,7 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
       }
     : {};
   // A highlight recolours a link, but keeps the width that shows its support
-  const stroke = strokeOf(options);
+  const stroke = strokeOf(zoomMode(options));
   const width = (value: number) => (options.weightBySupport ? {} : { width: stroke(value) });
 
   return [

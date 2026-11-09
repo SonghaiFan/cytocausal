@@ -7,13 +7,15 @@ import {
   DepthControl,
   Legend,
   NodeSearch,
+  Segmented,
   SelectionPanel,
   SidebarHeader,
   useCausal,
   useCausalLabels,
 } from "@cytocausal/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { styleOptions } from "@/graph-style";
+import { styleOptions, ZOOM_MODES } from "@/graph-style";
+import type { ZoomMode } from "@cytocausal/cytoscape";
 
 // The largest group of loops is too big to list, so panels show the shortest ones
 const LOOP_SEARCH = { maxLength: 4, limit: 30 };
@@ -30,6 +32,8 @@ const labels = {
 export function ExplorerApp() {
   const [dataset, setDataset] = useState<CausalDataset | null>(null);
   const [failed, setFailed] = useState(false);
+  // How marks behave on zoom. Spread suits this dense a graph; the others are here to compare
+  const [zoom, setZoom] = useState<ZoomMode>("spread");
 
   useEffect(() => {
     fetch(process.env.NEXT_PUBLIC_EXPLORER_DATA ?? "/dataset.json")
@@ -44,17 +48,19 @@ export function ExplorerApp() {
     <CausalProvider
       dataset={dataset}
       labels={labels}
-      styleOptions={styleOptions}
+      styleOptions={styleOptions[zoom]}
       graphOptions={GRAPH_OPTIONS}
       shareInUrl
       className="cc-workspace h-screen"
     >
-      <Explorer />
+      <Explorer zoom={zoom} onZoomChange={setZoom} />
     </CausalProvider>
   );
 }
 
-function Explorer() {
+const zoomName = (mode: ZoomMode) => mode.charAt(0).toUpperCase() + mode.slice(1);
+
+function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode: ZoomMode) => void }) {
   const text = useCausalLabels();
   const { dataset, snapshot, graph, scheme, toggleScheme, exportImage, copyLink, copied } =
     useCausal();
@@ -100,6 +106,13 @@ function Explorer() {
             Show only feedback loops
           </label>
           <div className="cc-buttons">
+            <Segmented
+              label="Zoom"
+              options={ZOOM_MODES}
+              value={zoom}
+              onChange={onZoomChange}
+              format={zoomName}
+            />
             <button type="button" className="cc-button" onClick={exportImage}>
               {text.exportImage}
             </button>

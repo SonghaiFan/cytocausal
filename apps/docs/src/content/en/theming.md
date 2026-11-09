@@ -80,11 +80,33 @@ export function Page({ children }: { children: ReactNode }) {
 
 `CausalRoot` exposes every colour as a CSS variable, such as `--cc-border` and `--cc-muted-text`, so your own CSS can use the same theme.
 
+## What zooming does
+
+`zoom` in `createCausalStyle`, or in `styleOptions` on `CausalProvider`, sets one rule for every mark at once: dots, text, lines, arrows and rings.
+
+| Mode | Zooming in 4 times makes marks | Suits |
+| :--- | :--- | :--- |
+| `magnify` | 4 times bigger, like a photo | A small diagram read whole, with labels inside nodes, such as Perspectiva |
+| `balanced` | 2 times bigger, by the square root of the zoom, as Sigma.js does | Somewhere between |
+| `spread` | The same size on screen, while nodes move apart | A dense network people zoom into to separate crowded nodes, such as Causal Explorer |
+
+```ts
+import { createCausalStyle, lightTheme } from "@cytocausal/cytoscape";
+
+export const stylesheet = createCausalStyle(lightTheme, { node: "dot", link: "straight", zoom: "spread" });
+```
+
+The default is `spread` with `managedLabels`, and `magnify` otherwise. Managed labels keep their text a constant size in every mode, so it stays readable.
+
+Cytoscape sizes everything in model units, so `spread` and `balanced` need the size written for each zoom. `keepConstantSize(cy)` does that on every zoom step, so marks don't swell and snap back. `keepLabelsReadable`, and `readableLabels` in `useCausalGraph`, turn it on for you. Causal Explorer has a switch for comparing the three.
+
+Don't mix rules. An earlier version of Explorer kept lines and text constant but let dots magnify, so zooming in gave large dots joined by hairlines.
+
 ## Line, arrow and text sizes
 
 These defaults come from reading Cytoscape 3.31's renderer, not from guessing. A few of its rules aren't in its documentation, and they decide what looks right.
 
-**Sizes are in model units.** Cytoscape's docs say sizes are "as specified at zoom 1". A 2 px line is 6 px wide at zoom 3. That suits a small diagram, which you look at whole. On a dense graph that people zoom into, lines, rings and text would swell, so `managedLabels` keeps them a constant size on screen instead.
+**Sizes are in model units.** Cytoscape's docs say sizes are "as specified at zoom 1". A 2 px line is 6 px wide at zoom 3. That suits a small diagram, which you look at whole. On a dense graph that people zoom into, lines, rings and text would swell, so `spread` keeps them a constant size on screen instead.
 
 **Arrows have a minimum size.** The renderer draws a triangle `0.3 × size` long and wide, where:
 
@@ -108,6 +130,8 @@ Below a line width of about 3, the arrow ignores the line and depends on `arrow-
 | Dense graphs (`straight`) | 1 px, pale | 6 px | 3 px |
 | Highlighted | 2 px, or 3 px for a route | Same as unhighlighted | Same |
 | `weightBySupport` | 1.5 to 7 px | Grows with lines over 3 px | Same |
+
+These are sizes at zoom 1. With `spread` they hold at every zoom, and with `balanced` they grow by the square root of the zoom.
 
 Labels drawn smaller than `min-zoomed-font-size` are skipped, as they can't be read and still cost time: 6 px for labels beside dots, and 3 px for the smaller text inside pills.
 

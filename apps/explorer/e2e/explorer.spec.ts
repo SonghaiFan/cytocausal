@@ -162,13 +162,14 @@ test("node size shows directed centrality", async ({ page }) => {
     `const sorted = cy.nodes().sort((a, b) => b.data("score") - a.data("score"));
      return {
        highest: sorted[0].id(),
-       top: sorted[0].width(),
-       zero: cy.nodes().filter((n) => n.data("score") === 0)[0].width(),
+       top: sorted[0].renderedWidth(),
+       zero: cy.nodes().filter((n) => n.data("score") === 0)[0].renderedWidth(),
      };`,
   );
   expect(sizes.highest).toBe(first.id);
-  expect(sizes.top).toBe(24);
-  expect(sizes.zero).toBe(5);
+  // In pixels on screen, which spread zoom keeps constant
+  expect(sizes.top).toBeCloseTo(24, 1);
+  expect(sizes.zero).toBeCloseTo(5, 1);
 });
 
 test("feedback loops can be isolated", async ({ page }) => {
@@ -340,4 +341,46 @@ test("a highlight labels what it reaches without stacking labels", async ({ page
   );
   expect(ring).toBeCloseTo(3, 0);
   expect((await measure()).overlapping).toBe(0);
+});
+
+test("each zoom mode changes marks by its own rule", async ({ page }) => {
+  await ready(page);
+  const sizes = () =>
+    withCy<{ dot: number; line: number; text: number }>(
+      page,
+      `const node = cy.nodes().max((n) => n.data("score")).ele;
+       const labelled = cy.nodes(".labelled")[0];
+       return {
+         dot: node.renderedWidth(),
+         line: parseFloat(cy.edges()[0].style("width")) * cy.zoom(),
+         text: parseFloat(labelled.style("font-size")) * cy.zoom(),
+       };`,
+    );
+  const zoomedBy = async (factor: number) => {
+    await withCy(page, "cy.fit();");
+    await page.waitForTimeout(300);
+    const before = await sizes();
+    await withCy(page, `cy.zoom({ level: cy.zoom() * ${factor}, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });`);
+    await page.waitForTimeout(300);
+    const after = await sizes();
+    return { dot: after.dot / before.dot, line: after.line / before.line, text: after.text / before.text };
+  };
+
+  // Spread is the default: nothing changes size on screen
+  const spread = await zoomedBy(4);
+  expect(spread.dot).toBeCloseTo(1, 1);
+  expect(spread.line).toBeCloseTo(1, 1);
+
+  await page.getByRole("button", { name: "Balanced", exact: true }).click();
+  const balanced = await zoomedBy(4);
+  expect(balanced.dot).toBeCloseTo(2, 1);
+  expect(balanced.line).toBeCloseTo(2, 1);
+
+  await page.getByRole("button", { name: "Magnify", exact: true }).click();
+  const magnify = await zoomedBy(4);
+  expect(magnify.dot).toBeCloseTo(4, 1);
+  expect(magnify.line).toBeCloseTo(4, 1);
+
+  // Managed labels stay readable in every mode
+  for (const mode of [spread, balanced, magnify]) expect(mode.text).toBeCloseTo(1, 1);
 });
