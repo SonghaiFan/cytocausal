@@ -4,11 +4,12 @@
   --cc-border: #e5e5e5;
   --cc-text: #2f2e2c;
   --cc-muted-text: #737373;
-  --cc-node-text: #050505;
-  --cc-cause: #2f2e2c;
-  --cc-effect: #679bf1;
-  --cc-reinforcing: #ffc40a;
-  --cc-balancing: #679bf1;
+  --cc-node: #ebeae6;
+  --cc-node-text: #2f2e2c;
+  --cc-link: #8e9196;
+  --cc-ink: #2f2e2c;
+  --cc-accent: #ffc40a;
+  --cc-accent-line: #a87900;
 
   /* These follow ROC UI's tokens when the page has them. */
   --cc-radius-surface: var(--roc-radius-surface, 12px);
@@ -38,11 +39,10 @@
 .cc-spread { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
 .cc-heading { margin: 0 0 8px; font-size: var(--cc-text-body); font-weight: 550; }
 .cc-muted { margin: 4px 0; color: var(--cc-muted-text); font-size: 12px; }
-.cc-cause::before, .cc-effect::before {
-  content: ""; display: inline-block; width: .625rem; height: .625rem; margin-right: 6px; border-radius: 50%;
-}
-.cc-cause::before { background: var(--cc-cause); }
-.cc-effect::before { background: var(--cc-effect); }
+/* Direction, not colour, tells causes from effects */
+.cc-cause::before, .cc-effect::before { margin-right: 6px; color: var(--cc-muted-text); font-weight: 400; }
+.cc-cause::before { content: "←"; }
+.cc-effect::before { content: "→"; }
 .cc-issues { margin: 0; color: var(--cc-text); white-space: pre-wrap; }
 
 .cc-input {
@@ -63,12 +63,9 @@
 .cc-quote { display: block; }
 
 .cc-badge {
-  display: inline-flex; align-items: center; margin-right: 6px; padding: 1px 9px; border-radius: 999px;
-  color: var(--cc-node-text); font-size: 11px; line-height: 1.4;
+  display: inline-flex; align-items: center; gap: 3px; margin-right: 6px; padding: 0 8px; border: 1px solid var(--cc-border);
+  border-radius: 999px; color: var(--cc-text); font-size: 11px; line-height: 1.5;
 }
-.cc-badge-reinforcing { background: var(--cc-reinforcing); }
-.cc-badge-balancing { background: var(--cc-balancing); }
-.cc-badge-positive, .cc-badge-negative { border: 1px solid var(--cc-border); color: var(--cc-text); }
 .cc-statement + .cc-statement { margin-top: 6px; }
 .cc-end { font-size: inherit; font-weight: inherit; color: inherit; }
 .cc-support { margin-left: 6px; color: var(--cc-muted-text); font-size: 12px; }
@@ -135,7 +132,7 @@
 
 .cc-legend { display: flex; flex-wrap: wrap; gap: .25rem 1rem; margin: 0; padding: 0; list-style: none; }
 .cc-legend li { display: flex; align-items: center; gap: .375rem; }
-.cc-swatch { width: .75rem; height: .75rem; border-radius: 50%; }
+.cc-swatch { box-sizing: border-box; width: .75rem; height: .75rem; border-radius: 3px; }
 
 .cc-zoom { position: absolute; right: .75rem; bottom: .75rem; display: flex; flex-direction: column; gap: .375rem; }
 .cc-zoom .cc-button { width: var(--cc-control-height); height: var(--cc-control-height); padding: 0; }
@@ -168,3 +165,4 @@
   .cc-sidebar { flex-basis: 100%; max-height: none; border-top: 1px solid var(--cc-border); border-left: 0; }
 }
 .cc-layout-select { width: auto; height: var(--cc-control-height); }
+.cc-glyph { display: inline-flex; justify-content: center; min-width: .75rem; font-weight: 600; }

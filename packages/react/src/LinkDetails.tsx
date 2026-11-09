@@ -33,7 +33,7 @@ function Statement({ link, labels }: { link: CausalEdge; labels: CausalLabels })
     <div className="cc-block">
       <h4 className="cc-heading">
         {polarityName(labels, link) && (
-          <span className={`cc-badge cc-badge-${link.polarity}`}>{polarityName(labels, link)}</span>
+          <span className="cc-badge">{polarityName(labels, link)}</span>
         )}
         {labels.support(supportOf(link))}
       </h4>

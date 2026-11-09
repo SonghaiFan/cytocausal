@@ -88,7 +88,7 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `LoopList` | 反馈回路，并标记增强或平衡 |
 | `VersionDiff` | 两个快照之间的变化 |
 | `DepthControl` | 高亮的延伸范围 |
-| `Legend` | 颜色说明 |
+| `Legend` | 图中标记的说明：色块、轮廓或符号 |
 | `ZoomControls` | 缩放和适应按钮 |
 | `Segmented` | 从几个选项中选一个，显示为相连的按钮 |
 | `SidebarHeader` | 标题、副标题、链接和深浅色切换 |

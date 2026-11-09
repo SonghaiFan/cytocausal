@@ -4,7 +4,24 @@ title: "Themes and styles"
 
 # Themes and styles
 
-A theme sets the colours, font and motion for both the graph and the page around it. Colours are named for what they mean, such as `cause` and `reinforcing`, so changing one updates it everywhere.
+A theme sets the colours, font and motion for both the graph and the page around it. Colours are named for what they mean, such as `ink` and `accent`, so changing one updates it everywhere.
+
+## One hue, one meaning
+
+Colour is the strongest channel a graph has, so it's used for one thing only. The accent, the only hue, marks what the reader chose to look at: a selected node, and a highlighted loop, path or link. Everything at rest is neutral, so a graph has no hue until someone asks it a question. Every other meaning uses another channel:
+
+| Meaning | Channel |
+| :--- | :--- |
+| What the reader chose | The accent: `accent` fills, `accentLine` for lines |
+| What it causes and leads to | Contrast: they keep full `ink`, and the rest fades. Arrows tell causes from effects |
+| Polarity | Line style, solid or dashed, and a `+` or `−` sign |
+| How many people stated a link | Line width |
+| Reinforcing or balancing loop | A glyph, `R` or `B`, the usual system dynamics marks |
+| Added or removed in a version | Solid ink, or a pale dashed outline |
+
+Causes and effects used to be told apart by colour, and loop types by two more. Seven meanings shared two hues, so blue meant an effect in one place, a balancing loop in another and something new in a third. A reader can't learn a colour that changes its meaning.
+
+If your data has a category of its own, use outlines or glyphs for it, as Perspectiva does for its annotations. Spending a second hue on it would compete with the accent. A test checks that every colour but the accent is neutral.
 
 ## Change colours
 
@@ -16,7 +33,7 @@ import { createCausalStyle, lightTheme, type CausalTheme } from "@cytocausal/cyt
 export const theme: CausalTheme = {
   ...lightTheme,
   name: "my-theme",
-  colors: { ...lightTheme.colors, node: "#0f766e", cause: "#b45309" },
+  colors: { ...lightTheme.colors, accent: "#2f80ed", accentLine: "#1b5fc1" },
 };
 
 export const stylesheet = createCausalStyle(theme, {
@@ -50,7 +67,7 @@ import { createCausalStyle, lightTheme } from "@cytocausal/cytoscape";
 import type { Stylesheet } from "cytoscape";
 
 const statusRules = [
-  { selector: 'node[status = "new"]', style: { "background-color": lightTheme.colors.added } },
+  { selector: 'node[status = "new"]', style: { "border-width": 2, "border-color": lightTheme.colors.ink } },
 ] as unknown as Stylesheet[];
 
 export const stylesheet = createCausalStyle(lightTheme, { baseRules: statusRules });

@@ -65,7 +65,10 @@ export function LoopList({
               <li key={loop.edges.join()}>
                 <RouteButton route={loop} active={active} onToggle={onToggle} onPreview={onPreview}>
                   {loop.type !== "unknown" && (
-                    <span className={`cc-badge cc-badge-${loop.type}`}>{labels[loop.type]}</span>
+                    <span className="cc-badge" title={labels[loop.type]}>
+                      <strong>{loop.type === "reinforcing" ? labels.reinforcingMark : labels.balancingMark}</strong>{" "}
+                      {labels[loop.type]}
+                    </span>
                   )}
                   {[...loop.nodes, loop.nodes[0]].map(labelOf).join(" → ")}
                 </RouteButton>

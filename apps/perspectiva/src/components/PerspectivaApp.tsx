@@ -44,7 +44,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import datasetsJson from "../../data/datasets.json";
 import { NodeTooltip } from "@/components/NodeTooltip";
-import { annotations, graphStyles } from "@/graph-style";
+import { annotationLegend, graphStyles } from "@/graph-style";
 
 const datasets = datasetsJson as CausalDataset[];
 const LEFT = "V1";
@@ -255,13 +255,10 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
             bare
             support={combined}
             items={[
-              { label: labels.causes, color: "var(--cc-cause)" },
-              { label: labels.effects, color: "var(--cc-effect)" },
+              { label: labels.selected, color: "var(--cc-accent)" },
+              { label: labels.linked, color: "var(--cc-ink)", mark: "ring" as const },
               // Annotations belong to each participant's diagram, so the combined map has none
-              ...(combined ? [] : annotations).map(({ label, color }) => ({
-                label,
-                color: theme.colors[color],
-              })),
+              ...(combined ? [] : annotationLegend),
             ]}
           />
           <DepthControl

@@ -58,6 +58,11 @@ export interface CausalLabels {
   supportLegend: string;
   disagreement: string;
   layout: string;
+  /** The usual system dynamics marks for loop types. */
+  reinforcingMark: string;
+  balancingMark: string;
+  selected: string;
+  linked: string;
 }
 
 export const defaultLabels: CausalLabels = {
@@ -116,6 +121,10 @@ export const defaultLabels: CausalLabels = {
   supportLegend: "Thicker links: stated by more people",
   disagreement: "People disagree on this link's polarity",
   layout: "Layout",
+  reinforcingMark: "R",
+  balancingMark: "B",
+  selected: "Selected",
+  linked: "Causes and effects",
 };
 
 const LabelsContext = createContext(defaultLabels);

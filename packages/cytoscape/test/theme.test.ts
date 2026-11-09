@@ -14,6 +14,24 @@ const luminance = (hex: string) => {
   return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
 };
 
+/** HSL saturation and hue of a six-digit hex colour. */
+const hsl = (hex: string) => {
+  const [r, g, b] = [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16) / 255);
+  const [max, min] = [Math.max(r, g, b), Math.min(r, g, b)];
+  const lightness = (max + min) / 2;
+  const delta = max - min;
+  const sat = delta === 0 ? 0 : delta / (1 - Math.abs(2 * lightness - 1));
+  let degrees = 0;
+  if (delta > 0) {
+    if (max === r) degrees = 60 * (((g - b) / delta) % 6);
+    else if (max === g) degrees = 60 * ((b - r) / delta + 2);
+    else degrees = 60 * ((r - g) / delta + 4);
+  }
+  return { saturation: sat, hue: (degrees + 360) % 360 };
+};
+const saturation = (hex: string) => hsl(hex).saturation;
+const hue = (hex: string) => hsl(hex).hue;
+
 const contrast = (a: string, b: string) => {
   const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (light + 0.05) / (dark + 0.05);
@@ -30,25 +48,26 @@ for (const theme of [lightTheme, darkTheme]) {
     assert.ok(contrast(colors.nodeText, colors.node) >= 4.5, "text on a node");
   });
 
-  test(`${theme.name}: lines that stand alone stand out from the background`, () => {
-    for (const mark of ["link", "focus", "cause", "conflict"] as const) {
+  test(`${theme.name}: marks stand out from the background`, () => {
+    for (const mark of ["link", "ink", "accentLine"] as const) {
       assert.ok(contrast(colors[mark], colors.background) >= 3, mark);
     }
+    assert.ok(contrast(colors.ink, colors.background) >= 4.5, "ink reads as text");
   });
 
   test(`${theme.name}: labels stay readable on every fill`, () => {
-    const fills = ["node", "cause", "effect", "added", "conflict", "clarification"] as const;
-    for (const fill of fills) {
+    for (const fill of ["node", "accent", "ink"] as const) {
       assert.ok(contrast(textOn(colors[fill]), colors[fill]) >= 4.5, fill);
-    }
-    for (const badge of ["reinforcing", "balancing"] as const) {
-      assert.ok(contrast(colors.nodeText, colors[badge]) >= 4.5, badge);
     }
   });
 
-  test(`${theme.name}: causes and effects are told apart`, () => {
-    assert.notEqual(colors.cause, colors.effect);
-    assert.notEqual(colors.reinforcing, colors.balancing);
+  test(`${theme.name}: only the accent has a hue`, () => {
+    const { accent, accentLine, ...neutrals } = colors;
+    for (const [name, value] of Object.entries(neutrals)) {
+      assert.ok(saturation(value) < 0.12, `${name} ${value} should be neutral`);
+    }
+    assert.ok(saturation(accent) > 0.5 && saturation(accentLine) > 0.5, "the accent is a clear hue");
+    assert.ok(Math.abs(hue(accent) - hue(accentLine)) < 10, "both accents share one hue");
   });
 }
 

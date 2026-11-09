@@ -4,7 +4,24 @@ title: "主题与样式"
 
 # 主题与样式
 
-主题决定图和周围页面的颜色、字体和动效。颜色按含义命名，比如 `cause` 和 `reinforcing`，改一处，所有地方都会更新。
+主题决定图和周围页面的颜色、字体和动效。颜色按含义命名，比如 `ink` 和 `accent`，改一处，所有地方都会更新。
+
+## 一种色相，一种含义
+
+颜色是图中最强的视觉通道，所以只用来表示一件事。强调色是唯一的色相，标出读者选择查看的内容：选中的节点，以及高亮的回路、路径或连线。静止时一切都是中性色，所以在有人提问之前，图上没有任何色相。其他含义都用别的通道表示：
+
+| 含义 | 通道 |
+| :--- | :--- |
+| 读者选择的内容 | 强调色：填充用 `accent`，线条用 `accentLine` |
+| 它的原因和结果 | 对比度：它们保持完整的 `ink`，其余部分变淡。用箭头区分原因和结果 |
+| 极性 | 线型（实线或虚线），以及 `+` 或 `−` 符号 |
+| 提出某条连线的人数 | 线宽 |
+| 增强回路或平衡回路 | 符号 `R` 或 `B`，系统动力学中通用的标记 |
+| 版本中新增或删除的内容 | 实心墨色，或浅色的虚线轮廓 |
+
+以前原因和结果用颜色区分，回路类型又用了另外两种颜色。七种含义共用两种色相，于是蓝色在一处表示结果，在另一处表示平衡回路，在第三处又表示新增内容。含义随处变化的颜色，读者是学不会的。
+
+如果你的数据有自己的分类，请用轮廓或符号来表示，就像 Perspectiva 处理它的标注那样。为它再用一种色相，会和强调色争夺注意力。有一项测试会检查除强调色外的所有颜色都是中性色。
 
 ## 修改颜色
 
@@ -16,7 +33,7 @@ import { createCausalStyle, lightTheme, type CausalTheme } from "@cytocausal/cyt
 export const theme: CausalTheme = {
   ...lightTheme,
   name: "my-theme",
-  colors: { ...lightTheme.colors, node: "#0f766e", cause: "#b45309" },
+  colors: { ...lightTheme.colors, accent: "#2f80ed", accentLine: "#1b5fc1" },
 };
 
 export const stylesheet = createCausalStyle(theme, {
@@ -50,7 +67,7 @@ import { createCausalStyle, lightTheme } from "@cytocausal/cytoscape";
 import type { Stylesheet } from "cytoscape";
 
 const statusRules = [
-  { selector: 'node[status = "new"]', style: { "background-color": lightTheme.colors.added } },
+  { selector: 'node[status = "new"]', style: { "border-width": 2, "border-color": lightTheme.colors.ink } },
 ] as unknown as Stylesheet[];
 
 export const stylesheet = createCausalStyle(lightTheme, { baseRules: statusRules });

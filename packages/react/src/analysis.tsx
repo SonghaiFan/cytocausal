@@ -12,7 +12,7 @@ import type { Route } from "@cytocausal/cytoscape";
 import { useMemo, type ReactNode } from "react";
 import { required, useOptionalCausal } from "./CausalProvider.tsx";
 import type { useCausalGraph } from "./useCausalGraph.ts";
-import { Segmented } from "./controls.tsx";
+import { Segmented, Swatch } from "./controls.tsx";
 import { useCausalLabels } from "./labels.tsx";
 import { LinkDetails } from "./LinkDetails.tsx";
 import { NodeDetails } from "./NodeDetails.tsx";
@@ -320,11 +320,11 @@ function Differences({
       {shown && (
         <ul className="cc-legend">
           <li>
-            <span className="cc-swatch" style={{ background: "var(--cc-added)" }} />
+            <Swatch color="var(--cc-ink)" />
             {labels.added}
           </li>
           <li>
-            <span className="cc-swatch" style={{ background: "var(--cc-conflict)" }} />
+            <Swatch color="var(--cc-link)" mark="dashed" />
             {labels.removed}
           </li>
         </ul>

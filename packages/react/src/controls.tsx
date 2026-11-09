@@ -172,10 +172,27 @@ export function LayoutSwitcher({
 
 export interface LegendItem {
   label: string;
+  /** The swatch's colour, a CSS colour or variable. */
   color: string;
+  /**
+   * How the swatch draws it: `fill` (the default), `ring` for an outline, `dashed` or `dotted`
+   * for a broken outline. Shapes and outlines say more without another hue.
+   */
+  mark?: "fill" | "ring" | "dashed" | "dotted";
+  /** A character shown instead of a swatch, for what the graph marks with a glyph. */
+  glyph?: string;
 }
 
-/** A colour key. Shows causes and effects unless given other items. */
+/** One legend swatch, filled or outlined. */
+export function Swatch({ color, mark = "fill" }: Pick<LegendItem, "color" | "mark">) {
+  const style =
+    mark === "fill"
+      ? { background: color }
+      : { border: `2px ${mark === "ring" ? "solid" : mark} ${color}`, background: "var(--cc-node)" };
+  return <span className="cc-swatch" style={style} aria-hidden="true" />;
+}
+
+/** A key to what's drawn. Shows what's selected and what it links to unless given other items. */
 export function Legend({
   items,
   title,
@@ -193,19 +210,26 @@ export function Legend({
 }) {
   const labels = useCausalLabels();
   const causal = useOptionalCausal();
-  const shown = items ?? [
-    { label: labels.causes, color: "var(--cc-cause)" },
-    { label: labels.effects, color: "var(--cc-effect)" },
+  const shown: LegendItem[] = items ?? [
+    { label: labels.selected, color: "var(--cc-accent)" },
+    { label: labels.linked, color: "var(--cc-ink)", mark: "ring" },
   ];
   const weighted = support ?? Boolean(causal?.styleOptions?.weightBySupport);
   return (
     <section className={`${bare ? "" : "cc-panel"} ${className}`}>
       {title && <h3 className="cc-heading">{title}</h3>}
       <ul className="cc-legend">
-        {shown.map(({ label, color }) => (
+        {shown.map(({ label, color, mark, glyph }) => (
           <li key={label}>
-            <span className="cc-swatch" style={{ background: color }} />
+            {glyph && !mark ? (
+              <span className="cc-glyph" aria-hidden="true">
+                {glyph}
+              </span>
+            ) : (
+              <Swatch color={color} mark={mark} />
+            )}
             {label}
+            {glyph && mark && <span className="cc-glyph" aria-hidden="true">{glyph}</span>}
           </li>
         ))}
         {weighted && (

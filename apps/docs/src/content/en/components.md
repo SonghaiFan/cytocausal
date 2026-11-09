@@ -88,7 +88,7 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `LoopList` | Feedback loops, marked reinforcing or balancing |
 | `VersionDiff` | What changed between two snapshots |
 | `DepthControl` | How far a highlight reaches |
-| `Legend` | A colour key |
+| `Legend` | A key to what the graph draws: swatches, outlines or glyphs |
 | `ZoomControls` | Zoom and fit buttons |
 | `Segmented` | One choice from a few options, as joined buttons |
 | `SidebarHeader` | A title, subtitle, links and the light and dark switch |

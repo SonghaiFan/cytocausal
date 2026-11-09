@@ -93,7 +93,8 @@ const nodeStyles = (
   return {
     width: size,
     height: size,
-    "background-color": colors.node,
+    // A pale dot would vanish against the page, so dots take the link grey
+    "background-color": colors.link,
     color: colors.text,
     // Keeps labels readable where they cross a link
     "text-outline-color": colors.background,
@@ -244,6 +245,11 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     : {};
   // A highlight recolours a link, but keeps the width that shows its support
   const stroke = strokeOf(zoomMode(options));
+  // A neighbour is brought forward by contrast alone: an ink ring on a pill, or an ink dot
+  const linked =
+    node === "pill"
+      ? { "border-width": stroke(1.5), "border-color": colors.ink }
+      : { "background-color": colors.ink };
   const width = (value: number) => (options.weightBySupport ? {} : { width: stroke(value) });
 
   return [
@@ -260,52 +266,47 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     ...(link === "straight"
       ? [{ selector: "edge.dimmed", style: { "line-color": colors.link, "target-arrow-color": colors.link } }]
       : []),
+    // What the reader chose takes the one hue
     {
       selector: "node.focus",
       style: {
+        ...onColour(colors.accent),
+        "background-color": colors.accent,
         "border-width": stroke(node === "pill" ? 2 : 3),
-        "border-color": colors.focus,
+        "border-color": colors.ink,
         "z-index": 10,
       },
     },
-    {
-      selector: "node.cause",
-      style: {
-        ...onColour(colors.cause),
-        "background-color": colors.cause,
-        "z-index": 9,
-      },
-    },
-    {
-      selector: "node.effect",
-      style: {
-        ...onColour(colors.effect),
-        "background-color": colors.effect,
-        "z-index": 9,
-      },
-    },
-    { selector: "edge.cause-link", style: { ...highlight(colors.cause), ...width(2) } },
-    { selector: "edge.effect-link", style: { ...highlight(colors.effect), ...width(2) } },
-    {
-      selector: "node.route-node",
-      style: { "border-width": stroke(2), "border-color": colors.focus, "z-index": 9 },
-    },
-    { selector: "edge.route-link", style: { ...highlight(colors.focus), ...width(3) } },
+    // What it causes and what it leads to come forward in ink, told apart by their arrows
+    { selector: "node.cause, node.effect", style: { ...linked, "z-index": 9 } },
+    { selector: "edge.cause-link, edge.effect-link", style: { ...highlight(colors.ink), ...width(2) } },
+    { selector: "node.route-node", style: { ...linked, "z-index": 9 } },
+    { selector: "edge.route-link", style: { ...highlight(colors.accentLine), ...width(3) } },
     { selector: ".outside-loops", style: { display: "none" } },
     { selector: ".contributor-hidden", style: { display: "none" } },
+    // What's new is solid ink, and what's gone is a pale ghost with a dashed outline
     {
       selector: "node.diff-added",
-      style: { ...onColour(colors.added), "background-color": colors.added },
+      style: { ...onColour(colors.ink), "background-color": colors.ink },
     },
     {
       selector: "node.diff-removed",
-      style: { ...onColour(colors.conflict), "background-color": colors.conflict },
+      style: {
+        "background-opacity": 0,
+        "border-style": "dashed",
+        "border-color": colors.link,
+        "border-width": stroke(1.5),
+        ...(node === "pill" ? { color: colors.mutedText } : {}),
+      },
     },
-    { selector: "edge.diff-added", style: { ...highlight(colors.added), ...width(3) } },
-    { selector: "edge.diff-removed", style: { ...highlight(colors.conflict), ...width(3) } },
+    { selector: "edge.diff-added", style: { ...highlight(colors.ink), ...width(3) } },
+    {
+      selector: "edge.diff-removed",
+      style: { ...highlight(mix(colors.link, colors.background, RECEDING)), ...width(3) },
+    },
     {
       selector: "node.keyboard-cursor",
-      style: { "outline-width": stroke(3), "outline-color": colors.focus, "outline-offset": stroke(3) },
+      style: { "outline-width": stroke(3), "outline-color": colors.ink, "outline-offset": stroke(3) },
     },
   ] as unknown as Stylesheet[];
 }

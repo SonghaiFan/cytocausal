@@ -1,21 +1,27 @@
+/**
+ * Colours for a causal graph and the page around it. One hue only, the accent, and it means one
+ * thing: what the reader has chosen to look at. Everything else is neutral, and other meanings
+ * use other channels: emphasis is contrast, polarity is line style, support is line width, loop
+ * type is a glyph, and cause or effect is the arrow.
+ */
 export interface CausalColors {
   background: string;
   surface: string;
   border: string;
   text: string;
   mutedText: string;
+  /** Fill of a node that holds its label. */
   node: string;
   /** Text on top of a node, for node styles that hold their label inside. */
   nodeText: string;
+  /** Links, and dots, at rest. */
   link: string;
-  focus: string;
-  cause: string;
-  effect: string;
-  reinforcing: string;
-  balancing: string;
-  added: string;
-  conflict: string;
-  clarification: string;
+  /** The strongest neutral: what a highlight brings forward, rings, and what's new. */
+  ink: string;
+  /** The one hue: fills what the reader chose, such as a selected node. */
+  accent: string;
+  /** The accent for lines and rings, dark enough to stand out against the background. */
+  accentLine: string;
 }
 
 /** Durations in milliseconds. */
@@ -46,10 +52,8 @@ const shared = {
 };
 
 const palette = {
-  blue: "#679bf1",
-  lightBlue: "#8ab9f1",
-  paleYellow: "#f8de7e",
   yellow: "#ffc40a",
+  amber: "#a87900",
   charcoal: "#2f2e2c",
   black: "#050505",
 };
@@ -63,17 +67,12 @@ export const lightTheme: CausalTheme = {
     border: "#e5e5e5",
     text: palette.charcoal,
     mutedText: "#737373",
-    node: palette.yellow,
-    nodeText: palette.black,
+    node: "#ebeae6",
+    nodeText: palette.charcoal,
     link: "#8e9196",
-    focus: palette.black,
-    cause: palette.charcoal,
-    effect: palette.blue,
-    reinforcing: palette.yellow,
-    balancing: palette.blue,
-    added: palette.lightBlue,
-    conflict: palette.black,
-    clarification: palette.paleYellow,
+    ink: palette.charcoal,
+    accent: palette.yellow,
+    accentLine: palette.amber,
   },
 };
 
@@ -86,17 +85,12 @@ export const darkTheme: CausalTheme = {
     border: "#3b3a38",
     text: "#f5f5f3",
     mutedText: "#a3a29f",
-    node: palette.yellow,
-    nodeText: palette.black,
+    node: "#2e2d2b",
+    nodeText: "#f5f5f3",
     link: "#8e9196",
-    focus: "#ffffff",
-    cause: palette.paleYellow,
-    effect: palette.blue,
-    reinforcing: palette.yellow,
-    balancing: palette.blue,
-    added: palette.lightBlue,
-    conflict: "#f5f5f3",
-    clarification: palette.paleYellow,
+    ink: "#f5f5f3",
+    accent: palette.yellow,
+    accentLine: palette.yellow,
   },
 };
 
