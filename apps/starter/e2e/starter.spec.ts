@@ -592,3 +592,67 @@ test("layouts can be switched, and flow runs causes into effects", async ({ page
     expect(Math.hypot(back[id].x - x, back[id].y - y), id).toBeLessThan(1);
   }
 });
+
+/** What makes the drawn graph hard to read: overlapping nodes, and links running through nodes. */
+const clutter = (page: Page) =>
+  page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    const cy = div._cyreg.cy;
+    const boxes = cy.nodes(":visible").map((n: any) => ({ n, b: n.boundingBox({ includeLabels: false }) }));
+    let overlaps = 0;
+    boxes.forEach((a: any, i: number) =>
+      boxes.slice(i + 1).forEach((c: any) => {
+        if (a.b.x1 < c.b.x2 && c.b.x1 < a.b.x2 && a.b.y1 < c.b.y2 && c.b.y1 < a.b.y2) overlaps++;
+      }),
+    );
+    let through = 0;
+    cy.edges().forEach((e: any) => {
+      const s = e.sourceEndpoint();
+      const t = e.targetEndpoint();
+      const c = e.controlPoints()?.[0];
+      const points = Array.from({ length: 17 }, (_, i) => {
+        const k = i / 16;
+        const u = 1 - k;
+        return c
+          ? { x: u * u * s.x + 2 * u * k * c.x + k * k * t.x, y: u * u * s.y + 2 * u * k * c.y + k * k * t.y }
+          : { x: s.x + (t.x - s.x) * k, y: s.y + (t.y - s.y) * k };
+      });
+      const hit = boxes.some(
+        ({ n, b }: any) =>
+          n !== e.source() && n !== e.target() && points.some((p) => p.x > b.x1 && p.x < b.x2 && p.y > b.y1 && p.y < b.y2),
+      );
+      if (hit) through++;
+    });
+    return { overlaps, through };
+  });
+
+const settle = async (page: Page) => {
+  let previous = "";
+  await expect
+    .poll(async () => {
+      const now = await page.evaluate(() => {
+        const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+        const cy = div._cyreg.cy;
+        if (cy.animated() || cy.nodes().some((n: any) => n.animated())) return "moving";
+        return JSON.stringify(cy.nodes().map((n: any) => [Math.round(n.position().x), Math.round(n.position().y)]));
+      });
+      const done = now !== "moving" && now === previous;
+      previous = now;
+      return done;
+    })
+    .toBe(true);
+};
+
+test("no layout packs nodes into each other, however they're switched", async ({ page }) => {
+  await openFinal(page);
+  // Each order matters: a layout used to be squeezed into the space the last one filled
+  for (const name of ["Flow", "Hubs", "Flow", "Force", "Hubs", "Force"]) {
+    await page.getByRole("button", { name, exact: true }).click();
+    await settle(page);
+    const { overlaps, through } = await clutter(page);
+    expect(overlaps, `${name}: overlapping nodes`).toBe(0);
+    // Rings can't keep every link clear of the nodes between them
+    if (name !== "Hubs") expect(through, `${name}: links through nodes`).toBe(0);
+  }
+});
+

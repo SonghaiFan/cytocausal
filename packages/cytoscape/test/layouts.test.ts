@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import cytoscape, { type Core, type LayoutOptions } from "cytoscape";
 import { layouts } from "../src/layouts.ts";
-import { measureLayout } from "../src/positions.ts";
+import { curveLinks, measureLayout } from "../src/positions.ts";
 
 /** Runs a test on a fresh graph, destroying it even if the test fails, or its timers keep running. */
 async function withGraph(check: (cy: Core) => void | Promise<void>) {
@@ -105,7 +105,7 @@ test("breadthfirst grows from what nothing causes", () =>
     assert.ok(y("rain") < y("flood") && y("flood") < y("damage"));
   }));
 
-test("measured layouts fill the space the graph fills now", () => {
+test("measured layouts are centred where the graph is, at their own spacing", () => {
   for (const name of [
     "concentric",
     "grid",
@@ -129,19 +129,45 @@ test("measured layouts fill the space the graph fills now", () => {
       );
       const xs = Object.values(positions!).map(({ x }) => x);
       const ys = Object.values(positions!).map(({ y }) => y);
-      const slack = 25;
-      assert.ok(
-        Math.min(...xs) >= before.x1 - slack &&
-          Math.max(...xs) <= before.x2 + slack,
-        `${name} width`,
+      const middle = (values: number[]) => (Math.min(...values) + Math.max(...values)) / 2;
+      // Nodes are 20 wide, so the centre of their positions sits within that of the box
+      assert.ok(Math.abs(middle(xs) - (before.x1 + before.x2) / 2) < 1, `${name} centred across`);
+      assert.ok(Math.abs(middle(ys) - (before.y1 + before.y2) / 2) < 1, `${name} centred down`);
+      // Not squeezed: nodes keep at least a node's width between them
+      const closest = Math.min(
+        ...xs.flatMap((x, i) => xs.slice(i + 1).map((other, j) => Math.hypot(x - other, ys[i] - ys[i + 1 + j]))),
       );
-      assert.ok(
-        Math.min(...ys) >= before.y1 - slack &&
-          Math.max(...ys) <= before.y2 + slack,
-        `${name} height`,
-      );
+      assert.ok(closest >= 20 || name === "random", `${name} keeps nodes apart: ${closest}`);
     } finally {
       cy.destroy();
     }
+  }
+});
+
+test("links bow in proportion to their length, and repeated links bow further", () => {
+  const cy = cytoscape({
+    headless: true,
+    // Without a layout, Cytoscape runs a grid over the positions given
+    layout: { name: "preset" },
+    elements: [
+      { data: { id: "a" }, position: { x: 0, y: 0 } },
+      { data: { id: "b" }, position: { x: 100, y: 0 } },
+      { data: { id: "c" }, position: { x: 500, y: 0 } },
+      { data: { id: "near", source: "a", target: "b" } },
+      { data: { id: "back", source: "b", target: "a" } },
+      { data: { id: "far", source: "a", target: "c" } },
+      { data: { id: "far-again", source: "a", target: "c" } },
+    ],
+  });
+  try {
+    curveLinks(cy);
+    const arc = (id: string) => cy.getElementById(id).data("arc") as number;
+    assert.equal(arc("near"), 14);
+    // The reverse link has the same bow, which bends it to the other side of the line
+    assert.equal(arc("back"), arc("near"));
+    assert.equal(arc("far"), 60);
+    assert.ok(arc("far-again") > arc("far"));
+  } finally {
+    cy.destroy();
   }
 });

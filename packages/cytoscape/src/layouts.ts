@@ -1,4 +1,9 @@
-import cytoscape, { type LayoutOptions, type NodeCollection, type NodeSingular } from "cytoscape";
+import cytoscape, {
+  type EdgeSingular,
+  type LayoutOptions,
+  type NodeCollection,
+  type NodeSingular,
+} from "cytoscape";
 import cola from "cytoscape-cola";
 import dagre from "cytoscape-dagre";
 import fcose from "cytoscape-fcose";
@@ -6,6 +11,20 @@ import fcose from "cytoscape-fcose";
 cytoscape.use(cola);
 cytoscape.use(dagre);
 cytoscape.use(fcose);
+
+/** How much room a node takes up: its larger side, counting padding and border. */
+const reach = (node: NodeSingular) => Math.max(node.outerWidth(), node.outerHeight());
+
+/**
+ * A link's ideal length: enough to clear both nodes, plus a gap. Fixed lengths suit one node
+ * size only: pills holding long labels are several times wider than dots, and would be packed
+ * into each other.
+ */
+const linkLength = (gap: number) => (edge: EdgeSingular) =>
+  (reach(edge.source()) + reach(edge.target())) / 2 + gap;
+
+/** Repulsion that grows with a node's size, so big nodes push others further away. */
+const repulsion = (base: number) => (node: NodeSingular) => base * Math.max(1, reach(node) / 40);
 
 export const colaLayout = {
   name: "cola",
@@ -19,6 +38,7 @@ export const colaLayout = {
   handleDisconnected: true,
   convergenceThreshold: 0.01,
   nodeSpacing: () => 10,
+  edgeLength: linkLength(30),
   centerGraph: true,
 } as LayoutOptions;
 
@@ -36,8 +56,8 @@ export const fcoseLayout = {
   sampleSize: 25,
   nodeSeparation: 75,
   piTol: 0.0000001,
-  nodeRepulsion: () => 14500,
-  idealEdgeLength: () => 50,
+  nodeRepulsion: repulsion(14500),
+  idealEdgeLength: linkLength(30),
   edgeElasticity: () => 0.45,
   nestingFactor: 0.1,
   numIter: 2500,
@@ -85,7 +105,8 @@ export const concentricLayout = {
   concentric: importance,
   // Four rings over the range of values, as Cytoscape's default does for degree
   levelWidth: (nodes: NodeCollection) => Math.max(...nodes.map(importance)) / 4 || 1,
-  minNodeSpacing: 12,
+  // Room between rings for links to pass, rather than through the nodes in between
+  minNodeSpacing: 40,
   startAngle: (3 / 2) * Math.PI,
   avoidOverlap: true,
   fit: true,
@@ -96,8 +117,8 @@ export const concentricLayout = {
 export const coseLayout = {
   name: "cose",
   randomize: false,
-  idealEdgeLength: () => 60,
-  nodeRepulsion: () => 8000,
+  idealEdgeLength: linkLength(30),
+  nodeRepulsion: repulsion(8000),
   nodeOverlap: 8,
   componentSpacing: 60,
   fit: true,
@@ -149,7 +170,7 @@ export const autoLayout = {
   ...fcoseLayout,
   randomize: true,
   padding: 30,
-  idealEdgeLength: () => 90,
+  idealEdgeLength: linkLength(50),
 } as LayoutOptions;
 
 /** Uses the positions already on each node. */

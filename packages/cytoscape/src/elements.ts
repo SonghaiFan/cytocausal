@@ -44,6 +44,8 @@ export function toElements({ nodes, edges }: Snapshot) {
           label: polarity ? polarityLabel[polarity] : "",
           support: linkSupport[index],
           supportShare: shareOf(linkSupport[index], mostLinkSupport),
+          // A gentle bend until `curveLinks` sizes it from where the nodes end up
+          arc: 20,
         },
       }),
     ),

@@ -107,11 +107,21 @@ export const App = ({ dataset }) => <CausalWorkspace dataset={dataset} layouts={
 
 Any other Cytoscape layout works too. Register its extension once with `cytoscape.use`, then pass its options. Keep layout objects stable between renders: positions are cached for each one, so two set-ups of the same layout, such as concentric by centrality and by degree, each keep their own.
 
+### Spacing that adapts
+
+Fixed spacing suits one node size only. Pills that hold long labels are several times wider than dots, so with a fixed link length they'd be packed into each other. The force layouts work their spacing out from each node's size instead: a link's ideal length is enough to clear both its nodes plus a gap, and bigger nodes push harder. dagre and the ring layouts already allow for node size.
+
+Curved links bow in proportion to their length, from `curveLinks`. A long link, such as one running back against a flow, arcs clear of the links it would otherwise lie on. Links running each way between two nodes bow to opposite sides. `GraphView` updates the bends whenever nodes settle or are dragged.
+
+`layoutQuality(cy)` counts what makes a layout hard to read, as drawn: overlapping nodes, links through nodes and crossing links. Use it to compare layouts for your data. Ring layouts can't keep every link clear of the nodes between rings, so expect a few links through nodes with `concentric`.
+
 ## Switch layouts on the same graph
 
 Pass `animateLayouts` to `GraphView` to move nodes into a new `layout` instead of rebuilding the graph. `CausalGraph` does this for you, so changing `layout` on `CausalProvider` is enough. Each layout's positions go in the position cache, so switching back returns every node to where it was. A saved layout returns nodes to the positions in the data.
 
-Layouts each pick their own origin and spacing. Concentric centres on the canvas, so its nodes would fly off screen before the view caught up. So a layout is worked out first, then moved and scaled to fill the space the nodes fill now, and the view moves with the nodes. `measureLayout(cy, layout)` gives those positions on their own.
+Layouts each pick their own origin. Concentric centres on the canvas, so its nodes would fly off screen before the view caught up. So a layout is worked out first and centred where the graph is now. Nodes travel in straight lines, so they stay inside the area holding both where they start and where they end: if that's off screen, the view backs out to it first, then closes in once they arrive. `measureLayout(cy, layout)` gives those positions on their own.
+
+The layout isn't scaled to fit the old one. Shrinking positions without shrinking nodes packs them into each other: an earlier version squeezed a wide flow into the square a ring layout had filled, and four pairs of nodes overlapped.
 
 `relayout(cy, layout)` does the same on any graph. It lays out only visible nodes, so after a filter hides some, the rest can be laid out on their own. Hidden nodes keep their place for when the filter is cleared.
 

@@ -13,6 +13,8 @@ export function fitBox(
   cy: Core,
   box: { x1: number; x2: number; y1: number; y2: number; w: number; h: number },
   duration = 0,
+  /** Called once the view is there. */
+  complete?: () => void,
 ) {
   const padding = 30;
   const zoom = Math.min(
@@ -24,8 +26,12 @@ export function fitBox(
     x: (cy.width() - zoom * (box.x1 + box.x2)) / 2,
     y: (cy.height() - zoom * (box.y1 + box.y2)) / 2,
   };
-  if (duration > 0) cy.animate({ zoom, pan }, { duration });
-  else cy.viewport({ zoom, pan });
+  if (duration > 0) {
+    cy.animate({ zoom, pan }, { duration, easing: "ease-in-out-cubic", complete });
+  } else {
+    cy.viewport({ zoom, pan });
+    complete?.();
+  }
 }
 
 /** Downloads the whole graph as a PNG. */

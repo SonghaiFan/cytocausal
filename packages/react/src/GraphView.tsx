@@ -14,6 +14,7 @@ import {
   isTransitioning,
   lightTheme,
   placeAround,
+  curveLinks,
   refreshLabels,
   relayout,
   snapshotPositions,
@@ -128,6 +129,7 @@ export function GraphView({
 
   const rememberPositions = useCallback(() => {
     if (cy.current && !cy.current.destroyed()) {
+      curveLinks(cy.current);
       positionCache.current[latest.current.cacheKey] = snapshotPositions(
         cy.current,
         latest.current.snapshot,
@@ -223,6 +225,8 @@ export function GraphView({
     );
     instance.on("mouseout", "node, edge", hideTooltip);
     instance.on("zoom pan drag", hideTooltip);
+    // A dragged node changes its links' lengths, so their bends follow
+    instance.on("free", "node", () => curveLinks(instance));
     instance.on("tap", (event) => {
       if (event.target === instance) hideTooltip();
     });

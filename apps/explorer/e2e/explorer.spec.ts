@@ -426,15 +426,14 @@ test("layouts can be switched on the same graph, and the original comes back exa
   });
   expect(moved.length).toBeGreaterThan(nodes.length / 2);
 
-  // The most central event sits nearest the middle
+  // The most central events ring the most central one closely, and the least central lie outside
   await page.getByRole("button", { name: "By centrality", exact: true }).click();
   const rings = await settledPositions(page);
-  const xs = [...rings.values()].map(([px]) => px);
-  const ys = [...rings.values()].map(([, py]) => py);
-  const middle = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
-  const distance = (node: string) => Math.hypot(rings.get(node)![0] - middle[0], rings.get(node)![1] - middle[1]);
-  const nearest = [...rings.keys()].sort((a, b) => distance(a) - distance(b))[0];
-  expect(nearest).toBe(first.id);
+  const [cx, cy] = rings.get(first.id)!;
+  const distance = (node: string) => Math.hypot(rings.get(node)![0] - cx, rings.get(node)![1] - cy);
+  const average = (ids: string[]) => ids.reduce((sum, id) => sum + distance(id), 0) / ids.length;
+  const ranked = byScore.map((node) => node.id).slice(1);
+  expect(average(ranked.slice(0, 10))).toBeLessThan(average(ranked.slice(-50)));
 
   await page.getByRole("button", { name: "Original", exact: true }).click();
   const back = await settledPositions(page);
@@ -475,9 +474,8 @@ test("with a computed layout, showing only loops lays out what's left", async ({
   expect(movedLoops.length).toBeGreaterThan(0);
 });
 
-test("every layout fills the same space, so nodes stay on screen while they move", async ({ page }) => {
+test("nodes stay on screen while they move between layouts", async ({ page }) => {
   await ready(page);
-  const start = await withCy<number>(page, "return cy.zoom();");
   for (const name of ["Force", "By centrality", "Original", "By centrality", "Force", "Original"]) {
     await page.getByRole("button", { name, exact: true }).click();
     // Sample the whole move, not just where it ends
@@ -496,9 +494,6 @@ test("every layout fills the same space, so nodes stay on screen while they move
        });`,
     );
     expect(worst, `pixels off screen switching to ${name}`).toBeLessThanOrEqual(2);
-    const zoom = await withCy<number>(page, "return cy.zoom();");
-    expect(zoom / start, `zoom after ${name}`).toBeGreaterThan(0.75);
-    expect(zoom / start, `zoom after ${name}`).toBeLessThan(1.34);
   }
 });
 

@@ -210,8 +210,10 @@ const linkStyles = (
         ...labelled,
         "curve-style": "unbundled-bezier",
         "arrow-scale": arrow(7),
-        "control-point-distances": [-20, 20],
-        "control-point-weights": [0.5],
+        // One bend, bowing further on longer links, from `curveLinks`. Links running each way
+        // between two nodes bow to opposite sides, where a symmetric S-curve would overlap
+        "control-point-distances": "data(arc)",
+        "control-point-weights": 0.5,
       }
     : { ...labelled, "curve-style": "bezier" };
 };
@@ -249,10 +251,7 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     { selector: "edge", style: { "font-family": fontFamily, ...linkStyles(theme, options) } },
     {
       selector: 'edge[polarity="negative"]',
-      style: {
-        "line-style": "dashed",
-        ...(link === "flowing" ? { "control-point-distances": [20, -20] } : {}),
-      },
+      style: { "line-style": "dashed" },
     },
     ...(options.baseRules ?? []),
     { selector: "node.labelled", style: shownLabel },
