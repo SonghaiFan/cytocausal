@@ -45,6 +45,18 @@ export interface CausalLabels {
   exportImage: string;
   copyLink: string;
   linkCopied: string;
+  link: string;
+  positive: string;
+  negative: string;
+  /** How many people stated a node or link. */
+  support: (count: number) => string;
+  statedBy: string;
+  showLink: string;
+  contributors: string;
+  everyone: string;
+  contributorLinks: (count: number) => string;
+  supportLegend: string;
+  disagreement: string;
 }
 
 export const defaultLabels: CausalLabels = {
@@ -91,6 +103,17 @@ export const defaultLabels: CausalLabels = {
   exportImage: "Export PNG",
   copyLink: "Copy link",
   linkCopied: "Link copied",
+  link: "Link",
+  positive: "Positive",
+  negative: "Negative",
+  support: (count) => `Stated by ${count} ${count === 1 ? "person" : "people"}`,
+  statedBy: "Stated by",
+  showLink: "Show link",
+  contributors: "Contributors",
+  everyone: "Everyone",
+  contributorLinks: (count) => `${count} ${count === 1 ? "link" : "links"}`,
+  supportLegend: "Thicker links: stated by more people",
+  disagreement: "People disagree on this link's polarity",
 };
 
 const LabelsContext = createContext(defaultLabels);

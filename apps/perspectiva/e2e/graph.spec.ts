@@ -71,10 +71,13 @@ const expectSamePositions = (actual: Positions, expected: Positions) => {
 
 const version = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
 
-test("every dataset has 129 anchors between them", () => {
-  const anchors = datasets.flatMap(({ id }) => Object.keys(anchorsOf(id)));
-  expect(datasets).toHaveLength(8);
+test("every participant has 129 anchors between them, and the workshop combines them", () => {
+  const participants = datasets.filter(({ id }) => id !== "workshop");
+  const anchors = participants.flatMap(({ id }) => Object.keys(anchorsOf(id)));
+  expect(participants).toHaveLength(8);
   expect(anchors).toHaveLength(129);
+  // Two participants anchored the same term to the same place
+  expect(Object.keys(anchorsOf("workshop"))).toHaveLength(127);
 });
 
 for (const { id } of datasets) {
@@ -269,4 +272,36 @@ test("a phone starts on one graph and fits the screen", async ({ page }) => {
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
     .toBeLessThanOrEqual(390);
+});
+
+const linkWidths = (page: Page) =>
+  page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    return div._cyreg.cy.edges().map((edge: any) => parseFloat(edge.style("width")));
+  });
+
+test("the whole workshop shows agreement, and one participant's view in place", async ({ page }) => {
+  await page.goto("/?dataset=workshop");
+  await settled(page, 2);
+  await page.getByRole("button", { name: "Single", exact: true }).click();
+  await version(page, "Final").click();
+  const [before] = await settled(page, 1);
+
+  // A link four people stated is drawn thicker than one only one person stated
+  const widths = await linkWidths(page);
+  expect(Math.max(...widths)).toBeGreaterThan(Math.min(...widths) * 2);
+
+  await page.getByLabel("Contributors").getByLabel(/citizen_1/).check();
+  const hidden = () =>
+    page.evaluate(() => {
+      const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+      return div._cyreg.cy.edges(".contributor-hidden").length;
+    });
+  await expect.poll(hidden).toBeGreaterThan(150);
+  expectSamePositions((await settled(page, 1))[0], before);
+
+  await page.getByLabel("Dataset").selectOption("citizen_1");
+  await settled(page, 1);
+  await expect(page.getByLabel("Contributors")).toHaveCount(0);
+  expect(await hidden()).toBe(0);
 });

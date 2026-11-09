@@ -4,6 +4,8 @@ import path from "node:path";
 import test from "node:test";
 import {
   analyzeSnapshot,
+  combineDatasets,
+  supportOf,
   diffSnapshots,
   findFeedbackLoops,
   importExplorer,
@@ -110,5 +112,33 @@ test(
       advocate_6: [10, 2, 9, 0, 17, 6, 0],
       expert_9: [10, 2, 9, 1, 22, 11, 1],
     });
+  },
+);
+
+test(
+  "the workshop combines everyone's final maps by shared key",
+  { skip: !perspectivaFiles.every(existsSync) },
+  () => {
+    const datasets = importPerspectiva(
+      evaluate(perspectivaFiles[0], "allCyDataSets"),
+      evaluate(perspectivaFiles[1], "nodeAnchors"),
+    );
+    const { dataset, issues } = combineDatasets(datasets, {
+      id: "workshop",
+      key: (node) => String(node.metadata!.key),
+    });
+    assert.deepEqual(issues, []);
+    assert.deepEqual(validateDataset(dataset), []);
+
+    // Counted separately from the source data, by key, polarity and participant
+    const [v1, final] = dataset.snapshots;
+    assert.equal(v1.nodes.length, 136);
+    assert.equal(final.nodes.length, 107);
+    assert.equal(final.edges.length, 206);
+    const support = final.edges.map(supportOf);
+    assert.equal(support.filter((count) => count > 1).length, 24);
+    assert.equal(Math.max(...support), 4);
+    assert.equal(final.edges.filter(({ id }) => id.includes(":")).length, 8);
+    assert.equal(Object.keys(dataset.correspondences![0].nodes).length, 127);
   },
 );

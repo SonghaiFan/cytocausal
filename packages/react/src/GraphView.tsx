@@ -1,5 +1,11 @@
 "use client";
-import { getSnapshot, type CausalDataset, type CausalNode } from "@cytocausal/core";
+import {
+  getSnapshot,
+  type CausalDataset,
+  type CausalEdge,
+  type CausalNode,
+  type Snapshot,
+} from "@cytocausal/core";
 import {
   autoLayout,
   createCausalStyle,
@@ -51,8 +57,15 @@ export interface GraphViewProps {
   /** Gives access to each new Cytoscape instance, for custom interaction. */
   onReady?: (cy: Core) => void;
   renderTooltip?: (node: CausalNode) => ReactNode;
+  /** A hover preview for links, such as who stated them. */
+  renderLinkTooltip?: (link: CausalEdge, snapshot: Snapshot) => ReactNode;
   className?: string;
 }
+
+type Tooltip = { x: number; y: number } & (
+  | { node: CausalNode; link?: undefined }
+  | { link: CausalEdge; node?: undefined }
+);
 
 const defaultStylesheet = createCausalStyle(lightTheme);
 
@@ -73,6 +86,7 @@ export function GraphView({
   onLayoutComplete,
   onReady,
   renderTooltip,
+  renderLinkTooltip,
   className,
 }: GraphViewProps) {
   const ownCache = useRef<Record<string, Positions>>({});
@@ -81,7 +95,7 @@ export function GraphView({
   const cy = useRef<Core | null>(null);
   const anchoredLayout = useRef<Layouts | null>(null);
   const shown = useRef<{ dataset: string; layout: LayoutOptions; snapshot: string } | null>(null);
-  const [tooltip, setTooltip] = useState<{ node: CausalNode; x: number; y: number } | null>(null);
+  const [tooltip, setTooltip] = useState<Tooltip | null>(null);
 
   const snapshot = useMemo(
     () => getSnapshot(dataset, snapshotId),
@@ -151,12 +165,19 @@ export function GraphView({
       const node = latest.current.snapshot.nodes.find((candidate) => candidate.id === id);
       if (node) setTooltip({ node, x: event.clientX, y: event.clientY });
     };
+    const showLinkTooltip = (id: string, event: MouseEvent) => {
+      const link = latest.current.snapshot.edges.find((candidate) => candidate.id === id);
+      if (link) setTooltip({ link, x: event.clientX, y: event.clientY });
+    };
     const hideTooltip = () => setTooltip(null);
 
     instance.on("mouseover mousemove", "node", (event) =>
       showTooltip(event.target.id(), event.originalEvent as MouseEvent),
     );
-    instance.on("mouseout", "node", hideTooltip);
+    instance.on("mouseover mousemove", "edge", (event) =>
+      showLinkTooltip(event.target.id(), event.originalEvent as MouseEvent),
+    );
+    instance.on("mouseout", "node, edge", hideTooltip);
     instance.on("zoom pan drag", hideTooltip);
     instance.on("tap", (event) => {
       if (event.target === instance) hideTooltip();
@@ -227,7 +248,7 @@ export function GraphView({
   return (
     <>
       <div ref={container} className={className} style={{ width: "100%", height: "100%" }} />
-      {tooltip && renderTooltip && (
+      {tooltip && (tooltip.node ? renderTooltip : renderLinkTooltip) && (
         <div
           style={{
             position: "fixed",
@@ -238,7 +259,9 @@ export function GraphView({
             zIndex: 50,
           }}
         >
-          {renderTooltip(tooltip.node)}
+          {tooltip.node
+            ? renderTooltip!(tooltip.node)
+            : renderLinkTooltip!(tooltip.link, latest.current.snapshot)}
         </div>
       )}
     </>

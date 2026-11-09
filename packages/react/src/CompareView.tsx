@@ -7,7 +7,14 @@ import { GraphView, type GraphViewProps } from "./GraphView.tsx";
 
 type SharedProps = Pick<
   GraphViewProps,
-  "layout" | "stylesheet" | "motion" | "maxZoom" | "positionCache" | "renderTooltip" | "className"
+  | "layout"
+  | "stylesheet"
+  | "motion"
+  | "maxZoom"
+  | "positionCache"
+  | "renderTooltip"
+  | "renderLinkTooltip"
+  | "className"
 >;
 
 /** Shows two snapshots side by side, with matching nodes in the same place. */

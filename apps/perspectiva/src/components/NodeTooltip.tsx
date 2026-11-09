@@ -2,7 +2,7 @@ import type { CausalNode } from "@cytocausal/core";
 
 /** Shows a node's original terms and who contributed them. */
 export function NodeTooltip({ node }: { node: CausalNode }) {
-  const evidence = node.evidence ?? [];
+  const evidence = (node.evidence ?? []).filter(({ text }) => text);
   const contributions: Record<string, number> = {};
   evidence.forEach(({ contributor = "" }) => {
     const type = contributor.replace(/_\d+$/, "");

@@ -4,7 +4,7 @@ title: "数据模型"
 
 # 数据模型
 
-cytocausal 用同一种结构保存所有因果图，因此同样的视图和分析既能用于小型工作坊图，也能用于大型事件网络。类型定义在 `@cytocausal/core` 中，这个包不含 UI 代码，只在无界面分析时使用 Cytoscape。
+cytocausal 用同一种结构保存所有因果图，因此同样的视图和分析既能用于小型工作坊图，也能用于大型事件网络。类型定义在 `@cytocausal/core` 中，这个包不含 UI 代码，也没有任何依赖，所以在 Node 和 Worker 中同样可以运行。
 
 | 概念 | 含义 | Perspectiva | Causal Explorer |
 | :--- | :--- | :--- | :--- |
@@ -12,10 +12,10 @@ cytocausal 用同一种结构保存所有因果图，因此同样的视图和分
 | `Snapshot` | 图的一个版本 | V1、final | 一个快照 |
 | `CausalNode` | 变量或事件 | 变量 | 抽象事件 |
 | `CausalEdge` | 有向连接 | 带极性的连接 | 不带极性的连接 |
-| `Evidence` | 节点的来源 | 原始术语 | 事件描述 |
+| `Evidence` | 节点或连线的提出者及依据 | 原始术语，以及每条连线由谁画出 | 事件描述 |
 | `Correspondence` | 节点之间的版本对应 | V1 到 final | 未使用 |
 
-极性、证据、位置和对应关系都是可选的。Explorer 没有极性，Perspectiva 没有保存位置，两者都是有效数据。
+极性、证据、位置和对应关系都是可选的。证据既可以放在节点上，也可以放在连线上，只有提出者、没有文字的证据同样有效，详见[出处与共识](/zh-cn/provenance/)。Explorer 没有极性，Perspectiva 没有保存位置，两者都是有效数据。
 
 ## 构建数据集
 

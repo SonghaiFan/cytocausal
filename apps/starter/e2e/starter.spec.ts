@@ -478,3 +478,88 @@ test("a fade cut off by a version change leaves nothing behind, and fades carry 
   );
   expect(part.filter((value) => value > 0.2 && value < 0.95).length, part.join()).toBeGreaterThan(0);
 });
+
+/** What the graph shows of each link: whether it's hidden, highlighted, and how wide. */
+const linkState = (page: Page) =>
+  page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    return Object.fromEntries(
+      div._cyreg.cy.edges().map((edge: any) => [
+        edge.id(),
+        {
+          hidden: edge.hasClass("contributor-hidden"),
+          route: edge.hasClass("route-link"),
+          width: parseFloat(edge.style("width")),
+        },
+      ]),
+    ) as Record<string, { hidden: boolean; route: boolean; width: number }>;
+  });
+
+const positionsOf = (page: Page) =>
+  page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    return Object.fromEntries(div._cyreg.cy.nodes().map((n: any) => [n.id(), { ...n.position() }]));
+  });
+
+test("clicking a link shows who stated it, and a shared address reopens it", async ({ page }) => {
+  await openFinal(page);
+  const point = await page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    const { left, top } = div.getBoundingClientRect();
+    const { x, y } = div._cyreg.cy.getElementById("staff-queue").renderedMidpoint();
+    return { x: left + x, y: top + y };
+  });
+  await page.mouse.click(point.x, point.y);
+
+  const details = page.getByLabel("Link staff-queue");
+  await expect(details.getByText("Stated by 2 people")).toBeVisible();
+  await expect(details.getByText("barista")).toBeVisible();
+  await expect(details.getByText("A second person on the till halves the wait")).toBeVisible();
+  await expect.poll(async () => (await linkState(page))["staff-queue"].route).toBe(true);
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["queue", "staff"]);
+  await expect(page).toHaveURL(/link=staff-queue/);
+
+  await page.reload();
+  await expect(page.getByLabel("Link staff-queue")).toBeVisible();
+  await expect.poll(async () => (await linkState(page))["staff-queue"].route).toBe(true);
+
+  // Either end leads to its node, which takes the link's place
+  await page.getByLabel("Link staff-queue").getByRole("button", { name: "Staff on shift" }).click();
+  await expect(page.getByLabel("Node staff")).toBeVisible();
+  await expect(page.getByLabel(/^Link /)).toHaveCount(0);
+  await expect(page).not.toHaveURL(/link=/);
+});
+
+test("a link can be opened from a node's details with the keyboard", async ({ page }) => {
+  await openFinal(page);
+  await choose(page, "customers", /^Customers/);
+  const show = page.getByRole("button", { name: "Show link: Customers → Queue length, stated by 2 people" });
+  await show.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Link customers-queue").getByText("The line doubles in the morning rush")).toBeVisible();
+  await page.getByRole("button", { name: "Close link" }).click();
+  await expect(page.getByLabel(/^Link /)).toHaveCount(0);
+});
+
+test("links are as thick as their support, and the filter shows one person's view in place", async ({ page }) => {
+  await openFinal(page);
+  const before = await linkState(page);
+  expect(before["customers-queue"].width).toBeGreaterThan(before["queue-satisfaction"].width);
+  await expect(page.getByText("Thicker links: stated by more people")).toBeVisible();
+  const positions = await positionsOf(page);
+
+  const filter = page.getByLabel("Contributors");
+  await filter.getByLabel(/barista/).check();
+  await expect
+    .poll(async () => Object.entries(await linkState(page)).filter(([, s]) => s.hidden).map(([id]) => id).sort())
+    .toEqual(["customers-revenue", "revenue-staff", "satisfaction-customers"]);
+  expect(await nodesWith(page, ".contributor-hidden")).toEqual(["revenue"]);
+  expect(await positionsOf(page)).toEqual(positions);
+
+  // The filter stays when the version changes, and Everyone brings the rest back
+  await page.getByRole("button", { name: "V1", exact: true }).click();
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  await expect.poll(async () => Object.values(await linkState(page)).every((s) => s.hidden)).toBe(true);
+  await filter.getByRole("button", { name: "Everyone" }).click();
+  await expect.poll(async () => Object.values(await linkState(page)).some((s) => s.hidden)).toBe(false);
+});

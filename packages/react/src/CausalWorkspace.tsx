@@ -5,6 +5,7 @@ import { CausalGraph } from "./CausalGraph.tsx";
 import { CausalProvider, useCausal, type CausalProviderProps } from "./CausalProvider.tsx";
 import { Legend, SidebarHeader, VersionSwitcher } from "./controls.tsx";
 import { useCausalLabels } from "./labels.tsx";
+import { ContributorFilter } from "./ContributorFilter.tsx";
 import { LoopList } from "./LoopList.tsx";
 import { NodeSearch } from "./NodeSearch.tsx";
 
@@ -48,6 +49,7 @@ function Workspace({ title, children }: Pick<CausalWorkspaceProps, "title" | "ch
           </pre>
         )}
         <NodeSearch />
+        <ContributorFilter />
         <SelectionPanel />
         <LoopList />
         <VersionDiff />

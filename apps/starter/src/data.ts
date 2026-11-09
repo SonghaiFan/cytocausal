@@ -1,6 +1,7 @@
 import type { CausalDataset } from "@cytocausal/core";
 
-// Replace this with your own data. It's a made-up model of a coffee shop.
+// Replace this with your own data. It's a made-up model of a coffee shop, as a barista and a
+// manager described it. Evidence on a link records who stated it and why.
 export const dataset: CausalDataset = {
   id: "coffee-shop",
   snapshots: [
@@ -40,22 +41,54 @@ export const dataset: CausalDataset = {
         { id: "staff", label: "Staff on shift" },
       ],
       edges: [
-        { id: "customers-queue", source: "customers", target: "queue", polarity: "positive" },
+        {
+          id: "customers-queue",
+          source: "customers",
+          target: "queue",
+          polarity: "positive",
+          evidence: [
+            { text: "The line doubles in the morning rush", contributor: "barista" },
+            { text: "Busy days mean longer waits", contributor: "manager" },
+          ],
+        },
         {
           id: "queue-satisfaction",
           source: "queue",
           target: "customer-satisfaction",
           polarity: "negative",
+          evidence: [{ text: "People sigh at the door when the line is long", contributor: "barista" }],
         },
         {
           id: "satisfaction-customers",
           source: "customer-satisfaction",
           target: "customers",
           polarity: "positive",
+          evidence: [{ text: "Regulars bring their friends", contributor: "manager" }],
         },
-        { id: "customers-revenue", source: "customers", target: "revenue", polarity: "positive" },
-        { id: "revenue-staff", source: "revenue", target: "staff", polarity: "positive" },
-        { id: "staff-queue", source: "staff", target: "queue", polarity: "negative" },
+        {
+          id: "customers-revenue",
+          source: "customers",
+          target: "revenue",
+          polarity: "positive",
+          evidence: [{ contributor: "manager" }],
+        },
+        {
+          id: "revenue-staff",
+          source: "revenue",
+          target: "staff",
+          polarity: "positive",
+          evidence: [{ text: "We hire when the till is good", contributor: "manager" }],
+        },
+        {
+          id: "staff-queue",
+          source: "staff",
+          target: "queue",
+          polarity: "negative",
+          evidence: [
+            { text: "A second person on the till halves the wait", contributor: "barista" },
+            { contributor: "manager" },
+          ],
+        },
       ],
     },
   ],

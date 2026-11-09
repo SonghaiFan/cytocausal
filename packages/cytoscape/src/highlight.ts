@@ -1,3 +1,4 @@
+import { filterByContributors, type Snapshot } from "@cytocausal/core";
 import type { Core } from "cytoscape";
 import { resolveMotion } from "./motion.ts";
 import type { CausalMotion } from "./theme.ts";
@@ -60,6 +61,22 @@ export function highlightChanges(cy: Core, added: string[], removed: string[]) {
     cy.elements().removeClass("diff-added diff-removed");
     added.forEach((id) => cy.getElementById(id).addClass("diff-added"));
     removed.forEach((id) => cy.getElementById(id).addClass("diff-removed"));
+  });
+}
+
+/**
+ * Hides everything the given people didn't state, keeping every position so views stay
+ * comparable. Pass null to show everyone's again.
+ */
+export function hideExceptContributors(cy: Core, snapshot: Snapshot, contributors: string[] | null) {
+  cy.batch(() => {
+    cy.elements().removeClass("contributor-hidden");
+    if (!contributors) return;
+    const { nodes, edges } = filterByContributors(snapshot, contributors);
+    const kept = new Set([...nodes, ...edges].map(({ id }) => id));
+    cy.elements()
+      .filter((element) => !kept.has(element.id()))
+      .addClass("contributor-hidden");
   });
 }
 

@@ -79,7 +79,9 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `NodeSearch` | 搜索框和结果 |
 | `VersionSwitcher` | 切换快照的按钮 |
 | `SelectionPanel` | 先显示提示，选中后显示节点详情和节点间的路径 |
-| `NodeDetails` | 单个节点的原因、结果和证据 |
+| `NodeDetails` | 单个节点的原因、结果和证据，每条连线旁边有打开它的按钮 |
+| `LinkDetails` | 连线的提出者和他们的证据，以及在极性上与它有分歧的连线 |
+| `ContributorFilter` | 选择显示哪些人提出的节点和连线。快照有两位提出者时才会出现 |
 | `PathList` | 两个节点之间双向的路径 |
 | `LoopList` | 反馈回路，并标记增强或平衡 |
 | `VersionDiff` | 两个快照之间的变化 |
@@ -92,6 +94,8 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 悬停 `LoopList` 或 `PathList` 的一行会在图上预览，点击后保持高亮。
 
 `VersionSwitcher`、`Legend` 和 `DepthControl` 支持 `bare`，去掉外层面板，可以直接放在图上。
+
+悬停在连线上时，`CausalGraph` 会显示它的提出者。像节点的 `renderTooltip` 一样，传入 `renderLinkTooltip` 可以改成别的内容。传入 `styleOptions={{ weightBySupport: true }}`（定义在组件外部）会让提出人数越多的连线越粗。
 
 大型图可以给 `CausalProvider` 传 `graphOptions`，比如 `{ readableLabels: true }`，给 `CausalGraph` 传 `maxZoom`。`SelectionPanel` 的 `loopOptions` 会列出经过每个节点的回路。
 

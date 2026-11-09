@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "starter",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "-w", "@cytocausal/starter"],
+      "port": 3102
+    },
+    {
+      "name": "perspectiva",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "-w", "@cytocausal/perspectiva"],
+      "port": 3100
+    }
+  ]
+}

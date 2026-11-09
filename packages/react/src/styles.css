@@ -68,6 +68,15 @@
 }
 .cc-badge-reinforcing { background: var(--cc-reinforcing); }
 .cc-badge-balancing { background: var(--cc-balancing); }
+.cc-badge-positive, .cc-badge-negative { border: 1px solid var(--cc-border); color: var(--cc-text); }
+.cc-statement + .cc-statement { margin-top: 6px; }
+.cc-end { font-size: inherit; font-weight: inherit; color: inherit; }
+.cc-support { margin-left: 6px; color: var(--cc-muted-text); font-size: 12px; }
+.cc-neighbour { display: flex; align-items: center; gap: 4px; }
+.cc-neighbour .cc-row { flex: 1; min-width: 0; }
+.cc-check.cc-row { display: flex; }
+.cc-check .cc-muted { margin-left: auto; }
+.cc-weight { flex-shrink: 0; color: var(--cc-muted-text); }
 
 .cc-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
 .cc-segmented { display: inline-flex; max-width: 100%; overflow-x: auto; }

@@ -79,7 +79,9 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `NodeSearch` | Search box and results |
 | `VersionSwitcher` | Buttons for moving between snapshots |
 | `SelectionPanel` | A prompt, then the selected nodes and the paths between them |
-| `NodeDetails` | One node's causes, effects and evidence |
+| `NodeDetails` | One node's causes, effects and evidence, with a button to open each link |
+| `LinkDetails` | Who stated a link and their evidence, with any link that disagrees on its polarity |
+| `ContributorFilter` | Whose nodes and links are shown. It appears once a snapshot has two contributors |
 | `PathList` | The paths between two nodes, in both directions |
 | `LoopList` | Feedback loops, marked reinforcing or balancing |
 | `VersionDiff` | What changed between two snapshots |
@@ -92,6 +94,8 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 Hovering a row in `LoopList` or `PathList` previews it on the graph. Clicking keeps it.
 
 `VersionSwitcher`, `Legend` and `DepthControl` take `bare`, which leaves out the panel so they can sit on the graph.
+
+`CausalGraph` shows who stated a link when it's hovered. Pass `renderLinkTooltip` to show something else, as `renderTooltip` does for nodes. Pass `styleOptions={{ weightBySupport: true }}` to draw links thicker the more people stated them, defined outside your component.
 
 For large graphs, `CausalProvider` takes `graphOptions`, such as `{ readableLabels: true }`, and `CausalGraph` takes `maxZoom`. `SelectionPanel` takes `loopOptions` to list the loops through each node.
 

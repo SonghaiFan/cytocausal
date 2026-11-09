@@ -49,6 +49,7 @@ const toEdge = ({ data }: PerspectivaEdge): CausalEdge => ({
   source: data.source,
   target: data.target,
   polarity: data.polarity,
+  evidence: [{ contributor: data.group }],
   metadata: { participantType: data.participant_type, group: data.group, color: data.color },
 });
 

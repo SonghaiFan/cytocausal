@@ -1,9 +1,13 @@
 export type Polarity = "positive" | "negative";
 
-/** Where a node came from: a sentence, a participant's original term, and so on. */
+/**
+ * Where a node or link came from: a sentence, a participant's original term, and so on. Who
+ * stated it is evidence too, even without any text.
+ */
 export interface Evidence {
   id?: string;
-  text: string;
+  text?: string;
+  /** Who stated it, such as a participant or a source document. */
   contributor?: string;
 }
 
@@ -20,6 +24,8 @@ export interface CausalEdge {
   source: string;
   target: string;
   polarity?: Polarity;
+  /** Who stated this link, and on what grounds. */
+  evidence?: Evidence[];
   metadata?: Record<string, unknown>;
 }
 

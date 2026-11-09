@@ -7,6 +7,7 @@ export default {
   "theming": "Themes and styles",
   "interactions": "Interactions",
   "data-model": "Data model",
+  "provenance": "Provenance and agreement",
   "react-lifecycle": "React lifecycle",
   "stable-layouts": "Stable layouts and anchoring",
   "version-transitions": "Version transitions",

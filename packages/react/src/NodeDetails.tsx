@@ -1,9 +1,10 @@
 "use client";
 import {
-  causesOf,
-  effectsOf,
+  contributorsOf,
   findFeedbackLoops,
-  type CausalNode,
+  linksInto,
+  linksOutOf,
+  type NeighbourLinks,
   type LoopOptions,
   type Snapshot,
 } from "@cytocausal/core";
@@ -23,34 +24,60 @@ export interface NodeDetailsProps {
   onToggleRoute?: (route: Route) => void;
   /** Limits for finding loops through this node. Set these for large graphs. */
   loopOptions?: LoopOptions;
+  /** Called with a link id to show that link, such as in `LinkDetails`. */
+  onShowLink?: (id: string) => void;
   className?: string;
 }
 
 function NodeLinks({
   title,
   kind,
-  nodes,
+  here,
+  neighbours,
   onSelect,
+  onShowLink,
 }: {
   title: string;
   kind: "cause" | "effect";
-  nodes: CausalNode[];
+  here: string;
+  neighbours: NeighbourLinks[];
   onSelect: (id: string) => void;
+  onShowLink?: (id: string) => void;
 }) {
-  if (nodes.length === 0) return null;
+  const labels = useCausalLabels();
+  if (neighbours.length === 0) return null;
   return (
     <div className="cc-block">
       <h4 className={`cc-heading cc-${kind}`}>
-        {title} ({nodes.length})
+        {title} ({neighbours.length})
       </h4>
       <ul className="cc-list">
-        {nodes.map(({ id, label }) => (
-          <li key={id}>
-            <button type="button" className="cc-row" onClick={() => onSelect(id)}>
-              {label}
-            </button>
-          </li>
-        ))}
+        {neighbours.map(({ node, links }) => {
+          const support = new Set(links.flatMap(contributorsOf)).size;
+          const [from, to] = kind === "cause" ? [node.label, here] : [here, node.label];
+          return (
+            <li key={node.id} className="cc-neighbour">
+              <button type="button" className="cc-row" onClick={() => onSelect(node.id)}>
+                {node.label}
+                {support > 0 && (
+                  <span className="cc-support" title={labels.support(support)} aria-hidden="true">
+                    {support}
+                  </span>
+                )}
+              </button>
+              {onShowLink && (
+                <button
+                  type="button"
+                  className="cc-link"
+                  aria-label={`${labels.showLink}: ${from} → ${to}${support > 0 ? `, ${labels.support(support).toLowerCase()}` : ""}`}
+                  onClick={() => onShowLink(links[0].id)}
+                >
+                  {labels.link}
+                </button>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -65,6 +92,7 @@ export function NodeDetails({
   activeRoute,
   onToggleRoute,
   loopOptions,
+  onShowLink: showLink,
   className = "",
 }: NodeDetailsProps) {
   const labels = useCausalLabels();
@@ -72,13 +100,14 @@ export function NodeDetails({
   const snapshot = required(given ?? causal?.snapshot, "NodeDetails", "snapshot");
   const onSelect = required(chosen ?? causal?.graph.focus, "NodeDetails", "onSelect");
   const onClose = closed ?? (() => causal?.graph.toggle(nodeId));
+  const onShowLink = showLink ?? causal?.graph.toggleLink;
   const node = snapshot.nodes.find(({ id }) => id === nodeId);
   const search = useMemo(
     () => findFeedbackLoops(snapshot, { ...loopOptions, through: nodeId }),
     [snapshot, nodeId, loopOptions],
   );
   if (!node) return null;
-  const evidence = node.evidence ?? [];
+  const evidence = (node.evidence ?? []).filter(({ text }) => text);
 
   return (
     <section className={`cc-panel ${className}`} aria-label={`Node ${node.id}`}>
@@ -101,14 +130,18 @@ export function NodeDetails({
       <NodeLinks
         title={labels.causedBy}
         kind="cause"
-        nodes={causesOf(snapshot, nodeId)}
+        here={node.label}
+        neighbours={linksInto(snapshot, nodeId)}
         onSelect={onSelect}
+        onShowLink={onShowLink}
       />
       <NodeLinks
         title={labels.leadsTo}
         kind="effect"
-        nodes={effectsOf(snapshot, nodeId)}
+        here={node.label}
+        neighbours={linksOutOf(snapshot, nodeId)}
         onSelect={onSelect}
+        onShowLink={onShowLink}
       />
       {onToggleRoute && search.loops.length > 0 && (
         <LoopList
@@ -127,9 +160,14 @@ export function NodeDetails({
             {labels.evidence} ({evidence.length})
           </h4>
           <ul className="cc-list cc-evidence">
-            {evidence.map(({ id, text }, index) => (
-              <li key={`${id}-${index}`}>{text}</li>
-            ))}
+            {evidence
+              .filter(({ text }) => text)
+              .map(({ id, text, contributor }, index) => (
+                <li key={`${id}-${index}`}>
+                  {text}
+                  {contributor && <span className="cc-support">{contributor}</span>}
+                </li>
+              ))}
           </ul>
         </div>
       )}

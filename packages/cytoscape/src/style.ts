@@ -8,6 +8,8 @@ export interface CausalStyleOptions {
   link?: "bezier" | "flowing" | "straight";
   /** Size nodes by their `score` data, from 0 to 1. */
   sizeByScore?: boolean;
+  /** Draw links thicker the more people stated them, from their `supportShare` data. */
+  weightBySupport?: boolean;
   /**
    * For labels that are placed by code: only nodes with the `labelled` class show one, sized
    * by their `labelSize` and `labelWidth` data.
@@ -58,7 +60,8 @@ const nodeStyles = (
   };
 };
 
-const linkStyles = ({ colors }: CausalTheme, { link = "flowing" }: CausalStyleOptions) => {
+const linkStyles = ({ colors }: CausalTheme, { link = "flowing", weightBySupport }: CausalStyleOptions) => {
+  const weight = weightBySupport ? { width: "mapData(supportShare, 0, 1, 1.5, 7)" } : {};
   const shared = {
     "line-color": colors.link,
     "target-arrow-color": colors.link,
@@ -67,7 +70,14 @@ const linkStyles = ({ colors }: CausalTheme, { link = "flowing" }: CausalStyleOp
   };
   if (link === "straight") {
     // Dense graphs need their links to recede until a highlight brings them forward
-    return { ...shared, width: 1, opacity: 0.35, "arrow-scale": 0.6, "curve-style": "straight" };
+    return {
+      ...shared,
+      width: 1,
+      opacity: 0.35,
+      "arrow-scale": 0.6,
+      "curve-style": "straight",
+      ...weight,
+    };
   }
   const labelled = {
     ...shared,
@@ -75,6 +85,7 @@ const linkStyles = ({ colors }: CausalTheme, { link = "flowing" }: CausalStyleOp
     label: "data(label)",
     "text-outline-color": colors.background,
     "text-outline-width": "1px",
+    ...weight,
   };
   return link === "flowing"
     ? {
@@ -100,6 +111,8 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     "z-index": 9,
   });
   const shownLabel = options.managedLabels ? { label: "data(label)" } : {};
+  // A highlight recolours a link, but keeps the width that shows its support
+  const width = (value: number) => (options.weightBySupport ? {} : { width: value });
 
   return [
     { selector: "node", style: { "font-family": fontFamily, ...nodeStyles(theme, options) } },
@@ -141,14 +154,15 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
         "z-index": 9,
       },
     },
-    { selector: "edge.cause-link", style: { ...highlight(colors.cause), width: 2 } },
-    { selector: "edge.effect-link", style: { ...highlight(colors.effect), width: 2 } },
+    { selector: "edge.cause-link", style: { ...highlight(colors.cause), ...width(2) } },
+    { selector: "edge.effect-link", style: { ...highlight(colors.effect), ...width(2) } },
     {
       selector: "node.route-node",
       style: { ...shownLabel, "border-width": 2, "border-color": colors.focus, "z-index": 9 },
     },
-    { selector: "edge.route-link", style: { ...highlight(colors.focus), width: 3 } },
+    { selector: "edge.route-link", style: { ...highlight(colors.focus), ...width(3) } },
     { selector: ".outside-loops", style: { display: "none" } },
+    { selector: ".contributor-hidden", style: { display: "none" } },
     {
       selector: "node.diff-added",
       style: { ...onColour(colors.added), "background-color": colors.added },
@@ -157,8 +171,8 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
       selector: "node.diff-removed",
       style: { ...onColour(colors.conflict), "background-color": colors.conflict },
     },
-    { selector: "edge.diff-added", style: { ...highlight(colors.added), width: 3 } },
-    { selector: "edge.diff-removed", style: { ...highlight(colors.conflict), width: 3 } },
+    { selector: "edge.diff-added", style: { ...highlight(colors.added), ...width(3) } },
+    { selector: "edge.diff-removed", style: { ...highlight(colors.conflict), ...width(3) } },
     {
       selector: "node.keyboard-cursor",
       style: { "outline-width": 3, "outline-color": colors.focus, "outline-offset": 3 },

@@ -2,12 +2,16 @@
 import {
   diffSnapshots,
   findFeedbackLoops,
+  listContributors,
   type CausalDataset,
+  type CausalEdge,
   type CausalNode,
+  type Snapshot,
 } from "@cytocausal/core";
 import {
   easeStyles,
   exportImage,
+  hideExceptContributors,
   highlightChanges,
   isTransitioning,
   layouts,
@@ -19,9 +23,11 @@ import type { Core } from "cytoscape";
 import {
   CausalRoot,
   CompareView,
+  ContributorFilter,
   DepthControl,
   GraphView,
   Legend,
+  LinkTooltip,
   LoopList,
   NodeSearch,
   Segmented,
@@ -35,7 +41,7 @@ import {
   VersionSwitcher,
   ZoomControls,
 } from "@cytocausal/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import datasetsJson from "../../data/datasets.json";
 import { NodeTooltip } from "@/components/NodeTooltip";
 import { annotations, graphStyles } from "@/graph-style";
@@ -47,19 +53,33 @@ const VIEWS = ["Compare", "Single"] as const;
 const LAYOUTS = Object.keys(layouts) as (keyof typeof layouts)[];
 const DOCS_URL = `${process.env.NEXT_PUBLIC_DOCS_URL ?? "http://localhost:3200"}/en/case-perspectiva/`;
 
+const WORKSHOP = "workshop";
+const COMBINED_LOOPS = { maxLength: 6 };
 const renderTooltip = (node: CausalNode) => <NodeTooltip node={node} />;
+const renderLinkTooltip = (link: CausalEdge, snapshot: Snapshot) => (
+  <LinkTooltip link={link} snapshot={snapshot} />
+);
+const datasetName = (id: string) =>
+  id === WORKSHOP ? "Whole workshop" : titleCase(id.replace("_", " "));
 const titleCase = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 const ids = (items: { id: string }[]) => items.map(({ id }) => id);
 
-export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug: boolean }) {
+// `debug` used to reveal the dataset menu, which is now always shown. Old links still work
+export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: boolean }) {
   const labels = useCausalLabels();
   const { scheme, setScheme } = useColorScheme();
   const theme = themeForScheme(scheme);
-  const stylesheet = useMemo(() => graphStyles(theme), [theme]);
 
   const [dataset, setDataset] = useState(
     datasets.find(({ id }) => id === datasetId) ?? datasets[0],
   );
+  // Line width shows agreement, which only means something once everyone is combined
+  const combined = dataset.id === WORKSHOP;
+  const stylesheet = useMemo(
+    () => graphStyles(theme, { weightBySupport: combined }),
+    [theme, combined],
+  );
+  const [contributors, setContributors] = useState<string[] | null>(null);
   const [layoutName, setLayoutName] = useState<keyof typeof layouts>("fcose");
   // Two graphs side by side are too small to read on a phone
   const [view, setView] = useState<(typeof VIEWS)[number]>(() =>
@@ -80,21 +100,38 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
   const { selected: leftSelected, clear: clearLeft, cy: leftCy } = main;
   const { selected: rightSelected, clear: clearRight, cy: rightCy } = right;
   useEffect(() => {
-    if (leftSelected.length) clearRight();
-  }, [leftSelected, clearRight]);
+    if (leftSelected.length || main.selectedLink) clearRight();
+  }, [leftSelected, main.selectedLink, clearRight]);
   useEffect(() => {
-    if (rightSelected.length) clearLeft();
-  }, [rightSelected, clearLeft]);
+    if (rightSelected.length || right.selectedLink) clearLeft();
+  }, [rightSelected, right.selectedLink, clearLeft]);
 
-  const active = comparing && rightSelected.length ? right : main;
+  const active = comparing && (rightSelected.length || right.selectedLink) ? right : main;
   const activeSnapshot = snapshotOf(!comparing ? version : active === right ? RIGHT : LEFT);
+  const contributorList = useMemo(() => listContributors(activeSnapshot), [activeSnapshot]);
+
+  // Each graph shows only the chosen people's parts, including a graph rebuilt later
+  const shownFilter = useRef(contributors);
+  shownFilter.current = contributors;
+  const filter = useCallback(
+    (cy: Core, snapshotId: string) =>
+      hideExceptContributors(cy, snapshotOf(snapshotId), shownFilter.current),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dataset],
+  );
+  useEffect(() => {
+    if (leftCy.current) filter(leftCy.current, comparing ? LEFT : version);
+    if (comparing && rightCy.current) filter(rightCy.current, RIGHT);
+  }, [contributors, comparing, version, filter, leftCy, rightCy]);
 
   const shownVersions = comparing ? [LEFT, RIGHT] : [version];
   const loopGroups = useMemo(
     () =>
       shownVersions.map((id) => {
         const snapshot = dataset.snapshots.find((item) => item.id === id)!;
-        return { snapshot, loops: findFeedbackLoops(snapshot).loops };
+        // Everyone's links together form thousands of loops, so the combined map lists short ones
+        const search = findFeedbackLoops(snapshot, combined ? COMBINED_LOOPS : undefined);
+        return { snapshot, loops: search.loops, complete: search.complete };
       }),
     // The array is rebuilt on each render, but only these decide its contents
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -148,6 +185,7 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
     motion: theme.motion,
     positionCache,
     renderTooltip,
+    renderLinkTooltip,
   };
 
   return (
@@ -160,7 +198,10 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
             left={LEFT}
             right={RIGHT}
             format={titleCase}
-            onReady={(cy, snapshotId) => (snapshotId === LEFT ? main : right).attach(cy)}
+            onReady={(cy, snapshotId) => {
+              (snapshotId === LEFT ? main : right).attach(cy);
+              filter(cy, snapshotId);
+            }}
           />
         ) : (
           <GraphView
@@ -168,7 +209,10 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
             {...shared}
             snapshotId={version}
             animateSnapshots
-            onReady={main.attach}
+            onReady={(cy) => {
+              main.attach(cy);
+              filter(cy, version);
+            }}
           />
         )}
 
@@ -208,10 +252,15 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
         <div className="cc-overlay cc-overlay-bottom">
           <Legend
             bare
+            support={combined}
             items={[
               { label: labels.causes, color: "var(--cc-cause)" },
               { label: labels.effects, color: "var(--cc-effect)" },
-              ...annotations.map(({ label, color }) => ({ label, color: theme.colors[color] })),
+              // Annotations belong to each participant's diagram, so the combined map has none
+              ...(combined ? [] : annotations).map(({ label, color }) => ({
+                label,
+                color: theme.colors[color],
+              })),
             ]}
           />
           <DepthControl
@@ -242,32 +291,37 @@ export function PerspectivaApp({ datasetId, debug }: { datasetId?: string; debug
           </a>
         </SidebarHeader>
 
-        {debug && (
-          <select
-            aria-label="Dataset"
-            className="cc-select"
-            value={dataset.id}
-            onChange={(event) =>
-              clearing(setDataset)(datasets.find(({ id }) => id === event.target.value)!)
-            }
-          >
-            {ids(datasets).map((id) => (
-              <option key={id} value={id}>
-                {id}
-              </option>
-            ))}
-          </select>
-        )}
+        <select
+          aria-label="Dataset"
+          className="cc-select"
+          value={dataset.id}
+          onChange={(event) => {
+            setContributors(null);
+            clearing(setDataset)(datasets.find(({ id }) => id === event.target.value)!);
+          }}
+        >
+          {ids(datasets).map((id) => (
+            <option key={id} value={id}>
+              {datasetName(id)}
+            </option>
+          ))}
+        </select>
 
         <NodeSearch nodes={activeSnapshot.nodes} onSelect={active.focus} />
+        <ContributorFilter
+          contributors={contributorList}
+          chosen={contributors}
+          onChange={setContributors}
+        />
         <SelectionPanel graph={active} snapshot={activeSnapshot} />
 
-        {loopGroups.map(({ snapshot, loops }) => (
+        {loopGroups.map(({ snapshot, loops, complete }) => (
           <LoopList
             key={snapshot.id}
             title={loopGroups.length > 1 ? `Feedback loops: ${snapshot.id}` : undefined}
             snapshot={snapshot}
             loops={loops}
+            complete={complete}
             active={paneOf(snapshot.id).activeRoute}
             onToggle={(route) => toggleLoop(snapshot.id, route)}
             onPreview={paneOf(snapshot.id).previewRoute}

@@ -4,7 +4,7 @@ title: "Data model"
 
 # Data model
 
-cytocausal stores every causal graph in one shape, so the same views and analysis work on a small workshop diagram and a large event network. The types are in `@cytocausal/core`, which has no UI code. It uses Cytoscape only for headless analysis.
+cytocausal stores every causal graph in one shape, so the same views and analysis work on a small workshop diagram and a large event network. The types are in `@cytocausal/core`, which has no UI code and no dependencies, so it also runs in Node and in workers.
 
 | Concept | Meaning | Perspectiva | Causal Explorer |
 | :--- | :--- | :--- | :--- |
@@ -12,10 +12,10 @@ cytocausal stores every causal graph in one shape, so the same views and analysi
 | `Snapshot` | One version of the graph | V1, final | One snapshot |
 | `CausalNode` | A variable or event | A variable | An abstract event |
 | `CausalEdge` | A directed link | A link with polarity | A link without polarity |
-| `Evidence` | Where a node came from | Original terms | Event descriptions |
+| `Evidence` | Who stated a node or link, and on what grounds | Original terms, and who drew each link | Event descriptions |
 | `Correspondence` | Which node became which | V1 to final | Not used |
 
-Polarity, evidence, positions and correspondences are all optional. Explorer has no polarity and Perspectiva has no saved positions, and both are valid.
+Polarity, evidence, positions and correspondences are all optional. Evidence can be on links as well as nodes, and a contributor with no text counts: see [Provenance and agreement](/en/provenance/). Explorer has no polarity and Perspectiva has no saved positions, and both are valid.
 
 ## Build a dataset
 

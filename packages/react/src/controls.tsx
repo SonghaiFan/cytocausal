@@ -123,20 +123,25 @@ export interface LegendItem {
 export function Legend({
   items,
   title,
+  support,
   bare = false,
   className = "",
 }: {
   items?: LegendItem[];
   title?: string;
+  /** Explain that thicker links were stated by more people. Defaults to the provider's style. */
+  support?: boolean;
   /** Leave out the panel, to place it on the graph. */
   bare?: boolean;
   className?: string;
 }) {
   const labels = useCausalLabels();
+  const causal = useOptionalCausal();
   const shown = items ?? [
     { label: labels.causes, color: "var(--cc-cause)" },
     { label: labels.effects, color: "var(--cc-effect)" },
   ];
+  const weighted = support ?? Boolean(causal?.styleOptions?.weightBySupport);
   return (
     <section className={`${bare ? "" : "cc-panel"} ${className}`}>
       {title && <h3 className="cc-heading">{title}</h3>}
@@ -147,6 +152,15 @@ export function Legend({
             {label}
           </li>
         ))}
+        {weighted && (
+          <li>
+            <svg className="cc-weight" width="20" height="12" viewBox="0 0 20 12" aria-hidden="true">
+              <line x1="0" y1="3" x2="20" y2="3" stroke="currentColor" strokeWidth="1" />
+              <line x1="0" y1="9" x2="20" y2="9" stroke="currentColor" strokeWidth="4" />
+            </svg>
+            {labels.supportLegend}
+          </li>
+        )}
       </ul>
     </section>
   );
@@ -181,15 +195,18 @@ export function ZoomControls({
 /** A hover preview of a node and its first few pieces of evidence. */
 export function NodeTooltip({ node, limit = 3 }: { node: CausalNode; limit?: number }): ReactNode {
   const labels = useCausalLabels();
-  const evidence = node.evidence ?? [];
+  const evidence = (node.evidence ?? []).filter(({ text }) => text);
   return (
     <div className="cc-tooltip">
       <strong>{node.label}</strong>
       {evidence.length > 0 && (
         <ul className="cc-list">
-          {evidence.slice(0, limit).map(({ text }, index) => (
-            <li key={index}>{text}</li>
-          ))}
+          {evidence
+            .filter(({ text }) => text)
+            .slice(0, limit)
+            .map(({ text }, index) => (
+              <li key={index}>{text}</li>
+            ))}
         </ul>
       )}
       {evidence.length > limit && <p className="cc-muted">{labels.seeAll(evidence.length)}</p>}

@@ -8,10 +8,8 @@
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "cytoscape": "3.31.0"
-  },
   "devDependencies": {
+    "cytoscape": "3.31.0",
     "@types/cytoscape": "^3.21.8",
     "@types/node": "^22",
     "typescript": "^5"

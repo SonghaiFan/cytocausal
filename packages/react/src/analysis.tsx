@@ -14,6 +14,7 @@ import { required, useOptionalCausal } from "./CausalProvider.tsx";
 import type { useCausalGraph } from "./useCausalGraph.ts";
 import { Segmented } from "./controls.tsx";
 import { useCausalLabels } from "./labels.tsx";
+import { LinkDetails } from "./LinkDetails.tsx";
 import { NodeDetails } from "./NodeDetails.tsx";
 import { RouteButton } from "./RouteButton.tsx";
 
@@ -145,6 +146,17 @@ export function SelectionPanel({
   const { selected, clear } = graph;
   const routes = { active: graph.activeRoute, onToggle: graph.toggleRoute };
 
+  if (graph.selectedLink) {
+    return (
+      <LinkDetails
+        snapshot={snapshot}
+        linkId={graph.selectedLink}
+        onSelect={graph.focus}
+        onClose={clear}
+        className={className}
+      />
+    );
+  }
   if (selected.length === 0) {
     return <p className={`cc-panel cc-hint ${className}`}>{labels.selectHint}</p>;
   }
@@ -171,6 +183,7 @@ export function SelectionPanel({
           nodeId={id}
           onSelect={graph.focus}
           onClose={() => graph.toggle(id)}
+          onShowLink={graph.toggleLink}
           loopOptions={loopOptions}
           activeRoute={graph.activeRoute}
           onToggleRoute={loopOptions ? graph.toggleRoute : undefined}

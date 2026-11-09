@@ -26,6 +26,8 @@ export interface CausalGraphOptions {
   focusZoom?: number;
   /** Nodes to start with selected, such as from a shared link. */
   initialSelected?: string[];
+  /** A link to start with selected. It takes the place of `initialSelected`. */
+  initialLink?: string | null;
   motion?: CausalMotion;
 }
 
@@ -46,10 +48,12 @@ export function useCausalGraph({
   readableLabels = false,
   focusZoom,
   initialSelected = [],
+  initialLink = null,
   motion,
 }: CausalGraphOptions = {}) {
   const cy = useRef<Core | null>(null);
-  const [selected, setSelected] = useState(initialSelected);
+  const [selected, setSelected] = useState(initialLink ? [] : initialSelected);
+  const [selectedLink, setSelectedLink] = useState<string | null>(initialLink);
   const [hovered, setHovered] = useState<string | null>(null);
   const [activeRoute, setActiveRoute] = useState<Route | null>(null);
   const [previewedRoute, setPreviewedRoute] = useState<Route | null>(null);
@@ -58,7 +62,14 @@ export function useCausalGraph({
   const cursor = useRef<string | null>(null);
   const keyHandler = useRef<((event: KeyboardEvent) => void) | null>(null);
 
-  const latest = useRef({ selected, hovered, activeRoute, previewedRoute, depth });
+  const latest = useRef({ selected, selectedLink, hovered, activeRoute, previewedRoute, depth });
+
+  /** The route that highlights a link, or null if the graph doesn't have it. */
+  const routeOf = useCallback((id: string): Route | null => {
+    const edge = cy.current?.getElementById(id);
+    if (!edge || edge.length === 0 || !edge.isEdge()) return null;
+    return { nodes: [edge.source().id(), edge.target().id()], edges: [id] };
+  }, []);
 
   const applyHighlight = useCallback(() => {
     const instance = cy.current;
@@ -81,18 +92,33 @@ export function useCausalGraph({
   }, [motion]);
 
   useEffect(() => {
-    latest.current = { selected, hovered, activeRoute, previewedRoute, depth };
+    latest.current = { selected, selectedLink, hovered, activeRoute, previewedRoute, depth };
     applyHighlight();
-  }, [selected, hovered, activeRoute, previewedRoute, depth, applyHighlight]);
+  }, [selected, selectedLink, hovered, activeRoute, previewedRoute, depth, applyHighlight]);
 
   const add = useCallback(
     (ids: string[], id: string) => (ids.includes(id) ? ids : [...ids, id].slice(-maxSelected)),
     [maxSelected],
   );
 
+  /**
+   * Selects a link and highlights it with the nodes it joins, or deselects it. It takes the
+   * place of any selected nodes.
+   */
+  const toggleLink = useCallback(
+    (id: string) => {
+      const route = latest.current.selectedLink === id ? null : routeOf(id);
+      setSelectedLink(route ? id : null);
+      setActiveRoute(route);
+      if (route) setSelected([]);
+    },
+    [routeOf],
+  );
+
   /** Selects a node, or deselects it if it's already selected. */
   const toggle = useCallback(
     (id: string) => {
+      setSelectedLink(null);
       setActiveRoute(null);
       setSelected((ids) => (ids.includes(id) ? ids.filter((item) => item !== id) : add(ids, id)));
     },
@@ -102,6 +128,7 @@ export function useCausalGraph({
   /** Selects a node and moves the view to it. */
   const focus = useCallback(
     (id: string) => {
+      setSelectedLink(null);
       setActiveRoute(null);
       setSelected((ids) => add(ids, id));
       if (cy.current) {
@@ -114,6 +141,7 @@ export function useCausalGraph({
   /** Clears the selection and any highlighted loop. */
   const clear = useCallback(() => {
     setSelected([]);
+    setSelectedLink(null);
     setActiveRoute(null);
   }, []);
 
@@ -124,6 +152,7 @@ export function useCausalGraph({
 
   /** Highlights a loop or path, or removes the highlight if it's already showing. */
   const toggleRoute = useCallback((route: Route) => {
+    setSelectedLink(null);
     setActiveRoute((current) => (current === route ? null : route));
   }, []);
 
@@ -163,6 +192,7 @@ export function useCausalGraph({
       }
       if (selectable) {
         instance.on("tap", "node", (event) => toggle(event.target.id()));
+        instance.on("tap", "edge", (event) => toggleLink(event.target.id()));
         instance.on("tap", (event) => {
           if (event.target === instance) clear();
         });
@@ -202,9 +232,16 @@ export function useCausalGraph({
         if (!container.hasAttribute("aria-label")) container.setAttribute("aria-label", "Causal graph");
       }
       cursor.current = null;
+      // A link chosen before the graph existed, such as from a shared address, needs its ends
+      const pending = latest.current.selectedLink;
+      if (pending) {
+        const route = routeOf(pending);
+        setActiveRoute(route);
+        if (!route) setSelectedLink(null);
+      }
       applyHighlight();
     },
-    [applyHighlight, clear, moveCursor, readableLabels, selectable, toggle],
+    [applyHighlight, clear, moveCursor, readableLabels, routeOf, selectable, toggle, toggleLink],
   );
 
   return {
@@ -212,6 +249,9 @@ export function useCausalGraph({
     /** The connected Cytoscape instance, for anything this hook doesn't cover. */
     cy,
     selected,
+    /** The selected link's id, if a link rather than nodes is selected. */
+    selectedLink,
+    toggleLink,
     hovered,
     activeRoute,
     depth,

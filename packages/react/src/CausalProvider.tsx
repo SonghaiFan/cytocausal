@@ -3,6 +3,7 @@ import {
   diffSnapshots,
   findFeedbackLoops,
   getSnapshot,
+  listContributors,
   validateDataset,
   type CausalDataset,
   type LoopOptions,
@@ -13,6 +14,7 @@ import {
   darkTheme,
   easeStyles,
   exportImage,
+  hideExceptContributors,
   highlightChanges,
   isTransitioning,
   lightTheme,
@@ -22,7 +24,7 @@ import {
   type CausalTheme,
   type Positions,
 } from "@cytocausal/cytoscape";
-import type { LayoutOptions } from "cytoscape";
+import type { Core, LayoutOptions } from "cytoscape";
 import {
   createContext,
   useCallback,
@@ -53,6 +55,8 @@ export interface CausalProviderProps {
   maxSelected?: number;
   /** Nodes to start with selected. */
   initialSelected?: string[];
+  /** A link to start with selected, instead of nodes. */
+  initialLink?: string;
   /** The snapshot to start on. Defaults to the first. */
   initialVersion?: string;
   /** Extra options for `useCausalGraph`, such as for large graphs. */
@@ -82,6 +86,7 @@ function useCausalState({
   layout,
   maxSelected = 2,
   initialSelected = [],
+  initialLink,
   initialVersion,
   graphOptions,
   shareInUrl = false,
@@ -113,8 +118,25 @@ function useCausalState({
     initialSelected: (shared.get("selected")?.split(",") ?? initialSelected).filter((id) =>
       snapshot.nodes.some((node) => node.id === id),
     ),
+    initialLink: [shared.get("link") ?? initialLink].find((id) =>
+      snapshot.edges.some((edge) => edge.id === id),
+    ),
   });
-  const { cy, selected, clear } = graph;
+  const { cy, selected, selectedLink, clear } = graph;
+
+  /** Whose nodes and links are shown. Null shows everyone's. It stays across versions. */
+  const [contributors, setContributors] = useState<string[] | null>(null);
+  const contributorList = useMemo(() => listContributors(snapshot), [snapshot]);
+  const shownFilter = useRef({ snapshot, contributors });
+  /** Hides what the chosen contributors didn't state, such as after the graph is rebuilt. */
+  const applyFilter = useCallback((instance: Core) => {
+    const { snapshot, contributors } = shownFilter.current;
+    hideExceptContributors(instance, snapshot, contributors);
+  }, []);
+  useEffect(() => {
+    shownFilter.current = { snapshot, contributors };
+    if (cy.current && !cy.current.destroyed()) applyFilter(cy.current);
+  }, [cy, snapshot, contributors, applyFilter]);
 
   /** Moves to another snapshot. Its nodes differ, so the selection is cleared. */
   const setVersion = useCallback(
@@ -149,9 +171,11 @@ function useCausalState({
     url.searchParams.set("version", version);
     if (selected.length) url.searchParams.set("selected", selected.join(","));
     else url.searchParams.delete("selected");
+    if (selectedLink) url.searchParams.set("link", selectedLink);
+    else url.searchParams.delete("link");
     history.replaceState(null, "", url);
     setCopied(false);
-  }, [shareInUrl, version, selected]);
+  }, [shareInUrl, version, selected, selectedLink]);
 
   useEffect(() => {
     const instance = cy.current;
@@ -184,6 +208,13 @@ function useCausalState({
       ? null
       : () => system.setScheme(scheme === "dark" ? "light" : "dark"),
     stylesheet: stylesheets[scheme],
+    styleOptions,
+    /** Everyone who stated part of the shown snapshot, with how much each stated. */
+    contributorList,
+    contributors,
+    setContributors,
+    /** Reapplies the contributor filter. `CausalGraph` calls it on each new graph. */
+    applyFilter,
     layout: layout ?? (hasPositions ? savedLayout : autoLayout),
     positionCache,
     loops,

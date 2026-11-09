@@ -7,6 +7,7 @@ export default {
   "theming": "主题与样式",
   "interactions": "交互",
   "data-model": "数据模型",
+  "provenance": "出处与共识",
   "react-lifecycle": "React 生命周期",
   "stable-layouts": "稳定布局与锚定",
   "version-transitions": "版本过渡",

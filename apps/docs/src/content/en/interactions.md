@@ -47,6 +47,7 @@ export function Explorer({ dataset }: { dataset: CausalDataset }) {
 | Hover a node | Highlights it, its causes and its effects |
 | Click a node | Keeps that highlight, and adds the node to `selected` |
 | Click it again | Deselects it |
+| Click a link | Selects it as `selectedLink` and highlights it with its ends, in place of any selected nodes |
 | Click the background | Clears the selection |
 
 Highlights have a fixed order: a highlighted loop comes first, then selected nodes, then the hovered node. So hovering doesn't disturb what someone has selected.
@@ -62,6 +63,8 @@ The graph takes keyboard focus. Selecting needs `selectable`, which is on by def
 | Left | Moves to a cause of the current node |
 | Enter, Space | Selects or deselects the current node |
 | Escape | Clears the cursor and selection |
+
+To reach a link from the keyboard, select a node and use the link button beside each of its causes and effects. `toggleLink` does the same from your own code.
 
 Right and Left go to the first effect or cause. Use Up and Down to reach the others.
 

@@ -1,6 +1,10 @@
 # cytocausal
 
-A React web app starter for causal graphs, built on Next.js. Clone it, swap in your data, and build your own interface.
+A toolkit for building causal graph interfaces that can be traced and compared, for research on participatory modelling and causal extraction from text. It's a Next.js and React starter: clone it, swap in your data, and build your own interface.
+
+- **Traceable**: every node and link keeps who stated it and on what grounds, so any part of the graph can be checked against its source.
+- **Comparable**: versions are matched node by node, even through renames and merges. Several people's graphs combine into one that shows where they agree.
+- **Analysed along cause and effect**: feedback loops marked reinforcing or balancing, causal paths, and directed centrality, with no dependencies in `core`.
 
 ## Quick start
 
@@ -23,7 +27,7 @@ Open `http://localhost:3102`, then edit `apps/starter/src/data.ts` to use your o
 | `apps/perspectiva` | Example: compares versions of causal loop diagrams |
 | `apps/explorer` | Example: explores a large causal network |
 | `apps/docs` | Guides, in English and Chinese |
-| `packages/core` | Data model, validation and analysis |
+| `packages/core` | Data model, provenance, validation and analysis, with no dependencies |
 | `packages/cytoscape` | Themes, styles, layouts, transitions and highlighting |
 | `packages/react` | `CausalWorkspace`, its components and `useCausalGraph` |
 

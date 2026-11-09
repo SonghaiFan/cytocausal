@@ -47,6 +47,7 @@ export function Explorer({ dataset }: { dataset: CausalDataset }) {
 | 悬停节点 | 高亮该节点及其原因和结果 |
 | 点击节点 | 保持高亮，并把节点加入 `selected` |
 | 再次点击 | 取消选中 |
+| 点击连线 | 把它选为 `selectedLink`，并高亮它和两端节点，同时取消已选中的节点 |
 | 点击空白处 | 清除选中 |
 
 高亮有固定的优先级：回路最高，其次是选中的节点，最后是悬停的节点。所以悬停不会打乱已经选中的内容。
@@ -62,6 +63,8 @@ export function Explorer({ dataset }: { dataset: CausalDataset }) {
 | 左 | 移到当前节点的一个原因 |
 | Enter、空格 | 选中或取消选中当前节点 |
 | Escape | 清除光标和选中 |
+
+用键盘查看连线时，先选中一个节点，再使用它每个原因和结果旁边的连线按钮。在你自己的代码里，可以用 `toggleLink` 做同样的事。
 
 左右键只移到第一个原因或结果。其他节点可用上下键到达。
 

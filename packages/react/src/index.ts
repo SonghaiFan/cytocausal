@@ -11,6 +11,8 @@ export {
 export * from "./controls.tsx";
 export * from "./GraphView.tsx";
 export * from "./labels.tsx";
+export * from "./LinkDetails.tsx";
+export * from "./ContributorFilter.tsx";
 export * from "./LoopList.tsx";
 export * from "./NodeDetails.tsx";
 export * from "./NodeSearch.tsx";
