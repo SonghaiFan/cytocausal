@@ -114,7 +114,6 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     ...(options.baseRules ?? []),
     { selector: "node.labelled", style: shownLabel },
     { selector: ".dimmed", style: { opacity: dimmedOpacity } },
-    { selector: "node.selected", style: { "border-color": colors.focus, "border-width": "2px" } },
     {
       selector: "node.focus",
       style: {

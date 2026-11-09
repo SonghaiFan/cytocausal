@@ -33,6 +33,8 @@ export interface CausalLabels {
   removed: string;
   renamed: string;
   merged: string;
+  split: string;
+  regrouped: string;
   linksAdded: string;
   linksRemoved: string;
   polarityChanged: string;
@@ -77,6 +79,8 @@ export const defaultLabels: CausalLabels = {
   removed: "Removed",
   renamed: "Renamed",
   merged: "Merged",
+  split: "Split",
+  regrouped: "Regrouped",
   linksAdded: "Links added",
   linksRemoved: "Links removed",
   polarityChanged: "Polarity changed",

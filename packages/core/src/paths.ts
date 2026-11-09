@@ -26,7 +26,10 @@ const outgoingLinks = ({ nodes, edges }: Snapshot) => {
   return outgoing;
 };
 
-/** Lists the causal paths from one node to another, following link direction. */
+/**
+ * Lists the causal paths from one node to another, following link direction. It searches one
+ * length at a time, so when `limit` cuts the list short it keeps the shortest paths.
+ */
 export function findCausalPaths(
   snapshot: Snapshot,
   from: string,
@@ -35,34 +38,43 @@ export function findCausalPaths(
 ): PathSearch {
   const outgoing = outgoingLinks(snapshot);
   const paths: CausalPath[] = [];
-  let complete = true;
-  const route = [from];
-  const routeEdges: string[] = [];
-  const onRoute = new Set(route);
+  if (from === to) return { paths, complete: true };
 
-  const visit = (node: string) => {
-    for (const { id, target } of outgoing.get(node) ?? []) {
-      if (paths.length >= limit) {
-        complete = false;
-        return;
-      }
-      if (onRoute.has(target)) continue;
-      if (route.length >= maxLength) {
-        complete = false;
-        continue;
-      }
-      route.push(target);
-      routeEdges.push(id);
-      onRoute.add(target);
-      if (target === to) paths.push({ nodes: [...route], edges: [...routeEdges] });
-      else visit(target);
-      onRoute.delete(target);
-      routeEdges.pop();
-      route.pop();
-    }
-  };
+  for (let length = 2; length <= maxLength; length++) {
+    // Whether some route went on past this length, so longer paths may exist
+    let longer = false;
+    const route = [from];
+    const routeEdges: string[] = [];
+    const onRoute = new Set(route);
 
-  if (from !== to) visit(from);
-  paths.sort((a, b) => a.nodes.length - b.nodes.length);
-  return { paths, complete };
+    /** Returns true once a path is found past `limit`. */
+    const visit = (node: string): boolean => {
+      for (const { id, target } of outgoing.get(node) ?? []) {
+        if (onRoute.has(target)) continue;
+        if (target === to) {
+          if (route.length + 1 !== length) continue;
+          if (paths.length >= limit) return true;
+          paths.push({ nodes: [...route, target], edges: [...routeEdges, id] });
+          continue;
+        }
+        if (route.length + 1 >= length) {
+          longer = true;
+          continue;
+        }
+        route.push(target);
+        routeEdges.push(id);
+        onRoute.add(target);
+        if (visit(target)) return true;
+        onRoute.delete(target);
+        routeEdges.pop();
+        route.pop();
+      }
+      return false;
+    };
+
+    if (visit(from)) return { paths, complete: false };
+    if (!longer) return { paths, complete: true };
+  }
+
+  return { paths, complete: false };
 }

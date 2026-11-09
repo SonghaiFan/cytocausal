@@ -32,7 +32,10 @@ function classify(edges: CausalEdge[]): LoopType {
   return negative % 2 === 0 ? "reinforcing" : "balancing";
 }
 
-/** Lists the simple cycles of a snapshot, each once, and classifies them from link polarity. */
+/**
+ * Lists the simple cycles of a snapshot, each once, and classifies them from link polarity. It
+ * searches one length at a time, so when `limit` cuts the list short it keeps the shortest loops.
+ */
 export function findFeedbackLoops(
   { nodes, edges }: Snapshot,
   { through, maxLength = Infinity, limit = 1000 }: LoopOptions = {},
@@ -43,45 +46,49 @@ export function findFeedbackLoops(
   // Each loop is found once: from its earliest node, or from `through`
   const order = new Map(nodes.map(({ id }, index) => [id, index]));
   const starts = through ? [through] : nodes.map(({ id }) => id);
-
   const loops: FeedbackLoop[] = [];
-  let complete = true;
 
-  for (const start of starts) {
-    const path = [start];
-    const pathEdges: CausalEdge[] = [];
-    const onPath = new Set(path);
+  for (let length = 1; length <= maxLength; length++) {
+    // Whether some path went on past this length, so longer loops may exist
+    let longer = false;
 
-    const visit = (node: string) => {
-      for (const edge of outgoing.get(node) ?? []) {
-        if (loops.length >= limit) {
-          complete = false;
-          return;
-        }
-        const next = edge.target;
-        if (next === start) {
-          const route = [...pathEdges, edge];
-          loops.push({ nodes: [...path], edges: route.map(({ id }) => id), type: classify(route) });
-          continue;
-        }
-        if (onPath.has(next) || (!through && order.get(next)! < order.get(start)!)) continue;
-        if (path.length >= maxLength) {
-          complete = false;
-          continue;
-        }
-        path.push(next);
-        pathEdges.push(edge);
-        onPath.add(next);
-        visit(next);
-        onPath.delete(next);
-        pathEdges.pop();
-        path.pop();
-      }
-    };
+    for (const start of starts) {
+      const path = [start];
+      const pathEdges: CausalEdge[] = [];
+      const onPath = new Set(path);
 
-    visit(start);
+      /** Returns true once a loop is found past `limit`. */
+      const visit = (node: string): boolean => {
+        for (const edge of outgoing.get(node) ?? []) {
+          const next = edge.target;
+          if (next === start) {
+            if (path.length !== length) continue;
+            if (loops.length >= limit) return true;
+            const route = [...pathEdges, edge];
+            loops.push({ nodes: [...path], edges: route.map(({ id }) => id), type: classify(route) });
+            continue;
+          }
+          if (onPath.has(next) || (!through && order.get(next)! < order.get(start)!)) continue;
+          if (path.length >= length) {
+            longer = true;
+            continue;
+          }
+          path.push(next);
+          pathEdges.push(edge);
+          onPath.add(next);
+          if (visit(next)) return true;
+          onPath.delete(next);
+          pathEdges.pop();
+          path.pop();
+        }
+        return false;
+      };
+
+      if (visit(start)) return { loops, complete: false };
+    }
+
+    if (!longer) return { loops, complete: true };
   }
 
-  loops.sort((a, b) => a.nodes.length - b.nodes.length);
-  return { loops, complete };
+  return { loops, complete: false };
 }

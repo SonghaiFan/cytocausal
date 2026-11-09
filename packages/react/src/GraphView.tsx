@@ -1,5 +1,5 @@
 "use client";
-import type { CausalDataset, CausalNode } from "@cytocausal/core";
+import { getSnapshot, type CausalDataset, type CausalNode } from "@cytocausal/core";
 import {
   autoLayout,
   createCausalStyle,
@@ -30,7 +30,10 @@ export type PositionCache = RefObject<Record<string, Positions>>;
 export interface GraphViewProps {
   dataset: CausalDataset;
   snapshotId: string;
-  /** Defaults to an automatic layout. */
+  /**
+   * Defaults to an automatic layout. A new object rebuilds the graph, so define it outside your
+   * component or memoise it.
+   */
   layout?: LayoutOptions;
   /** Changing this restyles the graph in place, so nodes stay where they are. */
   stylesheet?: Stylesheet[];
@@ -81,7 +84,7 @@ export function GraphView({
   const [tooltip, setTooltip] = useState<{ node: CausalNode; x: number; y: number } | null>(null);
 
   const snapshot = useMemo(
-    () => dataset.snapshots.find(({ id }) => id === snapshotId)!,
+    () => getSnapshot(dataset, snapshotId),
     [dataset, snapshotId],
   );
   const cacheKey = cacheKeyOf(dataset.id, layout, snapshotId);
@@ -157,10 +160,6 @@ export function GraphView({
     instance.on("zoom pan drag", hideTooltip);
     instance.on("tap", (event) => {
       if (event.target === instance) hideTooltip();
-    });
-    instance.on("click", "node", (event) => {
-      instance.elements().removeClass("selected");
-      event.target.addClass("selected");
     });
 
     const initial = instance.layout(initialLayout);

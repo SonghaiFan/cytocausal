@@ -40,7 +40,7 @@ import "@cytocausal/react/styles.css";
 
 Define `labels`, `themes` and `styleOptions` outside your component, so they stay the same between renders.
 
-On graphs of more than 60 nodes, the workspace only lists loops of up to six nodes, because the full list can be enormous. A `+` after the count means there may be more.
+On graphs of more than 60 nodes, the workspace only lists loops of up to six nodes, because the full list can be enormous. A `+` after the count means there may be more. Pass `loopOptions`, such as `{ maxLength: 8, limit: 200 }`, to set your own limits.
 
 ## Choose your own parts
 

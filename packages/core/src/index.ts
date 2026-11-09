@@ -1,5 +1,6 @@
 export * from "./types.ts";
 export * from "./validate.ts";
+export * from "./snapshots.ts";
 export * from "./analysis.ts";
 export * from "./diff.ts";
 export * from "./loops.ts";

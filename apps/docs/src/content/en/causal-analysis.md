@@ -82,7 +82,7 @@ Across Perspectiva's 16 diagrams, it finds 89 loops: 59 reinforcing and 30 balan
 
 ### Large graphs
 
-The number of loops can grow very quickly with graph size. Set `maxLength` on large graphs, and use `through` to search around one node. `complete` is `false` when `maxLength` or `limit` may have hidden loops, so don't present a capped list as the full count.
+The number of loops can grow very quickly with graph size. Set `maxLength` on large graphs, and use `through` to search around one node. `complete` is `false` when `maxLength` or `limit` may have hidden loops, so don't present a capped list as the full count. The search goes one length at a time, so a list cut short by `limit` still holds the shortest loops.
 
 | Maximum length in Explorer | Loops |
 | :--- | :--- |
@@ -135,11 +135,11 @@ export function routes(snapshot: Snapshot) {
 }
 ```
 
-Paths come shortest first. `maxLength` counts nodes. `complete` is `false` when `maxLength` or `limit` may have hidden some paths.
+Paths come shortest first, and a list cut short by `limit` holds the shortest ones. `maxLength` counts nodes. `complete` is `false` when `maxLength` or `limit` may have hidden some paths.
 
 ## Version differences
 
-`diffSnapshots` compares two snapshots. It uses the dataset's correspondences, and falls back to matching ids when there are none.
+`diffSnapshots` compares two snapshots. It uses the dataset's correspondences in either direction, and falls back to matching ids when there are none. Reading it the other way swaps added and removed, and merged and split. An unknown snapshot id throws an error that names the snapshots the dataset has.
 
 ```ts
 import { diffSnapshots, type CausalDataset } from "@cytocausal/core";
@@ -155,5 +155,9 @@ export function summary(dataset: CausalDataset) {
 | `addedNodes`, `removedNodes` | Nodes with no counterpart |
 | `renamedNodes` | Nodes whose label changed, as `{ from, to }` |
 | `mergedNodes` | Several nodes that became one, as `{ from, to }` |
+| `splitNodes` | One node that became several, as `{ from, to }` |
+| `regroupedNodes` | Several nodes that became several others, as `{ from, to }` |
 | `addedLinks`, `removedLinks` | Links with no counterpart |
 | `changedLinks` | Links whose polarity changed, as `{ from, to, polarity }` |
+
+Links are compared by the nodes they join, so parallel links between two nodes count as one. When they disagree, their polarity is `"mixed"`.

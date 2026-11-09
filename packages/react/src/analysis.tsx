@@ -1,6 +1,7 @@
 "use client";
 import {
   diffSnapshots,
+  getSnapshot,
   findCausalPaths,
   type CausalDataset,
   type LoopOptions,
@@ -254,8 +255,8 @@ function Differences({
     return all;
   }, [dataset]);
 
-  const fromNodes = dataset.snapshots.find(({ id }) => id === from)!.nodes;
-  const toNodes = dataset.snapshots.find(({ id }) => id === to)!.nodes;
+  const fromNodes = getSnapshot(dataset, from).nodes;
+  const toNodes = getSnapshot(dataset, to).nodes;
   const labelIn = (nodes: CausalNode[], id: string) =>
     nodes.find((node) => node.id === id)?.label ?? names.get(id)?.label ?? id;
   const link = (nodes: CausalNode[]) => (edge: { source: string; target: string }) =>
@@ -269,6 +270,19 @@ function Differences({
       labels.merged,
       diff.mergedNodes.map(
         (item) => `${item.from.map(({ label }) => label).join(", ")} → ${item.to.label}`,
+      ),
+    ],
+    [
+      labels.split,
+      diff.splitNodes.map(
+        (item) => `${item.from.label} → ${item.to.map(({ label }) => label).join(", ")}`,
+      ),
+    ],
+    [
+      labels.regrouped,
+      diff.regroupedNodes.map(
+        (item) =>
+          `${item.from.map(({ label }) => label).join(", ")} → ${item.to.map(({ label }) => label).join(", ")}`,
       ),
     ],
     [labels.linksAdded, diff.addedLinks.map(link(toNodes))],

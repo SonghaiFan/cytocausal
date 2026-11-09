@@ -2,8 +2,10 @@
 import {
   diffSnapshots,
   findFeedbackLoops,
+  getSnapshot,
   validateDataset,
   type CausalDataset,
+  type LoopOptions,
 } from "@cytocausal/core";
 import {
   autoLayout,
@@ -57,6 +59,11 @@ export interface CausalProviderProps {
   graphOptions?: Pick<CausalGraphOptions, "readableLabels" | "focusZoom">;
   /** Keep the version and selection in the page address, so a link reopens the same view. */
   shareInUrl?: boolean;
+  /**
+   * Limits for listing the loops of the shown snapshot. Defaults to loops of up to six nodes on
+   * graphs of more than 60 nodes, and every loop on smaller ones. Keep this stable between renders.
+   */
+  loopOptions?: LoopOptions;
   className?: string;
   children: ReactNode;
 }
@@ -78,6 +85,7 @@ function useCausalState({
   initialVersion,
   graphOptions,
   shareInUrl = false,
+  loopOptions,
 }: Omit<CausalProviderProps, "labels" | "className" | "children">) {
   const system = useColorScheme();
   const scheme = chosenScheme ?? system.scheme;
@@ -96,7 +104,7 @@ function useCausalState({
     const known = dataset.snapshots.some(({ id }) => id === requested);
     return known ? requested! : dataset.snapshots[0].id;
   });
-  const snapshot = dataset.snapshots.find(({ id }) => id === version)!;
+  const snapshot = getSnapshot(dataset, version);
 
   const graph = useCausalGraph({
     ...graphOptions,
@@ -122,9 +130,9 @@ function useCausalState({
     () =>
       findFeedbackLoops(
         snapshot,
-        snapshot.nodes.length > LARGE_GRAPH ? LARGE_GRAPH_SEARCH : undefined,
+        loopOptions ?? (snapshot.nodes.length > LARGE_GRAPH ? LARGE_GRAPH_SEARCH : undefined),
       ),
-    [snapshot],
+    [snapshot, loopOptions],
   );
 
   const positionCache = useRef<Record<string, Positions>>({});

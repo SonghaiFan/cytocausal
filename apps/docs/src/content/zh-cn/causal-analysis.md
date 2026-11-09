@@ -82,7 +82,7 @@ console.log(complete); // true
 
 ### 大型图
 
-回路数量会随图的规模迅速增长。在大型图上请设置 `maxLength`，并用 `through` 围绕单个节点搜索。如果 `maxLength` 或 `limit` 可能隐藏了回路，`complete` 为 `false`，所以不要把截断后的列表当作完整数量。
+回路数量会随图的规模迅速增长。在大型图上请设置 `maxLength`，并用 `through` 围绕单个节点搜索。如果 `maxLength` 或 `limit` 可能隐藏了回路，`complete` 为 `false`，所以不要把截断后的列表当作完整数量。搜索按长度逐级进行，所以被 `limit` 截断的列表仍然是最短的那些回路。
 
 | Explorer 中的最大长度 | 回路数 |
 | :--- | :--- |
@@ -135,11 +135,11 @@ export function routes(snapshot: Snapshot) {
 }
 ```
 
-路径按从短到长排列。`maxLength` 按节点计数。`maxLength` 或 `limit` 可能隐藏了部分路径时，`complete` 为 `false`。
+路径按从短到长排列，被 `limit` 截断时保留的是最短的路径。`maxLength` 按节点计数。`maxLength` 或 `limit` 可能隐藏了部分路径时，`complete` 为 `false`。
 
 ## 版本差异
 
-`diffSnapshots` 比较两个快照。它使用数据集中的对应关系，没有时按相同 id 匹配。
+`diffSnapshots` 比较两个快照。它使用数据集中的对应关系（两个方向都可以），没有时按相同 id 匹配。反向比较时，新增和删除互换，合并和拆分互换。快照 id 不存在时会抛出错误，并列出数据集里有哪些快照。
 
 ```ts
 import { diffSnapshots, type CausalDataset } from "@cytocausal/core";
@@ -155,5 +155,9 @@ export function summary(dataset: CausalDataset) {
 | `addedNodes`、`removedNodes` | 没有对应项的节点 |
 | `renamedNodes` | 标签改变的节点，格式为 `{ from, to }` |
 | `mergedNodes` | 合并为一个的多个节点，格式为 `{ from, to }` |
+| `splitNodes` | 拆分成多个的一个节点，格式为 `{ from, to }` |
+| `regroupedNodes` | 多个节点重新分组为另外多个节点，格式为 `{ from, to }` |
 | `addedLinks`、`removedLinks` | 没有对应项的连线 |
 | `changedLinks` | 极性改变的连线，格式为 `{ from, to, polarity }` |
+
+连线按它们连接的节点比较，所以同一对节点之间的平行连线算作一条。平行连线的极性不一致时，极性为 `"mixed"`。

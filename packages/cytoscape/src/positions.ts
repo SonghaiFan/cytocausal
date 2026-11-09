@@ -1,4 +1,4 @@
-import type { CausalDataset, Snapshot } from "@cytocausal/core";
+import type { Snapshot } from "@cytocausal/core";
 import type { Core, LayoutOptions, Layouts } from "cytoscape";
 import { fcoseLayout } from "./layouts.ts";
 
@@ -10,20 +10,8 @@ export const centre = (points: Position[]): Position => ({
   y: points.reduce((sum, { y }) => sum + y, 0) / points.length,
 });
 
-/** Lists the nodes of `to` that each node of `from` corresponds to, in either direction. */
-export function getCounterparts(dataset: CausalDataset, from: string, to: string) {
-  const counterparts: Record<string, string[]> = {};
-  for (const correspondence of dataset.correspondences ?? []) {
-    const forward = correspondence.from === from && correspondence.to === to;
-    const backward = correspondence.from === to && correspondence.to === from;
-    if (!forward && !backward) continue;
-    for (const [source, target] of Object.entries(correspondence.nodes)) {
-      const [key, value] = forward ? [source, target] : [target, source];
-      (counterparts[key] ||= []).push(value);
-    }
-  }
-  return counterparts;
-}
+// Moved to core, which diffs snapshots with it. Kept here so existing imports still work
+export { getCounterparts } from "@cytocausal/core";
 
 /**
  * Converts positions keyed by node id in one snapshot to ids in another. Without

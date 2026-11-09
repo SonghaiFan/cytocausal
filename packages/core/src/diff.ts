@@ -1,4 +1,8 @@
+import { getCounterparts, getSnapshot, hasCorrespondence } from "./snapshots.ts";
 import type { CausalDataset, CausalEdge, CausalNode, Polarity, Snapshot } from "./types.ts";
+
+/** The polarity of the links between two nodes. "mixed" when parallel links disagree. */
+export type LinkPolarity = Polarity | "mixed";
 
 export interface SnapshotDiff {
   addedNodes: CausalNode[];
@@ -6,88 +10,129 @@ export interface SnapshotDiff {
   renamedNodes: { from: CausalNode; to: CausalNode }[];
   /** Several nodes that became one. */
   mergedNodes: { from: CausalNode[]; to: CausalNode }[];
+  /** One node that became several. A merge read in reverse. */
+  splitNodes: { from: CausalNode; to: CausalNode[] }[];
+  /** Several nodes that became several others, such as when two groups were redrawn. */
+  regroupedNodes: { from: CausalNode[]; to: CausalNode[] }[];
+  /** Every link between nodes that have no counterpart link. */
   addedLinks: CausalEdge[];
   removedLinks: CausalEdge[];
-  changedLinks: { from: CausalEdge; to: CausalEdge; polarity: [Polarity?, Polarity?] }[];
+  /**
+   * One entry per pair of nodes whose links changed polarity. `from` and `to` are the first link
+   * of each side; parallel links between the same nodes count as one.
+   */
+  changedLinks: { from: CausalEdge; to: CausalEdge; polarity: [LinkPolarity?, LinkPolarity?] }[];
 }
 
-/** Maps node ids across snapshots through correspondences, or by matching ids without one. */
-function matchNodes(dataset: CausalDataset, from: Snapshot, to: Snapshot) {
-  const matches = new Map<string, string>();
-  const correspondence = dataset.correspondences?.find(
-    (item) =>
-      (item.from === from.id && item.to === to.id) || (item.from === to.id && item.to === from.id),
-  );
-  if (correspondence) {
-    for (const [source, target] of Object.entries(correspondence.nodes)) {
-      if (correspondence.from === from.id) matches.set(source, target);
-      else matches.set(target, source);
+/** Disjoint sets, keyed by side and node id, so one id can be in both snapshots. */
+function unionFind() {
+  const parent = new Map<string, string>();
+  const find = (key: string): string => {
+    let root = key;
+    while (parent.has(root) && parent.get(root) !== root) root = parent.get(root)!;
+    parent.set(key, root);
+    return root;
+  };
+  const union = (a: string, b: string) => parent.set(find(a), find(b));
+  return { find, union };
+}
+
+/**
+ * Groups the nodes of two snapshots that correspond, through the dataset's correspondences or by
+ * matching ids without one. A group with nodes on one side only was added or removed.
+ */
+function groupNodes(dataset: CausalDataset, from: Snapshot, to: Snapshot) {
+  const { find, union } = unionFind();
+  const toIds = new Set(to.nodes.map(({ id }) => id));
+  const counterparts = hasCorrespondence(dataset, from.id, to.id)
+    ? getCounterparts(dataset, from.id, to.id)
+    : Object.fromEntries(from.nodes.map(({ id }) => [id, [id]]));
+
+  for (const { id } of from.nodes) {
+    for (const target of counterparts[id] ?? []) {
+      if (toIds.has(target)) union(`from:${id}`, `to:${target}`);
     }
-    return matches;
   }
-  const ids = new Set(to.nodes.map(({ id }) => id));
-  for (const { id } of from.nodes) if (ids.has(id)) matches.set(id, id);
-  return matches;
+
+  const groups = new Map<string, { from: CausalNode[]; to: CausalNode[] }>();
+  const add = (side: "from" | "to", node: CausalNode) => {
+    const root = find(`${side}:${node.id}`);
+    if (!groups.has(root)) groups.set(root, { from: [], to: [] });
+    groups.get(root)![side].push(node);
+  };
+  from.nodes.forEach((node) => add("from", node));
+  to.nodes.forEach((node) => add("to", node));
+  return { groups: [...groups.values()], groupOf: find };
 }
 
-/** Compares two snapshots of a dataset, using its correspondences to follow nodes between them. */
+const polarityOf = (edges: CausalEdge[]): LinkPolarity | undefined => {
+  const kinds = new Set(edges.map(({ polarity }) => polarity));
+  return kinds.size > 1 ? "mixed" : edges[0].polarity;
+};
+
+/**
+ * Compares two snapshots of a dataset, using its correspondences to follow nodes between them.
+ * Reading it the other way swaps added and removed, and merged and split.
+ */
 export function diffSnapshots(dataset: CausalDataset, fromId: string, toId: string): SnapshotDiff {
-  const from = dataset.snapshots.find(({ id }) => id === fromId)!;
-  const to = dataset.snapshots.find(({ id }) => id === toId)!;
-  const matches = matchNodes(dataset, from, to);
-  const toNodes = new Map(to.nodes.map((node) => [node.id, node]));
+  const from = getSnapshot(dataset, fromId);
+  const to = getSnapshot(dataset, toId);
+  const { groups, groupOf } = groupNodes(dataset, from, to);
 
-  const sources = new Map<string, CausalNode[]>();
-  const removedNodes: CausalNode[] = [];
-  for (const node of from.nodes) {
-    const target = matches.get(node.id);
-    if (target !== undefined && toNodes.has(target)) {
-      sources.set(target, [...(sources.get(target) ?? []), node]);
-    } else {
-      removedNodes.push(node);
+  const diff: SnapshotDiff = {
+    addedNodes: [],
+    removedNodes: [],
+    renamedNodes: [],
+    mergedNodes: [],
+    splitNodes: [],
+    regroupedNodes: [],
+    addedLinks: [],
+    removedLinks: [],
+    changedLinks: [],
+  };
+
+  for (const group of groups) {
+    const [sources, targets] = [group.from, group.to];
+    if (targets.length === 0) diff.removedNodes.push(...sources);
+    else if (sources.length === 0) diff.addedNodes.push(...targets);
+    else if (sources.length === 1 && targets.length === 1) {
+      if (sources[0].label !== targets[0].label) {
+        diff.renamedNodes.push({ from: sources[0], to: targets[0] });
+      }
+    } else if (targets.length === 1) diff.mergedNodes.push({ from: sources, to: targets[0] });
+    else if (sources.length === 1) diff.splitNodes.push({ from: sources[0], to: targets });
+    else diff.regroupedNodes.push({ from: sources, to: targets });
+  }
+  // Groups are listed in the order of the first snapshot, but new nodes read best in their own
+  diff.addedNodes.sort((a, b) => to.nodes.indexOf(a) - to.nodes.indexOf(b));
+
+  // Links are compared by the groups they join, so parallel links and merged nodes count once
+  const linksBetween = (side: "from" | "to", edges: CausalEdge[]) => {
+    const pairs = new Map<string, CausalEdge[]>();
+    for (const edge of edges) {
+      const key = `${groupOf(`${side}:${edge.source}`)}>${groupOf(`${side}:${edge.target}`)}`;
+      pairs.set(key, [...(pairs.get(key) ?? []), edge]);
     }
-  }
+    return pairs;
+  };
+  const before = linksBetween("from", from.edges);
+  const after = linksBetween("to", to.edges);
 
-  const renamedNodes: SnapshotDiff["renamedNodes"] = [];
-  const mergedNodes: SnapshotDiff["mergedNodes"] = [];
-  for (const [target, group] of sources) {
-    const node = toNodes.get(target)!;
-    if (group.length > 1) mergedNodes.push({ from: group, to: node });
-    else if (group[0].label !== node.label) renamedNodes.push({ from: group[0], to: node });
-  }
-
-  // Links are compared by the nodes they join, after following those nodes to the new snapshot
-  const linkKey = (source: string, target: string) => `${source}>${target}`;
-  const toLinks = new Map(to.edges.map((edge) => [linkKey(edge.source, edge.target), edge]));
-  const matched = new Set<string>();
-  const removedLinks: CausalEdge[] = [];
-  const changedLinks: SnapshotDiff["changedLinks"] = [];
-  for (const edge of from.edges) {
-    const source = matches.get(edge.source);
-    const target = matches.get(edge.target);
-    const key = source !== undefined && target !== undefined ? linkKey(source, target) : "";
-    const counterpart = toLinks.get(key);
-    if (!counterpart) {
-      removedLinks.push(edge);
+  for (const [key, edges] of before) {
+    const counterparts = after.get(key);
+    if (!counterparts) {
+      diff.removedLinks.push(...edges);
       continue;
     }
-    matched.add(key);
-    if (counterpart.polarity !== edge.polarity) {
-      changedLinks.push({
-        from: edge,
-        to: counterpart,
-        polarity: [edge.polarity, counterpart.polarity],
-      });
+    const polarity: [LinkPolarity?, LinkPolarity?] = [polarityOf(edges), polarityOf(counterparts)];
+    if (polarity[0] !== polarity[1]) {
+      diff.changedLinks.push({ from: edges[0], to: counterparts[0], polarity });
     }
   }
+  diff.addedLinks = to.edges.filter((edge) => {
+    const key = `${groupOf(`to:${edge.source}`)}>${groupOf(`to:${edge.target}`)}`;
+    return !before.has(key);
+  });
 
-  return {
-    addedNodes: to.nodes.filter(({ id }) => !sources.has(id)),
-    removedNodes,
-    renamedNodes,
-    mergedNodes,
-    addedLinks: to.edges.filter((edge) => !matched.has(linkKey(edge.source, edge.target))),
-    removedLinks,
-    changedLinks,
-  };
+  return diff;
 }

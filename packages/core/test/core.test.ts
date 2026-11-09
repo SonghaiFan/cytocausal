@@ -5,12 +5,13 @@ import {
   diffSnapshots,
   findCausalPaths,
   findFeedbackLoops,
+  getSnapshot,
   importExplorer,
   importPerspectiva,
   searchNodes,
   validateDataset,
 } from "../src/index.ts";
-import type { CausalDataset, Snapshot } from "../src/index.ts";
+import type { CausalDataset, CausalEdge, Snapshot } from "../src/index.ts";
 
 const node = (id: string) => ({ id, label: id });
 const edge = (source: string, target: string) => ({ id: `${source}-${target}`, source, target });
@@ -123,6 +124,15 @@ test("limits are reported instead of hiding loops silently", () => {
   assert.equal(findFeedbackLoops(graph, { maxLength: 3 }).complete, true);
 });
 
+test("a capped loop list keeps the shortest loops", () => {
+  // The search meets the three-node loop first, through a's first link
+  const graph = snapshot("s", ["a", "b", "c", "d"], [["a", "b"], ["b", "c"], ["c", "a"], ["a", "d"], ["d", "a"]]);
+  const capped = findFeedbackLoops(graph, { limit: 1 });
+  assert.deepEqual(capped.loops.map((loop) => loop.nodes), [["a", "d"]]);
+  assert.equal(capped.complete, false);
+  assert.equal(findFeedbackLoops(graph, { limit: 2 }).complete, true);
+});
+
 test("search matches ids, labels and evidence, with labels first", () => {
   const nodes = [
     { id: "1", label: "Heavy rain", evidence: [{ text: "storm season" }] },
@@ -158,6 +168,14 @@ test("paths don't repeat a node, and limits are reported", () => {
   const short = findCausalPaths(graph, "a", "c", { maxLength: 2 });
   assert.deepEqual(short.paths, []);
   assert.equal(short.complete, false);
+});
+
+test("a capped path list keeps the shortest paths", () => {
+  const graph = snapshot("s", ["a", "b", "c"], [["a", "b"], ["b", "c"], ["a", "c"]]);
+  const capped = findCausalPaths(graph, "a", "c", { limit: 1 });
+  assert.deepEqual(capped.paths.map((path) => path.nodes), [["a", "c"]]);
+  assert.equal(capped.complete, false);
+  assert.equal(findCausalPaths(graph, "a", "c", { limit: 2 }).complete, true);
 });
 
 const versions = (correspondence?: Record<string, string>): CausalDataset => ({
@@ -298,4 +316,75 @@ test("Explorer data keeps direction, positions and sentences", () => {
   assert.deepEqual(nodes[0].evidence, [{ id: "A1", text: "a sentence" }]);
   assert.equal(edges[0].source, "1");
   assert.equal(edges[0].polarity, undefined);
+});
+
+test("an unknown snapshot is named in the error", () => {
+  assert.throws(() => diffSnapshots(versions(), "V1", "V2"), /Dataset "d" has no snapshot "V2". It has "V1", "final"/);
+  assert.equal(getSnapshot(versions(), "final").id, "final");
+});
+
+const merge: CausalDataset = {
+  id: "d",
+  snapshots: [snapshot("V1", ["a", "b", "c"], [["a", "c"], ["b", "c"]]), snapshot("final", ["ab", "c"], [["ab", "c"]])],
+  correspondences: [{ from: "V1", to: "final", nodes: { a: "ab", b: "ab", c: "c" } }],
+};
+
+test("a merge read in reverse is a split", () => {
+  const diff = diffSnapshots(merge, "final", "V1");
+  assert.deepEqual(diff.splitNodes.map(({ from, to }) => [from.id, to.map(({ id }) => id)]), [
+    ["ab", ["a", "b"]],
+  ]);
+  assert.deepEqual(diff.mergedNodes, []);
+  assert.deepEqual(diff.addedNodes, []);
+  assert.deepEqual(diff.removedNodes, []);
+  assert.deepEqual(diff.addedLinks, []);
+  assert.deepEqual(diff.removedLinks, []);
+});
+
+test("a diff read in reverse mirrors it", () => {
+  const ids = (items: { id: string }[]) => items.map(({ id }) => id).sort();
+  for (const dataset of [merge, versions({ a: "a", b: "b2", c: "c" }), versions()]) {
+    const forward = diffSnapshots(dataset, "V1", "final");
+    const backward = diffSnapshots(dataset, "final", "V1");
+    assert.deepEqual(ids(forward.addedNodes), ids(backward.removedNodes));
+    assert.deepEqual(ids(forward.removedNodes), ids(backward.addedNodes));
+    assert.deepEqual(ids(forward.addedLinks), ids(backward.removedLinks));
+    assert.deepEqual(ids(forward.removedLinks), ids(backward.addedLinks));
+    assert.equal(forward.mergedNodes.length, backward.splitNodes.length);
+    assert.equal(forward.splitNodes.length, backward.mergedNodes.length);
+    assert.equal(forward.changedLinks.length, backward.changedLinks.length);
+  }
+});
+
+test("nodes that swap between groups are regrouped", () => {
+  const dataset: CausalDataset = {
+    id: "d",
+    snapshots: [snapshot("V1", ["a", "b"], []), snapshot("final", ["x", "y"], [])],
+    correspondences: [
+      { from: "V1", to: "final", nodes: { a: "x", b: "y" } },
+      { from: "final", to: "V1", nodes: { y: "a" } },
+    ],
+  };
+  const { regroupedNodes, renamedNodes } = diffSnapshots(dataset, "V1", "final");
+  assert.deepEqual(regroupedNodes.map(({ from, to }) => [from.map(({ id }) => id), to.map(({ id }) => id)]), [
+    [["a", "b"], ["x", "y"]],
+  ]);
+  assert.deepEqual(renamedNodes, []);
+});
+
+test("parallel links between two nodes count once", () => {
+  const link = (id: string, polarity: "positive" | "negative") => ({ id, source: "a", target: "b", polarity });
+  const dataset = (before: CausalEdge[], after: CausalEdge[]): CausalDataset => ({
+    id: "d",
+    snapshots: [
+      { id: "V1", nodes: [node("a"), node("b")], edges: before },
+      { id: "final", nodes: [node("a"), node("b")], edges: after },
+    ],
+  });
+
+  const same = diffSnapshots(dataset([link("1", "positive"), link("2", "positive")], [link("3", "positive")]), "V1", "final");
+  assert.deepEqual([same.addedLinks, same.removedLinks, same.changedLinks], [[], [], []]);
+
+  const mixed = diffSnapshots(dataset([link("1", "positive"), link("2", "negative")], [link("3", "negative")]), "V1", "final");
+  assert.deepEqual(mixed.changedLinks.map(({ polarity }) => polarity), [["mixed", "negative"]]);
 });
