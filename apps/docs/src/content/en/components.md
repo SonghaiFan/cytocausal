@@ -80,6 +80,7 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `NodeSearch` | Search box and results |
 | `VersionSwitcher` | Buttons for moving between snapshots |
 | `LayoutSwitcher` | A choice of the provider's `layouts`, as buttons, or a menu for more than four |
+| `RadialMenu` | A ring menu around the selected node, for walking to linked nodes, setting the steps and choosing loops. `CausalGraph` shows it unless `radialMenu={false}` |
 | `SelectionPanel` | A prompt, then the selected nodes and the paths between them |
 | `NodeDetails` | One node's causes, effects and evidence, with a button to open each link |
 | `LinkDetails` | Who stated a link and their evidence, with any link that disagrees on its polarity |

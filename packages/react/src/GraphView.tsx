@@ -24,6 +24,7 @@ import {
   type Positions,
 } from "@cytocausal/cytoscape";
 import cytoscape, { type Core, type LayoutOptions, type Layouts, type Stylesheet } from "cytoscape";
+import { menuArea, placementTransform, tooltipPlacement, type TooltipPlacement } from "./overlay.ts";
 import {
   useCallback,
   useEffect,
@@ -67,10 +68,15 @@ export interface GraphViewProps {
   renderTooltip?: (node: CausalNode) => ReactNode;
   /** A hover preview for links, such as who stated them. */
   renderLinkTooltip?: (link: CausalEdge, snapshot: Snapshot) => ReactNode;
+  /**
+   * How long the pointer rests on a node or link before its tooltip shows, in milliseconds, so
+   * sweeping across the graph doesn't flash tooltips. Defaults to 300.
+   */
+  tooltipDelay?: number;
   className?: string;
 }
 
-type Tooltip = { x: number; y: number } & (
+type Tooltip = { x: number; y: number; placement: TooltipPlacement } & (
   | { node: CausalNode; link?: undefined }
   | { link: CausalEdge; node?: undefined }
 );
@@ -105,6 +111,7 @@ export function GraphView({
   onReady,
   renderTooltip,
   renderLinkTooltip,
+  tooltipDelay = 300,
   className,
 }: GraphViewProps) {
   const ownCache = useRef<Record<string, Positions>>({});
@@ -207,22 +214,39 @@ export function GraphView({
     });
     cy.current = instance;
 
-    const showTooltip = (id: string, event: MouseEvent) => {
-      const node = latest.current.snapshot.nodes.find((candidate) => candidate.id === id);
-      if (node) setTooltip({ node, x: event.clientX, y: event.clientY });
+    // Tooltips wait for the pointer to rest, keep out of the radial menu's way, and give way to it
+    // over the selected node. Touch screens have no hover, so they show none
+    const touch = typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
+    let waiting: ReturnType<typeof setTimeout> | undefined;
+    let resting = false;
+    const placeTooltip = (kind: "node" | "link", id: string, event: MouseEvent) => {
+      const pointer = { x: event.clientX, y: event.clientY };
+      const placement = tooltipPlacement(menuArea(instance), pointer, kind === "node" ? id : undefined);
+      const { nodes, edges } = latest.current.snapshot;
+      const node = kind === "node" ? nodes.find((candidate) => candidate.id === id) : undefined;
+      const link = kind === "link" ? edges.find((candidate) => candidate.id === id) : undefined;
+      if (!placement || (!node && !link)) return setTooltip(null);
+      setTooltip(node ? { node, ...pointer, placement } : { link: link!, ...pointer, placement });
     };
-    const showLinkTooltip = (id: string, event: MouseEvent) => {
-      const link = latest.current.snapshot.edges.find((candidate) => candidate.id === id);
-      if (link) setTooltip({ link, x: event.clientX, y: event.clientY });
+    const point = (kind: "node" | "link") => (event: cytoscape.EventObject) => {
+      if (touch) return;
+      const id = event.target.id();
+      const original = event.originalEvent as MouseEvent;
+      if (resting) return placeTooltip(kind, id, original);
+      clearTimeout(waiting);
+      waiting = setTimeout(() => {
+        resting = true;
+        placeTooltip(kind, id, original);
+      }, tooltipDelay);
     };
-    const hideTooltip = () => setTooltip(null);
+    const hideTooltip = () => {
+      clearTimeout(waiting);
+      resting = false;
+      setTooltip(null);
+    };
 
-    instance.on("mouseover mousemove", "node", (event) =>
-      showTooltip(event.target.id(), event.originalEvent as MouseEvent),
-    );
-    instance.on("mouseover mousemove", "edge", (event) =>
-      showLinkTooltip(event.target.id(), event.originalEvent as MouseEvent),
-    );
+    instance.on("mouseover mousemove", "node", point("node"));
+    instance.on("mouseover mousemove", "edge", point("link"));
     instance.on("mouseout", "node, edge", hideTooltip);
     instance.on("zoom pan drag", hideTooltip);
     // A dragged node changes its links' lengths, so their bends follow
@@ -306,7 +330,7 @@ export function GraphView({
             position: "fixed",
             left: tooltip.x,
             top: tooltip.y,
-            transform: "translate(-50%, calc(-100% - 24px))",
+            transform: placementTransform[tooltip.placement],
             pointerEvents: "none",
             zIndex: 50,
           }}

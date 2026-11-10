@@ -52,6 +52,32 @@ export function Explorer({ dataset }: { dataset: CausalDataset }) {
 
 Highlights have a fixed order: a highlighted loop comes first, then selected nodes, then the hovered node. So hovering doesn't disturb what someone has selected.
 
+## Radial menu
+
+Selecting one node opens a ring menu around it:
+
+| Ring | What it does |
+| :--- | :--- |
+| Wedges, nearest the node | One for each linked node, placed the way it lies on the graph. Its arrow follows the link: out to an effect, in from a cause, and both ways for a node that is both. Point at a wedge to preview the link, and choose it to walk there: that node becomes the selection, and the menu moves with it |
+| Two thin rings | How many steps the highlight reaches: point at one to preview 2 or 3 steps, and choose it to keep that. Choosing the deepest ring shown goes back a step |
+| Outer arcs | The feedback loops through the node, marked `R` or `B`, then, in a lighter shade, loops that don't pass through it but lie within the steps shown. Point to preview a loop, and choose it to keep it highlighted |
+
+The menu uses contrast only, so the accent stays on the node itself. Every item can be reached with Tab and chosen with Enter or Space, and Escape clears the selection. A caption under the menu names what's under the pointer or the keyboard focus.
+
+Pass `loopOptions` to `CausalGraph` to limit the loop search on large graphs. Outside a provider, render `<RadialMenu graph={graph} snapshot={snapshot} />` beside your graph: it positions itself over the selected node.
+
+### Tooltips and the menu
+
+A tooltip answers "what is this?" for a node you haven't chosen. The menu answers "where can I go from here?" for the one you have. They never show at once:
+
+| Pointer | What shows |
+| :--- | :--- |
+| On the selected node, or anywhere inside the menu's circle | The menu's caption only |
+| On a wedge or arc | The caption, and the link or loop highlighted on the graph |
+| On another node or link | Its tooltip, beside the pointer on the side away from the menu |
+| Moving across the graph | Nothing until it rests for 300 ms, so tooltips don't flash. Set `tooltipDelay` on `GraphView` to change this |
+| On a touch screen | No tooltips, since there's no hover. Tapping selects, and details are in the sidebar |
+
 ## Keyboard
 
 The graph takes keyboard focus. Selecting needs `selectable`, which is on by default.

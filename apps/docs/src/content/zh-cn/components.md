@@ -80,6 +80,7 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `NodeSearch` | 搜索框和结果 |
 | `VersionSwitcher` | 切换快照的按钮 |
 | `LayoutSwitcher` | 在 provider 的 `layouts` 之间选择，最多四个时显示为按钮，更多时显示为菜单 |
+| `RadialMenu` | 选中节点周围的环形菜单，用来走到相连的节点、设置步数和选择回路。除非传入 `radialMenu={false}`，否则 `CausalGraph` 会显示它 |
 | `SelectionPanel` | 先显示提示，选中后显示节点详情和节点间的路径 |
 | `NodeDetails` | 单个节点的原因、结果和证据，每条连线旁边有打开它的按钮 |
 | `LinkDetails` | 连线的提出者和他们的证据，以及在极性上与它有分歧的连线 |

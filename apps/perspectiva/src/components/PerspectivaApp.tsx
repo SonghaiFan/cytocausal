@@ -1,5 +1,6 @@
 "use client";
 import {
+  changeMarks,
   diffSnapshots,
   findFeedbackLoops,
   listContributors,
@@ -30,6 +31,7 @@ import {
   LinkTooltip,
   LoopList,
   NodeSearch,
+  RadialMenu,
   Segmented,
   SelectionPanel,
   SidebarHeader,
@@ -156,20 +158,19 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
 
   useEffect(() => {
     const diff = diffSnapshots(dataset, LEFT, RIGHT);
-    const added = showChanges ? [...ids(diff.addedNodes), ...ids(diff.addedLinks)] : [];
-    const removed = showChanges ? [...ids(diff.removedNodes), ...ids(diff.removedLinks)] : [];
+    const marks = (side: "from" | "to") => (showChanges ? changeMarks(diff, side) : {});
     const duration = resolveMotion(theme.motion).highlight;
-    const mark = (cy: Core | null, marked: string[], gone: string[]) => {
+    const mark = (cy: Core | null, shown: ReturnType<typeof marks>) => {
       if (!cy) return;
-      const change = () => highlightChanges(cy, marked, gone);
+      const change = () => highlightChanges(cy, shown);
       if (isTransitioning(cy)) change();
       else easeStyles(cy, change, duration);
     };
     if (comparing) {
-      mark(leftCy.current, [], removed);
-      mark(rightCy.current, added, []);
+      mark(leftCy.current, marks("from"));
+      mark(rightCy.current, marks("to"));
     } else {
-      mark(leftCy.current, version === RIGHT ? added : [], version === LEFT ? removed : []);
+      mark(leftCy.current, marks(version === RIGHT ? "to" : "from"));
     }
   }, [dataset, showChanges, comparing, version, layoutName, leftCy, rightCy, theme]);
 
@@ -256,7 +257,6 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
             support={combined}
             items={[
               { label: labels.selected, color: "var(--cc-accent)" },
-              { label: labels.linked, color: "var(--cc-ink)", mark: "ring" as const },
               // Annotations belong to each participant's diagram, so the combined map has none
               ...(combined ? [] : annotationLegend),
             ]}
@@ -271,6 +271,7 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
           />
         </div>
 
+        <RadialMenu graph={active} snapshot={activeSnapshot} />
         <ZoomControls graph={both} />
         <p role="status" className="cc-sr-only">
           {active.announcement}

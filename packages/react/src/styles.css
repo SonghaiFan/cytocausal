@@ -9,7 +9,8 @@
   --cc-link: #8e9196;
   --cc-ink: #2f2e2c;
   --cc-accent: #ffc40a;
-  --cc-accent-line: #a87900;
+  --cc-added: #1f6fd6;
+  --cc-removed: #c8400c;
 
   /* These follow ROC UI's tokens when the page has them. */
   --cc-radius-surface: var(--roc-radius-surface, 12px);
@@ -60,6 +61,8 @@
 }
 .cc-row:hover { box-shadow: inset 0 0 0 100px #80808018; }
 .cc-row[aria-pressed="true"] { background: var(--cc-text); color: var(--cc-background); }
+/* A badge in a chosen row takes the row's colours, or its text would vanish on the dark fill */
+.cc-row[aria-pressed="true"] .cc-badge { border-color: currentColor; color: inherit; }
 .cc-quote { display: block; }
 
 .cc-badge {
@@ -166,3 +169,21 @@
 }
 .cc-layout-select { width: auto; height: var(--cc-control-height); }
 .cc-glyph { display: inline-flex; justify-content: center; min-width: .75rem; font-weight: 600; }
+
+/* The radial menu: neutral wedges and rings, darkening to ink where pointed at or chosen */
+.cc-radial { position: fixed; z-index: 40; pointer-events: none; }
+.cc-radial svg { overflow: visible; }
+.cc-radial-wedge, .cc-radial-loop, .cc-radial-step { pointer-events: visiblePainted; cursor: pointer; outline: none; }
+.cc-radial-wedge path, .cc-radial-loop path { fill: var(--cc-node); stroke: var(--cc-background); stroke-width: 1.5; transition: fill var(--cc-motion-quick) ease-out; }
+.cc-radial-wedge text, .cc-radial-loop text { fill: var(--cc-text); font: 600 11px var(--cc-font-family, sans-serif); pointer-events: none; user-select: none; }
+.cc-radial-wedge:hover path, .cc-radial-wedge:focus-visible path, .cc-radial-loop:hover path, .cc-radial-loop:focus-visible path,
+.cc-radial-loop[aria-checked="true"] path { fill: var(--cc-ink); }
+.cc-radial-wedge:hover text, .cc-radial-wedge:focus-visible text, .cc-radial-loop:hover text, .cc-radial-loop:focus-visible text,
+.cc-radial-loop[aria-checked="true"] text { fill: var(--cc-background); }
+.cc-radial-step { fill: var(--cc-border); transition: fill var(--cc-motion-quick) ease-out; }
+.cc-radial-step[aria-checked="true"] { fill: var(--cc-muted-text); }
+.cc-radial-step:hover, .cc-radial-step:focus-visible { fill: var(--cc-ink); }
+.cc-radial-caption { position: absolute; left: 50%; margin: 0; transform: translateX(-50%); white-space: nowrap; pointer-events: none; }
+/* Loops only within reach, not through the node, are a step lighter */
+.cc-radial-nearby path { fill: var(--cc-surface); stroke: var(--cc-border); stroke-width: 1; }
+.cc-radial-nearby text { fill: var(--cc-muted-text); }

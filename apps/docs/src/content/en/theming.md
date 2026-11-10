@@ -6,22 +6,27 @@ title: "Themes and styles"
 
 A theme sets the colours, font and motion for both the graph and the page around it. Colours are named for what they mean, such as `ink` and `accent`, so changing one updates it everywhere.
 
-## One hue, one meaning
+## One meaning per channel
 
-Colour is the strongest channel a graph has, so it's used for one thing only. The accent, the only hue, marks what the reader chose to look at: a selected node, and a highlighted loop, path or link. Everything at rest is neutral, so a graph has no hue until someone asks it a question. Every other meaning uses another channel:
+Some visual channels are read faster and more accurately than others: position first, then length and width, then lightness, then hue, then outline style, glyphs and text. The most important information takes the most effective channel, and no channel carries two meanings, so nothing on the graph has to be decoded twice.
 
-| Meaning | Channel |
-| :--- | :--- |
-| What the reader chose | The accent: `accent` fills, `accentLine` for lines |
-| What it causes and leads to | Contrast: they keep full `ink`, and the rest fades. Arrows tell causes from effects |
-| Polarity | Line style, solid or dashed, and a `+` or `−` sign |
-| How many people stated a link | Line width |
-| Reinforcing or balancing loop | A glyph, `R` or `B`, the usual system dynamics marks |
-| Added or removed in a version | Solid ink, or a pale dashed outline |
+| Importance | Information | Channel |
+| :--- | :--- | :--- |
+| 1 | Causal structure and direction | Position, from the layout, and arrowheads |
+| 2 | What the reader is looking at | Contrast: everything else fades. The chosen nodes, alone or on a chosen loop, path or link, are filled with the accent, the only hue at rest. Their links keep full contrast in ink |
+| 3 | What changed between versions, while shown | Contrast again: what stayed the same fades. Added parts are blue and removed ones vermilion. Changed ones keep full contrast |
+| 4 | Quantities: how many stated a link, how central a node is | Line width and node size, and nothing else. Highlights never change a width |
+| 5 | Polarity | Line style, solid or dashed, with a `+` or `−` sign. Nothing else is dashed |
+| 6 | Loop type, flipped polarity | Glyphs: `R` or `B`, and `±` |
+| 7 | An app's own categories, such as Perspectiva's annotations | A node's outline style, and a glyph on a link. The framework leaves outlines free for this |
 
-Causes and effects used to be told apart by colour, and loop types by two more. Seven meanings shared two hues, so blue meant an effect in one place, a balancing loop in another and something new in a third. A reader can't learn a colour that changes its meaning.
+The accent is only ever a fill. Chosen loops used to have links in a darker yellow, which looked like the vermilion of a removed link. And a selection is drawn after the changes, so a chosen loop shows as one loop even where its links changed. Tests check both.
 
-If your data has a category of its own, use outlines or glyphs for it, as Perspectiva does for its annotations. Spending a second hue on it would compete with the accent. A test checks that every colour but the accent is neutral.
+The keyboard cursor has a halo outside the node, for accessibility. It isn't a node outline, so it doesn't compete with an app's categories.
+
+An earlier version used outlines for six things at once: the selected node, its causes and effects, a highlighted route, a changed node, a removed node and Perspectiva's annotations. Highlights also thickened links, so width meant both "stated by more people" and "look here". A test now checks that highlight states set no width, outline or dash, and that only polarity dashes a line.
+
+Blue and vermilion stay apart for most colour vision, and both sit far from the accent's yellow in hue or lightness. A test checks that every other colour is neutral.
 
 ## Change colours
 
@@ -33,7 +38,7 @@ import { createCausalStyle, lightTheme, type CausalTheme } from "@cytocausal/cyt
 export const theme: CausalTheme = {
   ...lightTheme,
   name: "my-theme",
-  colors: { ...lightTheme.colors, accent: "#2f80ed", accentLine: "#1b5fc1" },
+  colors: { ...lightTheme.colors, accent: "#12b886" },
 };
 
 export const stylesheet = createCausalStyle(theme, {

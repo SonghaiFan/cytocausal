@@ -192,7 +192,7 @@ export function Swatch({ color, mark = "fill" }: Pick<LegendItem, "color" | "mar
   return <span className="cc-swatch" style={style} aria-hidden="true" />;
 }
 
-/** A key to what's drawn. Shows what's selected and what it links to unless given other items. */
+/** A key to what's drawn. Shows what the selection looks like unless given other items. */
 export function Legend({
   items,
   title,
@@ -210,10 +210,8 @@ export function Legend({
 }) {
   const labels = useCausalLabels();
   const causal = useOptionalCausal();
-  const shown: LegendItem[] = items ?? [
-    { label: labels.selected, color: "var(--cc-accent)" },
-    { label: labels.linked, color: "var(--cc-ink)", mark: "ring" },
-  ];
+  // Causes and effects are shown by contrast and arrows, which need no key
+  const shown: LegendItem[] = items ?? [{ label: labels.selected, color: "var(--cc-accent)" }];
   const weighted = support ?? Boolean(causal?.styleOptions?.weightBySupport);
   return (
     <section className={`${bare ? "" : "cc-panel"} ${className}`}>

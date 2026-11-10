@@ -1,4 +1,4 @@
-import { filterByContributors, type Snapshot } from "@cytocausal/core";
+import { filterByContributors, type ChangeMarks, type Snapshot } from "@cytocausal/core";
 import type { Core } from "cytoscape";
 import { refreshLabels } from "./labels.ts";
 import { resolveMotion } from "./motion.ts";
@@ -7,6 +7,17 @@ import type { CausalMotion } from "./theme.ts";
 export interface Route {
   nodes: string[];
   edges: string[];
+}
+
+/**
+ * Whether two routes are the same loop or path, by the links they follow. A loop found from
+ * another of its nodes lists the same links in a rotated order, as the loop list and the radial
+ * menu do, so order doesn't matter: a route never uses a link twice.
+ */
+export function sameRoute(a: Route | null | undefined, b: Route | null | undefined) {
+  if (!a || !b || a.edges.length !== b.edges.length) return false;
+  const links = new Set(a.edges);
+  return b.edges.every((edge) => links.has(edge));
 }
 
 export interface FocusOptions {
@@ -58,12 +69,31 @@ export function highlightRoute(cy: Core, route: Route | null) {
   refreshLabels(cy);
 }
 
-/** Marks what's new or gone in this version. Pass empty lists to clear it. */
-export function highlightChanges(cy: Core, added: string[], removed: string[]) {
+/**
+ * Marks what's new, gone or changed in this version, such as from `changeMarks`. Pass empty
+ * marks to clear them. Lists of added and removed ids alone still work.
+ */
+export function highlightChanges(
+  cy: Core,
+  marks: Partial<ChangeMarks> | string[],
+  removed: string[] = [],
+) {
+  const { added = [], removed: gone = [], changed = [], flipped = [] } = Array.isArray(marks)
+    ? { added: marks, removed }
+    : marks;
   cy.batch(() => {
-    cy.elements().removeClass("diff-added diff-removed");
+    cy.elements().removeClass("diff-added diff-removed diff-changed diff-flipped diff-context");
+    // What didn't change becomes context, so the changes stand out by contrast
+    const marked = new Set([...added, ...gone, ...changed]);
+    if (marked.size > 0) {
+      cy.elements()
+        .filter((element) => !marked.has(element.id()))
+        .addClass("diff-context");
+    }
     added.forEach((id) => cy.getElementById(id).addClass("diff-added"));
-    removed.forEach((id) => cy.getElementById(id).addClass("diff-removed"));
+    gone.forEach((id) => cy.getElementById(id).addClass("diff-removed"));
+    changed.forEach((id) => cy.getElementById(id).addClass("diff-changed"));
+    flipped.forEach((id) => cy.getElementById(id).addClass("diff-flipped"));
   });
 }
 

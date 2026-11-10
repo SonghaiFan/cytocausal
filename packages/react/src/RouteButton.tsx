@@ -1,5 +1,5 @@
 "use client";
-import type { Route } from "@cytocausal/cytoscape";
+import { sameRoute, type Route } from "@cytocausal/cytoscape";
 import type { ReactNode } from "react";
 import { useOptionalCausal } from "./CausalProvider.tsx";
 
@@ -25,7 +25,7 @@ export function RouteButton({
     <button
       type="button"
       className="cc-row"
-      aria-pressed={current === route}
+      aria-pressed={sameRoute(current, route)}
       onClick={() => {
         // A click decides, so the row shouldn't keep showing a route that was just turned off
         preview?.(null);

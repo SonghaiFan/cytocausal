@@ -1,8 +1,14 @@
 "use client";
 import type { CausalDataset } from "@cytocausal/core";
-import { alignPositions, autoLayout, getCounterparts, type Positions } from "@cytocausal/cytoscape";
+import {
+  alignPositions,
+  autoLayout,
+  getCounterparts,
+  syncViews,
+  type Positions,
+} from "@cytocausal/cytoscape";
 import type { Core } from "cytoscape";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GraphView, type GraphViewProps } from "./GraphView.tsx";
 
 type SharedProps = Pick<
@@ -26,8 +32,14 @@ export function CompareView({
   layout = autoLayout,
   positionCache: sharedCache,
   format = (id) => id,
+  sync = true,
   ...others
 }: SharedProps & {
+  /**
+   * Move both graphs together: panning or zooming one moves the other, and dragging a node
+   * moves its counterpart. On by default.
+   */
+  sync?: boolean;
   /** Turns a snapshot id into the label above its graph. */
   format?: (snapshotId: string) => string;
   dataset: CausalDataset;
@@ -54,6 +66,34 @@ export function CompareView({
     [baseline, baselineKey, dataset, left, right],
   );
 
+  // Each pane can rebuild its graph, such as for a new layout, so syncing restarts with it
+  const graphs = useRef<{ left: Core | null; right: Core | null; stop: (() => void) | null }>({
+    left: null,
+    right: null,
+    stop: null,
+  });
+  const connect = useCallback(() => {
+    const current = graphs.current;
+    current.stop?.();
+    current.stop = null;
+    if (!sync || !current.left || !current.right) return;
+    if (current.left.destroyed() || current.right.destroyed()) return;
+    current.stop = syncViews(current.left, current.right, {
+      counterparts: getCounterparts(dataset, left, right),
+      reverse: getCounterparts(dataset, right, left),
+    });
+  }, [sync, dataset, left, right]);
+  useEffect(() => {
+    connect();
+    return () => graphs.current.stop?.();
+  }, [connect]);
+
+  const ready = (side: "left" | "right", snapshotId: string) => (cy: Core) => {
+    graphs.current[side] = cy;
+    connect();
+    onReady?.(cy, snapshotId);
+  };
+
   return (
     <div className="cc-compare">
       <div className="cc-pane">
@@ -63,7 +103,7 @@ export function CompareView({
           dataset={dataset}
           snapshotId={left}
           onLayoutComplete={onLayoutComplete}
-          onReady={(cy) => onReady?.(cy, left)}
+          onReady={ready("left", left)}
         />
       </div>
       <div className="cc-pane">
@@ -74,7 +114,7 @@ export function CompareView({
           snapshotId={right}
           waitForAnchors
           anchorPositions={anchorPositions}
-          onReady={(cy) => onReady?.(cy, right)}
+          onReady={ready("right", right)}
         />
       </div>
     </div>

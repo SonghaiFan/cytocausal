@@ -9,6 +9,7 @@ import {
   easeStyles,
   isTransitioning,
   resolveMotion,
+  sameRoute,
   zoomBy,
   type CausalMotion,
   type Route,
@@ -59,11 +60,21 @@ export function useCausalGraph({
   const [activeRoute, setActiveRoute] = useState<Route | null>(null);
   const [previewedRoute, setPreviewedRoute] = useState<Route | null>(null);
   const [depth, setDepth] = useState(1);
+  const [previewedDepth, setPreviewedDepth] = useState<number | null>(null);
+  // Counts each new Cytoscape instance, so overlays such as the radial menu can follow it
+  const [instanceCount, setInstanceCount] = useState(0);
   const [announcement, setAnnouncement] = useState("");
   const cursor = useRef<string | null>(null);
   const keyHandler = useRef<((event: KeyboardEvent) => void) | null>(null);
 
-  const latest = useRef({ selected, selectedLink, hovered, activeRoute, previewedRoute, depth });
+  const latest = useRef({
+    selected,
+    selectedLink,
+    hovered,
+    activeRoute,
+    previewedRoute,
+    depth: previewedDepth ?? depth,
+  });
 
   /** The route that highlights a link, or null if the graph doesn't have it. */
   const routeOf = useCallback((id: string): Route | null => {
@@ -93,9 +104,16 @@ export function useCausalGraph({
   }, [motion]);
 
   useEffect(() => {
-    latest.current = { selected, selectedLink, hovered, activeRoute, previewedRoute, depth };
+    latest.current = {
+      selected,
+      selectedLink,
+      hovered,
+      activeRoute,
+      previewedRoute,
+      depth: previewedDepth ?? depth,
+    };
     applyHighlight();
-  }, [selected, selectedLink, hovered, activeRoute, previewedRoute, depth, applyHighlight]);
+  }, [selected, selectedLink, hovered, activeRoute, previewedRoute, depth, previewedDepth, applyHighlight]);
 
   const add = useCallback(
     (ids: string[], id: string) => (ids.includes(id) ? ids : [...ids, id].slice(-maxSelected)),
@@ -139,6 +157,21 @@ export function useCausalGraph({
     [add, focusZoom, motion],
   );
 
+  /**
+   * Makes a node the only one selected and centres the view on it, keeping the zoom, so people
+   * can walk from node to node.
+   */
+  const walkTo = useCallback(
+    (id: string) => {
+      setSelectedLink(null);
+      setActiveRoute(null);
+      setPreviewedRoute(null);
+      setSelected([id]);
+      if (cy.current) focusNode(cy.current, id, { zoom: cy.current.zoom(), motion });
+    },
+    [motion],
+  );
+
   /** Clears the selection and any highlighted loop. */
   const clear = useCallback(() => {
     setSelected([]);
@@ -154,7 +187,7 @@ export function useCausalGraph({
   /** Highlights a loop or path, or removes the highlight if it's already showing. */
   const toggleRoute = useCallback((route: Route) => {
     setSelectedLink(null);
-    setActiveRoute((current) => (current === route ? null : route));
+    setActiveRoute((current) => (sameRoute(current, route) ? null : route));
   }, []);
 
   const fit = useCallback(() => {
@@ -188,6 +221,7 @@ export function useCausalGraph({
   const attach = useCallback(
     (instance: Core) => {
       cy.current = instance;
+      setInstanceCount((count) => count + 1);
       if (readableLabels) {
         fitNodes(instance);
         keepLabelsReadable(instance);
@@ -258,6 +292,11 @@ export function useCausalGraph({
     activeRoute,
     depth,
     setDepth,
+    /** Shows the highlight this many steps out while pointing at a control, without keeping it. */
+    previewDepth: setPreviewedDepth,
+    walkTo,
+    /** Goes up by one each time a new Cytoscape instance is connected. */
+    instanceCount,
     /** Text for a live region, so screen readers hear where the keyboard cursor is. */
     announcement,
     toggle,

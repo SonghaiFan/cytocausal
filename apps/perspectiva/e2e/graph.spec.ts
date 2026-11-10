@@ -305,3 +305,73 @@ test("the whole workshop shows agreement, and one participant's view in place", 
   await expect(page.getByLabel("Contributors")).toHaveCount(0);
   expect(await hidden()).toBe(0);
 });
+
+test("both versions pan, zoom and drag together", async ({ page }) => {
+  await page.goto("/?dataset=expert_9");
+  await settled(page, 2);
+  const views = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll<any>("div")]
+        .filter((div) => div._cyreg?.cy)
+        .map((div) => {
+          const cy = div._cyreg.cy;
+          return { zoom: cy.zoom(), pan: cy.pan() };
+        }),
+    );
+
+  // Zooming the first version zooms the second the same way
+  await page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    const cy = div._cyreg.cy;
+    cy.zoom({ level: cy.zoom() * 1.8, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+  });
+  const [first, second] = await views();
+  expect(second.zoom).toBeCloseTo(first.zoom, 5);
+  expect(second.pan.x).toBeCloseTo(first.pan.x, 3);
+  expect(second.pan.y).toBeCloseTo(first.pan.y, 3);
+
+  // Dragging an anchored node moves its counterpart by the same distance. Pick the anchored node
+  // nearest the middle of the first view, so it's on screen after zooming
+  const [from, to] = await page.evaluate((anchors) => {
+    const [left] = [...document.querySelectorAll<any>("div")].filter((d) => d._cyreg?.cy);
+    const cy = left._cyreg.cy;
+    const middle = { x: cy.width() / 2, y: cy.height() / 2 };
+    const distance = (id: string) => {
+      const { x, y } = cy.getElementById(id).renderedPosition();
+      return Math.hypot(x - middle.x, y - middle.y);
+    };
+    return Object.entries(anchors).sort(([a], [b]) => distance(a) - distance(b))[0];
+  }, anchorsOf("expert_9"));
+  const start = await page.evaluate(
+    ([leftId, rightId]) => {
+      const [left, right] = [...document.querySelectorAll<any>("div")].filter((d) => d._cyreg?.cy);
+      const node = left._cyreg.cy.getElementById(leftId);
+      const { left: x0, top: y0 } = left.getBoundingClientRect();
+      const { x, y } = node.renderedPosition();
+      return {
+        point: { x: x0 + x, y: y0 + y },
+        left: { ...node.position() },
+        right: { ...right._cyreg.cy.getElementById(rightId).position() },
+      };
+    },
+    [from, to],
+  );
+  await page.mouse.move(start.point.x, start.point.y);
+  await page.mouse.down();
+  await page.mouse.move(start.point.x + 60, start.point.y + 30, { steps: 6 });
+  await page.mouse.up();
+  const end = await page.evaluate(
+    ([leftId, rightId]) => {
+      const [left, right] = [...document.querySelectorAll<any>("div")].filter((d) => d._cyreg?.cy);
+      return {
+        left: { ...left._cyreg.cy.getElementById(leftId).position() },
+        right: { ...right._cyreg.cy.getElementById(rightId).position() },
+      };
+    },
+    [from, to],
+  );
+  const moved = { x: end.left.x - start.left.x, y: end.left.y - start.left.y };
+  expect(Math.hypot(moved.x, moved.y)).toBeGreaterThan(5);
+  expect(end.right.x - start.right.x).toBeCloseTo(moved.x, 3);
+  expect(end.right.y - start.right.y).toBeCloseTo(moved.y, 3);
+});

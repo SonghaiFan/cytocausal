@@ -112,7 +112,7 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
 
   return (
     <>
-      <CausalGraph maxZoom={10}>
+      <CausalGraph maxZoom={10} loopOptions={LOOP_SEARCH}>
         <div className="cc-overlay cc-overlay-top">
           <label className="cc-check">
             <input

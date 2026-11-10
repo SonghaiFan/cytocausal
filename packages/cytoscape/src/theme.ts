@@ -1,8 +1,9 @@
 /**
- * Colours for a causal graph and the page around it. One hue only, the accent, and it means one
- * thing: what the reader has chosen to look at. Everything else is neutral, and other meanings
- * use other channels: emphasis is contrast, polarity is line style, support is line width, loop
- * type is a glyph, and cause or effect is the arrow.
+ * Colours for a causal graph and the page around it. Hue has two jobs and no others. The accent
+ * marks what the reader has chosen to look at. When changes between versions are shown, `added`
+ * and `removed` tell them apart. Everything else is neutral, and other meanings use other
+ * channels: emphasis is contrast, polarity is line style, support is line width, loop type is a
+ * glyph, and cause or effect is the arrow.
  */
 export interface CausalColors {
   background: string;
@@ -18,10 +19,15 @@ export interface CausalColors {
   link: string;
   /** The strongest neutral: what a highlight brings forward, rings, and what's new. */
   ink: string;
-  /** The one hue: fills what the reader chose, such as a selected node. */
+  /**
+   * Fills what the reader chose, such as a selected node or the nodes of a chosen loop. It's
+   * only ever a fill: a line in it would read as a change.
+   */
   accent: string;
-  /** The accent for lines and rings, dark enough to stand out against the background. */
-  accentLine: string;
+  /** What a later version adds, while changes are shown. */
+  added: string;
+  /** What a later version removes, while changes are shown. */
+  removed: string;
 }
 
 /** Durations in milliseconds. */
@@ -53,7 +59,11 @@ const shared = {
 
 const palette = {
   yellow: "#ffc40a",
-  amber: "#a87900",
+  // Blue and vermilion stay apart for most colour vision, and far from the accent's yellow
+  blue: "#1f6fd6",
+  lightBlue: "#5b9dff",
+  vermilion: "#c8400c",
+  lightVermilion: "#ff7a45",
   charcoal: "#2f2e2c",
   black: "#050505",
 };
@@ -72,7 +82,8 @@ export const lightTheme: CausalTheme = {
     link: "#8e9196",
     ink: palette.charcoal,
     accent: palette.yellow,
-    accentLine: palette.amber,
+    added: palette.blue,
+    removed: palette.vermilion,
   },
 };
 
@@ -90,7 +101,8 @@ export const darkTheme: CausalTheme = {
     link: "#8e9196",
     ink: "#f5f5f3",
     accent: palette.yellow,
-    accentLine: palette.yellow,
+    added: palette.lightBlue,
+    removed: palette.lightVermilion,
   },
 };
 

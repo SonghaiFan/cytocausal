@@ -11,3 +11,4 @@ export * from "./transition.ts";
 export * from "./view.ts";
 export * from "./zoom.ts";
 export * from "./quality.ts";
+export * from "./sync.ts";

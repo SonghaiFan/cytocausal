@@ -243,14 +243,13 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
         "line-height": 1.2,
       }
     : {};
-  // A highlight recolours a link, but keeps the width that shows its support
+  // Highlights never change a link's width: width shows quantities, such as support
   const stroke = strokeOf(zoomMode(options));
-  // A neighbour is brought forward by contrast alone: an ink ring on a pill, or an ink dot
-  const linked =
-    node === "pill"
-      ? { "border-width": stroke(1.5), "border-color": colors.ink }
-      : { "background-color": colors.ink };
-  const width = (value: number) => (options.weightBySupport ? {} : { width: stroke(value) });
+  // A neighbour is brought forward by contrast alone. A pill just keeps full contrast while the
+  // rest fades. A dot, too small for that to show, darkens to ink
+  const linked = node === "pill" ? {} : { "background-color": colors.ink };
+  // Fades what didn't change less than a selection fades its context, so the graph stays legible
+  const changeContextOpacity = Math.min(1, dimmedOpacity * 2.5);
 
   return [
     { selector: "node", style: { "font-family": fontFamily, ...nodeStyles(theme, options) } },
@@ -266,44 +265,44 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     ...(link === "straight"
       ? [{ selector: "edge.dimmed", style: { "line-color": colors.link, "target-arrow-color": colors.link } }]
       : []),
-    // What the reader chose takes the one hue
-    {
-      selector: "node.focus",
-      style: {
-        ...onColour(colors.accent),
-        "background-color": colors.accent,
-        "border-width": stroke(node === "pill" ? 2 : 3),
-        "border-color": colors.ink,
-        "z-index": 10,
-      },
-    },
-    // What it causes and what it leads to come forward in ink, told apart by their arrows
-    { selector: "node.cause, node.effect", style: { ...linked, "z-index": 9 } },
-    { selector: "edge.cause-link, edge.effect-link", style: { ...highlight(colors.ink), ...width(2) } },
-    { selector: "node.route-node", style: { ...linked, "z-index": 9 } },
-    { selector: "edge.route-link", style: { ...highlight(colors.accentLine), ...width(3) } },
     { selector: ".outside-loops", style: { display: "none" } },
     { selector: ".contributor-hidden", style: { display: "none" } },
-    // What's new is solid ink, and what's gone is a pale ghost with a dashed outline
+    // Changes between versions: what stayed the same fades, as context does for a selection.
+    // Added and removed parts take their own hues, and changed ones keep full contrast
+    { selector: ".diff-context", style: { opacity: changeContextOpacity } },
     {
       selector: "node.diff-added",
-      style: { ...onColour(colors.ink), "background-color": colors.ink },
+      style: { ...onColour(colors.added), "background-color": colors.added },
     },
     {
       selector: "node.diff-removed",
-      style: {
-        "background-opacity": 0,
-        "border-style": "dashed",
-        "border-color": colors.link,
-        "border-width": stroke(1.5),
-        ...(node === "pill" ? { color: colors.mutedText } : {}),
-      },
+      style: { ...onColour(colors.removed), "background-color": colors.removed },
     },
-    { selector: "edge.diff-added", style: { ...highlight(colors.ink), ...width(3) } },
+    { selector: "edge.diff-added", style: highlight(colors.added) },
+    { selector: "edge.diff-removed", style: highlight(colors.removed) },
+    { selector: "edge.diff-changed", style: highlight(colors.ink) },
+    // A flipped link shows ± as well as its new line style
+    { selector: "edge.diff-flipped", style: { label: "±", "font-weight": "bold" } },
+    // Focus and context come last, because what the reader chose matters more than what
+    // changed. The accent is only ever a fill: chosen nodes take it, and their links keep full
+    // contrast in ink, so no warm line can be mistaken for a removed one. The rest fades
     {
-      selector: "edge.diff-removed",
-      style: { ...highlight(mix(colors.link, colors.background, RECEDING)), ...width(3) },
+      selector: "node.focus, node.route-node",
+      style: { ...onColour(colors.accent), "background-color": colors.accent, "z-index": 10 },
     },
+    { selector: "node.cause, node.effect", style: { ...linked, "z-index": 9 } },
+    {
+      selector: "edge.cause-link, edge.effect-link, edge.route-link",
+      style: highlight(colors.ink),
+    },
+    // A selection wins over the fading of what didn't change
+    {
+      selector: [".focus", ".cause", ".effect", ".route-node", ".cause-link", ".effect-link", ".route-link"]
+        .map((state) => `.diff-context${state}`)
+        .join(", "),
+      style: { opacity: 1 },
+    },
+    { selector: ".diff-context.dimmed", style: { opacity: dimmedOpacity } },
     {
       selector: "node.keyboard-cursor",
       style: { "outline-width": stroke(3), "outline-color": colors.ink, "outline-offset": stroke(3) },

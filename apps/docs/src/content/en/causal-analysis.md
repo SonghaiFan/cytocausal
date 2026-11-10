@@ -161,3 +161,5 @@ export function summary(dataset: CausalDataset) {
 | `changedLinks` | Links whose polarity changed, as `{ from, to, polarity }` |
 
 Links are compared by the nodes they join, so parallel links between two nodes count as one. When they disagree, their polarity is `"mixed"`.
+
+To mark a diff on a graph, `changeMarks(diff, side)` sorts it into what one snapshot can show: `"from"` for the earlier, with what was removed, or `"to"` for the later, with what was added. Both include what's in both versions but changed: renamed, merged, split or regrouped nodes, and links whose polarity flipped. Pass the result to `highlightChanges`. Added parts are blue and removed parts vermilion. What stayed the same fades, so changed parts stand out by keeping full contrast, with `±` on flipped links.

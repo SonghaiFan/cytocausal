@@ -31,6 +31,11 @@ const hsl = (hex: string) => {
 };
 const saturation = (hex: string) => hsl(hex).saturation;
 const hue = (hex: string) => hsl(hex).hue;
+/** How far apart two hues are on the colour wheel, in degrees. */
+const hueGap = (a: string, b: string) => {
+  const gap = Math.abs(hue(a) - hue(b)) % 360;
+  return Math.min(gap, 360 - gap);
+};
 
 const contrast = (a: string, b: string) => {
   const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
@@ -49,7 +54,7 @@ for (const theme of [lightTheme, darkTheme]) {
   });
 
   test(`${theme.name}: marks stand out from the background`, () => {
-    for (const mark of ["link", "ink", "accentLine"] as const) {
+    for (const mark of ["link", "ink"] as const) {
       assert.ok(contrast(colors[mark], colors.background) >= 3, mark);
     }
     assert.ok(contrast(colors.ink, colors.background) >= 4.5, "ink reads as text");
@@ -61,13 +66,25 @@ for (const theme of [lightTheme, darkTheme]) {
     }
   });
 
-  test(`${theme.name}: only the accent has a hue`, () => {
-    const { accent, accentLine, ...neutrals } = colors;
+  test(`${theme.name}: hue marks only what was chosen, and changes`, () => {
+    const { accent, added, removed, ...neutrals } = colors;
     for (const [name, value] of Object.entries(neutrals)) {
       assert.ok(saturation(value) < 0.12, `${name} ${value} should be neutral`);
     }
-    assert.ok(saturation(accent) > 0.5 && saturation(accentLine) > 0.5, "the accent is a clear hue");
-    assert.ok(Math.abs(hue(accent) - hue(accentLine)) < 10, "both accents share one hue");
+    for (const value of [accent, added, removed]) {
+      assert.ok(saturation(value) > 0.5, `${value} is a clear hue`);
+    }
+    // Added and removed sit on opposite sides of the wheel, and apart from the accent
+    assert.ok(hueGap(added, removed) > 120, "added and removed");
+    assert.ok(hueGap(accent, added) > 60, "accent and added");
+    assert.ok(hueGap(accent, removed) > 20, "accent and removed");
+  });
+
+  test(`${theme.name}: changes stand out and keep their labels readable`, () => {
+    for (const change of ["added", "removed"] as const) {
+      assert.ok(contrast(colors[change], colors.background) >= 3, change);
+      assert.ok(contrast(textOn(colors[change]), colors[change]) >= 4.5, `text on ${change}`);
+    }
   });
 }
 
@@ -80,7 +97,7 @@ test("theme variables use kebab case", () => {
 test("the stylesheet covers every state interactions set", () => {
   const rules = createCausalStyle(lightTheme) as unknown as Rule[];
   const selectors = rules.map(({ selector }) => selector).join(" ");
-  for (const name of [".dimmed", ".focus", ".cause", ".effect", ".cause-link", ".effect-link", ".route-node", ".route-link", ".contributor-hidden"]) {
+  for (const name of [".dimmed", ".focus", ".cause", ".effect", ".cause-link", ".effect-link", ".route-node", ".route-link", ".contributor-hidden", ".diff-added", ".diff-removed", ".diff-changed", ".diff-flipped"]) {
     assert.ok(selectors.includes(name), name);
   }
 });
@@ -90,8 +107,9 @@ test("app rules come before the interaction states", () => {
     baseRules: [{ selector: "edge.app", style: {} }] as never,
   }) as unknown as Rule[];
   const index = (selector: string) => rules.findIndex((rule) => rule.selector === selector);
+  const route = rules.findIndex((rule) => rule.selector.includes("edge.route-link"));
   assert.ok(index("edge.app") > index("edge"));
-  assert.ok(index("edge.app") < index("edge.route-link"));
+  assert.ok(index("edge.app") < route);
 });
 
 test("only managed labels hide by default", () => {
@@ -108,8 +126,9 @@ test("support can set link width without highlights overriding it", () => {
   const rules = createCausalStyle(lightTheme, { weightBySupport: true }) as unknown as Rule[];
   const style = (selector: string) => rules.find((rule) => rule.selector === selector)!.style;
   assert.equal(style("edge").width, "mapData(supportShare, 0, 1, 1.5, 7)");
-  assert.equal(style("edge.route-link").width, undefined);
-  assert.equal((createCausalStyle(lightTheme) as unknown as Rule[]).find((rule) => rule.selector === "edge.route-link")!.style.width, 3);
+  assert.equal(rules.find((rule) => rule.selector.includes("edge.route-link"))!.style.width, undefined);
+  // Highlights don't touch width with or without support, so width only ever means a quantity
+  assert.equal((createCausalStyle(lightTheme) as unknown as Rule[]).find((rule) => rule.selector.includes("edge.route-link"))!.style.width, undefined);
 });
 
 test("support share starts at zero for claims nobody shares", () => {
@@ -173,9 +192,9 @@ test("receding links are pale but opaque", () => {
 
 test("managed borders keep their size on screen", () => {
   const rules = createCausalStyle(lightTheme, { node: "dot", managedLabels: true }) as unknown as Rule[];
-  const focus = rules.find(({ selector }) => selector === "node.focus")!.style;
-  assert.equal(atZoomOne(focus["border-width"]), 3);
-  assert.match(String(focus["border-width"]), /^mapData\(zoomScale/);
+  const cursor = rules.find(({ selector }) => selector === "node.keyboard-cursor")!.style;
+  assert.equal(atZoomOne(cursor["outline-width"]), 3);
+  assert.match(String(cursor["outline-width"]), /^mapData\(zoomScale/);
 });
 
 test("each zoom mode sizes marks from its own factor", () => {
@@ -202,4 +221,45 @@ test("managed labels default to spread, and weights follow the zoom mode", () =>
   const weighted = (createCausalStyle(lightTheme, { weightBySupport: true, zoom: "spread" }) as unknown as Rule[])
     .find((rule) => rule.selector === "edge")!.style.width as (ele: { data: (key: string) => number }) => number;
   assert.equal(weighted({ data: (key) => ({ supportShare: 1, zoomScale: 0.5 })[key]! }), 3.5);
+});
+
+test("each visual channel keeps one meaning", () => {
+  for (const options of [{}, { node: "dot", link: "straight", managedLabels: true }, { weightBySupport: true }]) {
+    const rules = createCausalStyle(lightTheme, options as never) as unknown as Rule[];
+    const states = rules.filter(({ selector }) => /\.(focus|cause|effect|route|diff|dimmed)/.test(selector));
+    for (const { selector, style } of states) {
+      // Width is for quantities, outlines for an app's own categories, dashes for polarity
+      for (const channel of ["width", "border-width", "border-style", "line-style"]) {
+        assert.equal(style[channel], undefined, `${selector} sets ${channel}`);
+      }
+    }
+    const dashed = rules.filter(({ style }) => style["line-style"] !== undefined).map(({ selector }) => selector);
+    assert.deepEqual(dashed, ['edge[polarity="negative"]']);
+  }
+});
+
+test("the accent only ever fills, and a selection outranks changes", () => {
+  for (const theme of [lightTheme, darkTheme]) {
+    const rules = createCausalStyle(theme) as unknown as Rule[];
+    // A line in the accent would read as a change, as a warm line did when it looked removed
+    for (const { selector, style } of rules) {
+      for (const channel of ["line-color", "target-arrow-color", "border-color"]) {
+        assert.notEqual(style[channel], theme.colors.accent, `${selector} uses the accent for ${channel}`);
+      }
+    }
+    const index = (selector: string) => rules.findIndex((rule) => rule.selector.includes(selector));
+    for (const change of ["node.diff-added", "edge.diff-removed", "edge.diff-changed"]) {
+      assert.ok(index("node.focus") > index(change), `the selection comes after ${change}`);
+      assert.ok(index("edge.route-link") > index(change), `a chosen route comes after ${change}`);
+    }
+  }
+});
+
+test("a loop found from another of its nodes is the same route", async () => {
+  const { sameRoute } = await import("../src/highlight.ts");
+  const fromA = { nodes: ["a", "b", "c"], edges: ["ab", "bc", "ca"] };
+  const fromB = { nodes: ["b", "c", "a"], edges: ["bc", "ca", "ab"] };
+  assert.ok(sameRoute(fromA, fromB));
+  assert.ok(!sameRoute(fromA, { nodes: ["a", "b"], edges: ["ab", "ba"] }));
+  assert.ok(!sameRoute(fromA, null));
 });

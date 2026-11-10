@@ -16,5 +16,6 @@ export * from "./ContributorFilter.tsx";
 export * from "./LoopList.tsx";
 export * from "./NodeDetails.tsx";
 export * from "./NodeSearch.tsx";
+export * from "./RadialMenu.tsx";
 export * from "./theme.tsx";
 export * from "./useCausalGraph.ts";

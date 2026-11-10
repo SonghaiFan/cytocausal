@@ -63,6 +63,14 @@ export interface CausalLabels {
   balancingMark: string;
   selected: string;
   linked: string;
+  /** Renamed, merged, split or regrouped nodes, and links whose polarity flipped. */
+  changed: string;
+  radialMenu: string;
+  /** A ring that sets how many steps the highlight reaches, and how many nodes that shows. */
+  stepsReach: (steps: number, nodes: number) => string;
+  linkedBothWays: string;
+  /** Marks a loop that doesn't pass through the node, but lies within the steps shown. */
+  loopWithin: (steps: number) => string;
 }
 
 export const defaultLabels: CausalLabels = {
@@ -84,7 +92,7 @@ export const defaultLabels: CausalLabels = {
   zoomIn: "Zoom in",
   zoomOut: "Zoom out",
   fit: "Fit graph",
-  seeAll: (count) => `Click to see all ${count}`,
+  seeAll: (count) => `Click the node to see all ${count}`,
   darkMode: "Dark mode",
   lightMode: "Light mode",
   graph: "Causal graph. Use the arrow keys to move between nodes, and Enter to select one.",
@@ -125,6 +133,11 @@ export const defaultLabels: CausalLabels = {
   balancingMark: "B",
   selected: "Selected",
   linked: "Causes and effects",
+  changed: "Changed",
+  radialMenu: "Linked nodes and loops",
+  stepsReach: (steps, nodes) => `${steps} steps: ${nodes} ${nodes === 1 ? "node" : "nodes"}`,
+  linkedBothWays: "Causes and follows from",
+  loopWithin: (steps) => `Within ${steps} ${steps === 1 ? "step" : "steps"}`,
 };
 
 const LabelsContext = createContext(defaultLabels);

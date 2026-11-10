@@ -3,12 +3,13 @@ import type { LegendItem } from "@cytocausal/react";
 import type { Stylesheet } from "cytoscape";
 
 /**
- * What each annotation in the source data means, and how it's drawn. Annotations are categories
- * from the workshop, so they use outlines and glyphs: the one hue is kept for what the reader
- * chooses to look at.
+ * What each annotation in the source data means, and how it's drawn. Annotations are the
+ * workshop's own categories, less important than what the reader is looking at or what changed,
+ * so they get the channels nothing else uses: a node's outline style, and a glyph on a link.
+ * Hue, contrast and width are left to selection, changes and support.
  */
 export const annotations = [
-  { index: "1", label: "Added", mark: "ring", glyph: undefined },
+  { index: "1", label: "Added in the workshop", mark: "ring", glyph: "*" },
   { index: "2", label: "Needs clarification", mark: "dotted", glyph: "?" },
   { index: "3", label: "Conflict", mark: undefined, glyph: "!" },
 ] as const;
@@ -41,14 +42,7 @@ export function graphStyles(theme: CausalTheme, options: CausalStyleOptions = {}
           },
         ]
       : []),
-    {
-      selector: `edge[color = "${index}"]`,
-      style: {
-        "line-color": ink,
-        "target-arrow-color": ink,
-        ...(glyph ? { label: withGlyph(glyph) } : {}),
-      },
-    },
+    { selector: `edge[color = "${index}"]`, style: { label: withGlyph(glyph) } },
   ]) as unknown as Stylesheet[];
   return createCausalStyle(theme, { ...options, baseRules: rules });
 }

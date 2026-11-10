@@ -222,7 +222,7 @@ test("hovering shows a preview", async ({ page }) => {
   await ready(page);
   const { x, y } = await pointOf(page, first.id);
   await page.mouse.move(x, y);
-  await expect(page.getByText(`Click to see all ${first.evidence.length}`)).toBeVisible();
+  await expect(page.getByText(`Click the node to see all ${first.evidence.length}`)).toBeVisible();
 });
 
 test("labels stay readable at every zoom level", async ({ page }) => {
@@ -335,12 +335,19 @@ test("a highlight labels what it reaches without stacking labels", async ({ page
   );
   expect(Math.min(...arrows)).toBeGreaterThanOrEqual(5);
   expect(Math.max(...arrows)).toBeLessThanOrEqual(8);
-  // The selected node's ring stays three pixels
-  const ring = await withCy<number>(
+  // The keyboard cursor's outline stays three pixels, and the selection needs no ring at all
+  const sizes = await withCy<{ outline: number; border: number }>(
     page,
-    `return parseFloat(cy.getElementById("${first.id}").style("border-width")) * cy.zoom();`,
+    `const node = cy.getElementById("${first.id}").addClass("keyboard-cursor");
+     const result = {
+       outline: parseFloat(node.style("outline-width")) * cy.zoom(),
+       border: parseFloat(node.style("border-width")),
+     };
+     node.removeClass("keyboard-cursor");
+     return result;`,
   );
-  expect(ring).toBeCloseTo(3, 0);
+  expect(sizes.outline).toBeCloseTo(3, 0);
+  expect(sizes.border).toBe(0);
   expect((await measure()).overlapping).toBe(0);
 });
 

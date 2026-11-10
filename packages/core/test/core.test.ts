@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   analyzeSnapshot,
+  changeMarks,
   diffSnapshots,
   findCausalPaths,
   findFeedbackLoops,
@@ -387,4 +388,22 @@ test("parallel links between two nodes count once", () => {
 
   const mixed = diffSnapshots(dataset([link("1", "positive"), link("2", "negative")], [link("3", "negative")]), "V1", "final");
   assert.deepEqual(mixed.changedLinks.map(({ polarity }) => polarity), [["mixed", "negative"]]);
+});
+
+test("change marks put each kind of change on the side that has it", () => {
+  const diff = diffSnapshots(versions({ a: "a", b: "b2", c: "c" }), "V1", "final");
+  const before = changeMarks(diff, "from");
+  const after = changeMarks(diff, "to");
+  assert.deepEqual(before.added, []);
+  assert.deepEqual(after.removed, []);
+  assert.deepEqual(before.removed.sort(), ["a-gone", "gone"]);
+  assert.deepEqual(after.added.sort(), ["c-new", "new"]);
+  // b was renamed b2, and the link a→b flipped from positive to negative
+  assert.deepEqual(before.changed.sort(), ["a-b", "b"]);
+  assert.deepEqual(after.changed.sort(), ["a-b2", "b2"]);
+  assert.deepEqual(after.flipped, ["a-b2"]);
+
+  const merged = changeMarks(diffSnapshots(merge, "V1", "final"), "from");
+  assert.deepEqual(merged.changed.sort(), ["a", "b"]);
+  assert.deepEqual(changeMarks(diffSnapshots(merge, "V1", "final"), "to").changed, ["ab"]);
 });

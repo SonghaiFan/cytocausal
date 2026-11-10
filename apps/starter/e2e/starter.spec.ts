@@ -315,9 +315,18 @@ test("changes between versions are listed and marked on the graph", async ({ pag
   await page.getByRole("button", { name: "final", exact: true }).click();
   await expect.poll(async () => (await graph(page))?.animating).toBe(0);
   await expect.poll(() => nodesWith(page, ".diff-added")).toEqual(["revenue", "staff"]);
+  // The renamed node is still there, so it's marked as changed rather than added
+  await expect.poll(() => nodesWith(page, ".diff-changed")).toEqual(["customer-satisfaction"]);
+  await expect(changes.getByText("Changed", { exact: true })).toBeVisible();
+
+  // The first version shows the same node, under its old name, as changed
+  await page.getByRole("button", { name: "V1", exact: true }).click();
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+  await expect.poll(() => nodesWith(page, ".diff-changed")).toEqual(["satisfaction"]);
 
   await changes.getByRole("button", { name: "Show on graph" }).click();
   await expect.poll(() => nodesWith(page, ".diff-added")).toEqual([]);
+  await expect.poll(() => nodesWith(page, ".diff-changed")).toEqual([]);
 });
 
 test("the graph can be used from the keyboard", async ({ page }) => {
@@ -659,3 +668,141 @@ test("no layout packs nodes into each other, however they're switched", async ({
   }
 });
 
+
+test("the radial menu walks to linked nodes, sets the steps and picks loops", async ({ page }) => {
+  await openFinal(page);
+  await choose(page, "customers", /^Customers/);
+  const menu = page.getByRole("menu", { name: "Linked nodes and loops: Customers" });
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("menuitem")).toHaveCount(3);
+
+  // Pointing at a wedge previews that link, and choosing it walks there
+  const queue = menu.getByRole("menuitem", { name: "Leads to: Queue length" });
+  await queue.hover();
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "queue"]);
+  await queue.click();
+  await expect(page.getByLabel("Node queue")).toBeVisible();
+  await expect(page.getByLabel("Node customers")).toHaveCount(0);
+  const next = page.getByRole("menu", { name: "Linked nodes and loops: Queue length" });
+  await expect(next).toBeVisible();
+
+  // The rings set how far the highlight reaches
+  const highlighted = () =>
+    page.evaluate(() => {
+      const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+      return div._cyreg.cy.nodes(":visible").not(".dimmed").length;
+    });
+  const one = await highlighted();
+  // A ring's middle is the node, so click on the ring itself rather than its centre
+  await next.getByRole("menuitemradio", { name: /^3 steps/ }).dispatchEvent("click");
+  await expect(page.getByRole("button", { name: "3", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(highlighted).toBeGreaterThan(one);
+
+  // A loop arc highlights the loop, and the loop list shows it chosen
+  await next.getByRole("menuitemcheckbox", { name: /^Balancing/ }).dispatchEvent("click");
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customer-satisfaction", "customers", "queue"]);
+  await expect(page.getByRole("button", { name: /^B Balancing/ })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("the radial menu works from the keyboard", async ({ page }) => {
+  await openFinal(page);
+  await choose(page, "revenue", /^Revenue/);
+  const menu = page.getByRole("menu", { name: "Linked nodes and loops: Revenue" });
+  const staff = menu.getByRole("menuitem", { name: "Leads to: Staff on shift" });
+  await staff.focus();
+  await expect(page.getByText("Leads to: Staff on shift", { exact: true }).last()).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Node staff")).toBeVisible();
+
+  await page.getByRole("menu", { name: "Linked nodes and loops: Staff on shift" }).getByRole("menuitem").first().focus();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.getByLabel(/^Node /)).toHaveCount(0);
+});
+
+test("radial menu arrows point at their nodes, and loops within reach appear", async ({ page }) => {
+  await openFinal(page);
+  await choose(page, "staff", /^Staff on shift/);
+  const menu = page.getByRole("menu", { name: "Linked nodes and loops: Staff on shift" });
+  await expect(menu).toBeVisible();
+
+  // Each wedge's arrow lies along the bearing of its node, pointing the way the link runs: out to
+  // the queue it leads to, in from the revenue that causes it
+  const turns = await page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    const cy = div._cyreg.cy;
+    const from = cy.getElementById("staff").renderedPosition();
+    return ["Leads to: Queue length", "Caused by: Revenue"].map((label) => {
+      const wedge = document.querySelector(`[aria-label="${label}"] text`)!;
+      const turn = Number(wedge.getAttribute("transform")!.match(/rotate\(([-\d.]+)/)![1]);
+      const to = cy.getElementById(label.endsWith("Revenue") ? "revenue" : "queue").renderedPosition();
+      const outward = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI;
+      const bearing = label.startsWith("Caused by") ? outward + 180 : outward;
+      return Math.abs((((turn - bearing) % 360) + 540) % 360 - 180);
+    });
+  });
+  for (const gap of turns) expect(gap).toBeLessThan(1);
+
+  // At one step only the loop through the node shows; at three, the balancing loop it feeds too
+  await expect(menu.getByRole("menuitemcheckbox")).toHaveCount(1);
+  await page.getByRole("button", { name: "3", exact: true }).click();
+  await expect(menu.getByRole("menuitemcheckbox", { name: /^Within 3 steps · Balancing/ })).toHaveCount(1);
+});
+
+/** The tooltip for nodes and links, not the radial menu's caption. */
+const tooltip = (page: Page) => page.locator(".cc-tooltip:not(.cc-radial-caption)");
+
+/** Where a node is on the page. */
+const pagePoint = (page: Page, id: string) =>
+  page.evaluate((node) => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    const { left, top } = div.getBoundingClientRect();
+    const { x, y } = div._cyreg.cy.getElementById(node).renderedPosition();
+    return { x: left + x, y: top + y };
+  }, id);
+
+test("a tooltip waits for the pointer to rest", async ({ page }) => {
+  await openFinal(page);
+  const { x, y } = await pagePoint(page, "revenue");
+  await page.mouse.move(x, y);
+  await page.waitForTimeout(100);
+  await expect(tooltip(page)).toHaveCount(0);
+  await expect(tooltip(page)).toBeVisible();
+  await page.mouse.move(5, 5);
+  await expect(tooltip(page)).toHaveCount(0);
+});
+
+test("tooltips give way to the radial menu, and keep out of its circle", async ({ page }) => {
+  await openFinal(page);
+  await choose(page, "customers", /^Customers/);
+  const menu = page.locator(".cc-radial");
+  await expect(menu).toBeVisible();
+  const box = (await menu.boundingBox())!;
+  const circle = { x: box.x + box.width / 2, y: box.y + box.height / 2, radius: box.width / 2 };
+
+  // Over the selected node, the menu has the job
+  const centre = await pagePoint(page, "customers");
+  await page.mouse.move(centre.x, centre.y);
+  await page.waitForTimeout(600);
+  await expect(tooltip(page)).toHaveCount(0);
+
+  // Over a wedge, only the menu's caption shows
+  await page.getByRole("menuitem", { name: "Leads to: Revenue" }).hover();
+  await page.waitForTimeout(600);
+  await expect(page.locator(".cc-radial-caption")).toHaveText("Leads to: Revenue");
+  await expect(tooltip(page)).toHaveCount(0);
+
+  // Another node shows its tooltip, on the side away from the menu
+  for (const other of ["revenue", "queue", "customer-satisfaction"]) {
+    const { x, y } = await pagePoint(page, other);
+    if (Math.hypot(x - circle.x, y - circle.y) <= circle.radius) continue;
+    await page.mouse.move(x, y);
+    await expect(tooltip(page)).toBeVisible();
+    const tip = (await tooltip(page).boundingBox())!;
+    const nearestX = Math.max(tip.x, Math.min(circle.x, tip.x + tip.width));
+    const nearestY = Math.max(tip.y, Math.min(circle.y, tip.y + tip.height));
+    expect(Math.hypot(circle.x - nearestX, circle.y - nearestY), `${other} tooltip`).toBeGreaterThan(circle.radius - 2);
+    await page.mouse.move(5, 5);
+    await expect(tooltip(page)).toHaveCount(0);
+  }
+});

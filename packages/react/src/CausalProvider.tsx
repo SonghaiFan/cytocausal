@@ -1,5 +1,6 @@
 "use client";
 import {
+  changeMarks,
   diffSnapshots,
   findFeedbackLoops,
   getSnapshot,
@@ -201,15 +202,10 @@ function useCausalState({
     const instance = cy.current;
     if (!instance || first === last) return;
     const diff = diffSnapshots(dataset, first, last);
-    const ids = (items: { id: string }[]) => items.map(({ id }) => id);
-    const added = [...ids(diff.addedNodes), ...ids(diff.addedLinks)];
-    const removed = [...ids(diff.removedNodes), ...ids(diff.removedLinks)];
+    // The earlier version shows what went, the later what came, and both what changed
+    const side = version === last ? "to" : version === first ? "from" : null;
     const change = () =>
-      highlightChanges(
-        instance,
-        showChanges && version === last ? added : [],
-        showChanges && version !== last ? removed : [],
-      );
+      highlightChanges(instance, showChanges && side ? changeMarks(diff, side) : {});
     if (isTransitioning(instance)) change();
     else easeStyles(instance, change, resolveMotion(theme.motion).highlight);
   }, [cy, dataset, first, last, showChanges, version, theme]);

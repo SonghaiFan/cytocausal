@@ -320,12 +320,16 @@ function Differences({
       {shown && (
         <ul className="cc-legend">
           <li>
-            <Swatch color="var(--cc-ink)" />
+            <Swatch color="var(--cc-added)" />
             {labels.added}
           </li>
           <li>
-            <Swatch color="var(--cc-link)" mark="dashed" />
+            <Swatch color="var(--cc-removed)" />
             {labels.removed}
+          </li>
+          <li>
+            <Swatch color="var(--cc-ink)" />
+            {labels.changed}
           </li>
         </ul>
       )}

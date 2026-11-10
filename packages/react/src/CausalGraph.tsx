@@ -1,11 +1,18 @@
 "use client";
-import { supportOf, type CausalEdge, type CausalNode, type Snapshot } from "@cytocausal/core";
+import {
+  supportOf,
+  type CausalEdge,
+  type CausalNode,
+  type LoopOptions,
+  type Snapshot,
+} from "@cytocausal/core";
 import type { ReactNode } from "react";
 import { useCausal } from "./CausalProvider.tsx";
 import { NodeTooltip, ZoomControls } from "./controls.tsx";
 import { GraphView } from "./GraphView.tsx";
 import { useCausalLabels } from "./labels.tsx";
 import { LinkTooltip } from "./LinkDetails.tsx";
+import { RadialMenu } from "./RadialMenu.tsx";
 
 const defaultTooltip = (node: CausalNode) => <NodeTooltip node={node} />;
 // Only links with a known source have anything to add on hover
@@ -17,9 +24,15 @@ export function CausalGraph({
   renderTooltip = defaultTooltip,
   renderLinkTooltip = defaultLinkTooltip,
   maxZoom,
+  radialMenu = true,
+  loopOptions,
   className = "",
   children,
 }: {
+  /** Show a ring menu around a selected node, for walking to linked nodes and loops. */
+  radialMenu?: boolean;
+  /** Limits for finding loops through a node in the radial menu. Set these for large graphs. */
+  loopOptions?: LoopOptions;
   renderTooltip?: (node: CausalNode) => ReactNode;
   renderLinkTooltip?: (link: CausalEdge, snapshot: Snapshot) => ReactNode;
   /** Raise this on large graphs, so people can zoom in to read them. */
@@ -51,6 +64,7 @@ export function CausalGraph({
         }}
       />
       {children}
+      {radialMenu && <RadialMenu loopOptions={loopOptions} />}
       <ZoomControls />
       <p role="status" className="cc-sr-only">
         {graph.announcement}

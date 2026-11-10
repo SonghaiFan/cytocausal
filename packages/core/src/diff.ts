@@ -136,3 +136,40 @@ export function diffSnapshots(dataset: CausalDataset, fromId: string, toId: stri
 
   return diff;
 }
+
+export interface ChangeMarks {
+  /** Nodes and links new in the later snapshot. */
+  added: string[];
+  /** Nodes and links gone from the earlier snapshot. */
+  removed: string[];
+  /**
+   * Nodes and links in both that changed: renamed, merged, split or regrouped nodes, and links
+   * whose polarity flipped.
+   */
+  changed: string[];
+  /** The links among `changed` whose polarity flipped. */
+  flipped: string[];
+}
+
+/**
+ * What to mark on one side of a diff: `from` for the earlier snapshot, which can show what was
+ * removed, or `to` for the later one, which can show what was added. Both show what changed.
+ */
+export function changeMarks(diff: SnapshotDiff, side: "from" | "to"): ChangeMarks {
+  const ids = (items: { id: string }[]) => items.map(({ id }) => id);
+  const early = side === "from";
+  const regrouped = diff.regroupedNodes.flatMap((group) => (early ? group.from : group.to));
+  const flipped = diff.changedLinks.map((link) => (early ? link.from.id : link.to.id));
+  const changedNodes = [
+    ...diff.renamedNodes.map((pair) => (early ? pair.from : pair.to)),
+    ...diff.mergedNodes.flatMap((merge) => (early ? merge.from : [merge.to])),
+    ...diff.splitNodes.flatMap((split) => (early ? [split.from] : split.to)),
+    ...regrouped,
+  ];
+  return {
+    added: early ? [] : [...ids(diff.addedNodes), ...ids(diff.addedLinks)],
+    removed: early ? [...ids(diff.removedNodes), ...ids(diff.removedLinks)] : [],
+    changed: [...ids(changedNodes), ...flipped],
+    flipped,
+  };
+}
