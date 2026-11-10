@@ -33,7 +33,7 @@ import "@cytocausal/react/styles.css";
 | `styleOptions` | 无 | `createCausalStyle` 的选项 |
 | `layout` | 自动 | 所有节点都有位置时使用已保存的位置，否则自动布局 |
 | `layouts`、`initialLayout` | 无、第一个 | 可供选择的具名布局，取代 `layout`。工作区会显示切换按钮，分享的链接会保留所选布局 |
-| `maxSelected` | `2` | 可同时选中的节点数。选中两个节点时列出它们之间的路径 |
+| `maxSelected` | `2` | 可同时选中的节点数。点击选中一个；在环形菜单中选择 ⤳ 可以加入第二个节点，并列出两者之间的路径 |
 | `scheme` | 跟随系统 | 指定 `light` 或 `dark`，并隐藏切换按钮 |
 | `initialVersion`、`initialSelected` | 第一个快照、无 | 初始状态 |
 | `shareInUrl` | `true` | 把版本和选中项保存在页面地址中，打开链接时恢复同样的视图 |
@@ -98,7 +98,7 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 
 `VersionSwitcher`、`Legend` 和 `DepthControl` 支持 `bare`，去掉外层面板，可以直接放在图上。
 
-悬停在连线上时，`CausalGraph` 会显示它的提出者。像节点的 `renderTooltip` 一样，传入 `renderLinkTooltip` 可以改成别的内容。传入 `styleOptions={{ weightBySupport: true }}`（定义在组件外部）会让提出人数越多的连线越粗。
+悬停在连线上时，`CausalGraph` 会显示它的提出者。传入 `renderLinkTooltip` 可以改成别的内容。节点没有提示框，它的详情在 `SelectionPanel` 里。没有侧栏时，可以传入 `renderNodeInfo` 在环形菜单旁显示卡片。传入 `styleOptions={{ weightBySupport: true }}`（定义在组件外部）会让提出人数越多的连线越粗。
 
 大型图可以给 `CausalProvider` 传 `graphOptions`，比如 `{ readableLabels: true }`，给 `CausalGraph` 传 `maxZoom`。`SelectionPanel` 的 `loopOptions` 会列出经过每个节点的回路。
 

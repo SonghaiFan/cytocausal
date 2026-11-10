@@ -1,8 +1,8 @@
 "use client";
+import { selectionPaths } from "./selection-paths.ts";
 import {
   diffSnapshots,
   getSnapshot,
-  findCausalPaths,
   type CausalDataset,
   type LoopOptions,
   type CausalNode,
@@ -22,12 +22,13 @@ import { RouteButton } from "./RouteButton.tsx";
 export function DepthControl({
   value,
   onChange,
-  steps = [1, 2, 3],
+  steps: given,
   bare = false,
   className = "",
 }: {
   value?: number;
   onChange?: (depth: number) => void;
+  /** Defaults to every step up to the graph's `maxDepth`. */
   steps?: number[];
   /** Leave out the panel, to place it on the graph. */
   bare?: boolean;
@@ -37,6 +38,7 @@ export function DepthControl({
   const causal = useOptionalCausal();
   const current = value ?? causal?.graph.depth;
   const choose = onChange ?? causal?.graph.setDepth;
+  const steps = given ?? Array.from({ length: causal?.graph.maxDepth ?? 2 }, (_, index) => index + 1);
 
   const buttons = (
     <Segmented label={labels.depth} options={steps} value={current} onChange={choose} />
@@ -65,6 +67,7 @@ export function PathList({
   snapshot: given,
   from: start,
   to: end,
+  selected: givenSelected,
   active,
   onToggle,
   onPreview,
@@ -73,6 +76,7 @@ export function PathList({
   snapshot?: Snapshot;
   from?: string;
   to?: string;
+  selected?: string[];
   active?: Route | null;
   onToggle?: (path: Route) => void;
   onPreview?: (path: Route | null) => void;
@@ -81,25 +85,20 @@ export function PathList({
   const labels = useCausalLabels();
   const causal = useOptionalCausal();
   const snapshot = required(given ?? causal?.snapshot, "PathList", "snapshot");
-  const from = start ?? causal?.graph.selected[0];
-  const to = end ?? causal?.graph.selected[1];
+  const selected = givenSelected ?? causal?.graph.selected;
   const labelOf = (id: string) => snapshot.nodes.find((node) => node.id === id)?.label ?? id;
   const searches = useMemo(
-    () =>
-      from && to
-        ? [
-            { start: from, end: to, ...findCausalPaths(snapshot, from, to) },
-            { start: to, end: from, ...findCausalPaths(snapshot, to, from) },
-          ]
-        : [],
-    [snapshot, from, to],
+    () => selectionPaths(snapshot, start !== undefined || end !== undefined
+      ? [start, end].filter((id): id is string => id !== undefined)
+      : selected ?? []),
+    [snapshot, start, end, selected],
   );
   if (searches.length === 0) return null;
 
   return (
     <section aria-label="Paths" className={`cc-panel ${className}`}>
       {searches.map(({ start, end, paths, complete }) => (
-        <div key={start} className="cc-block">
+        <div key={JSON.stringify([start, end])} className="cc-block">
           <h3 className="cc-heading">
             {labels.paths(labelOf(start), labelOf(end))} ({paths.length}
             {complete ? "" : "+"})
@@ -163,15 +162,14 @@ export function SelectionPanel({
   return (
     <>
       <div className="cc-spread">
-        <p className="cc-muted">{selected.length === 1 ? labels.pathHint : ""}</p>
+        <p className="cc-muted">{graph.tracing ? labels.tracingHint : selected.length === 1 ? labels.pathHint : ""}</p>
         <button type="button" className="cc-link" onClick={clear}>
           {labels.clearSelection}
         </button>
       </div>
       <PathList
         snapshot={snapshot}
-        from={selected[0]}
-        to={selected[1]}
+        selected={selected}
         onPreview={graph.previewRoute}
         className={className}
         {...routes}

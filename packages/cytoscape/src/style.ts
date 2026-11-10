@@ -1,3 +1,4 @@
+import { pillTextSizer } from "./text-size.ts";
 import type { Stylesheet } from "cytoscape";
 import { mix, textOn, type CausalTheme } from "./theme.ts";
 
@@ -53,7 +54,7 @@ const dotSize = (score: unknown, sizeByScore?: boolean) =>
   sizeByScore ? 5 + 19 * Math.min(1, Math.max(0, Number(score) || 0)) : 20;
 
 const nodeStyles = (
-  { colors }: CausalTheme,
+  { colors, fontFamily }: CausalTheme,
   options: CausalStyleOptions,
 ) => {
   const { node = "pill", sizeByScore, managedLabels } = options;
@@ -63,10 +64,15 @@ const nodeStyles = (
   const stroke = strokeOf(mode);
   if (node === "pill") {
     const pill = (pixels: number) => (spread ? stroke(pixels * PILL_SPREAD) : `${pixels}px`);
+    const measure = pillTextSizer(fontFamily);
+    const size = (ele: { data: (key: string) => unknown }) => measure(
+      String(ele.data("label") ?? ""),
+      field ? (Number(ele.data(field)) || 1) * PILL_SPREAD : 1,
+    );
     return {
       shape: "round-rectangle",
-      width: "label",
-      height: "label",
+      width: (ele: { data: (key: string) => unknown }) => size(ele).width,
+      height: (ele: { data: (key: string) => unknown }) => size(ele).height,
       padding: pill(5),
       "background-color": colors.node,
       "border-color": colors.background,

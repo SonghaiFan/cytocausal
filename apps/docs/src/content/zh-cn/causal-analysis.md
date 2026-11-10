@@ -163,3 +163,20 @@ export function summary(dataset: CausalDataset) {
 连线按它们连接的节点比较，所以同一对节点之间的平行连线算作一条。平行连线的极性不一致时，极性为 `"mixed"`。
 
 要在图上标出差异，可以用 `changeMarks(diff, side)` 把差异整理成某个快照能显示的内容：`"from"` 对应较早的快照，包含被删除的内容；`"to"` 对应较晚的快照，包含新增的内容。两者都包含两个版本中都存在但发生了变化的内容：改名、合并、拆分或重新分组的节点，以及极性反转的连线。把结果传给 `highlightChanges`。新增的部分是蓝色，删除的部分是朱红色。没变的部分会变淡，所以变化的部分靠保持完整对比度凸显出来，极性反转的连线上标有 `±`。
+
+### 交互式回路搜索
+
+浏览器中的回路枚举在 Web Worker 中运行。核心搜索先划分强连通分量，保留单节点自环，排除分量之间的边，结果仍按长度从短到长排列。切换图、选中节点或长度时，会终止旧 Worker；取消计算会真正停止搜索。取消或失败不会显示为“没有回路”的完整结果。
+
+`LoopSettingsProvider` 和 `LoopSearchControls` 为同一 case 的列表与环形菜单共享长度和取消状态。`CausalProvider` 接受 `loopSettings`；独立视图可组合使用 `LoopSettingsProvider` 和 `useLoopSearch`。脚本仍可调用同步的 core API。
+
+| 场景 | 界面名称 | 默认最大长度 | 每次搜索条数上限 |
+| --- | --- | --- | --- |
+| Explorer | Event cycles | 4 | 30 |
+| Perspectiva 个人图 | Participant cycles | 不限 | 1000 |
+| Perspectiva 合并图 | Workshop cycles | 6 | 1000 |
+| Starter | Coffee shop cycles | 不限 | 1000 |
+
+长度按节点数计算，包含长度为 1 的自环，与邻域的“Steps shown”独立。取消长度限制不会取消条数上限。结果数量后的 `+` 表示可能未列全。切换工作坊数据集时，设置重置为对应场景的默认值。
+
+取消按钮只在 worker 正在计算时显示。完成后的列表显示回路数量和耗时；共享控制区按每个快照去重回路，并显示已完成搜索中的最长耗时。取消和失败不会显示成已完成。

@@ -170,20 +170,50 @@
 .cc-layout-select { width: auto; height: var(--cc-control-height); }
 .cc-glyph { display: inline-flex; justify-content: center; min-width: .75rem; font-weight: 600; }
 
-/* The radial menu: neutral wedges and rings, darkening to ink where pointed at or chosen */
+/* A debugging view of the area that leads to each linked node: shades of the text colour only */
+.cc-radial-directions { position: fixed; z-index: 39; overflow: visible; pointer-events: none; }
+.cc-radial-directions path { stroke: var(--cc-text); stroke-width: 1; stroke-dasharray: 4 3; stroke-opacity: .5; }
+.cc-direction-odd path { fill: var(--cc-text); fill-opacity: .08; }
+.cc-direction-even path { fill: var(--cc-text); fill-opacity: .16; }
+.cc-radial-directions line { stroke: var(--cc-text); stroke-width: 1; stroke-opacity: .6; }
+.cc-radial-directions text { fill: var(--cc-text); font: 600 11px var(--cc-font-family, sans-serif); paint-order: stroke; stroke: var(--cc-background); stroke-width: 3px; }
+/* The radial menu: neutral rings, darkening to ink where pointed at or chosen */
 .cc-radial { position: fixed; z-index: 40; pointer-events: none; }
 .cc-radial svg { overflow: visible; }
-.cc-radial-wedge, .cc-radial-loop, .cc-radial-step { pointer-events: visiblePainted; cursor: pointer; outline: none; }
-.cc-radial-wedge path, .cc-radial-loop path { fill: var(--cc-node); stroke: var(--cc-background); stroke-width: 1.5; transition: fill var(--cc-motion-quick) ease-out; }
-.cc-radial-wedge text, .cc-radial-loop text { fill: var(--cc-text); font: 600 11px var(--cc-font-family, sans-serif); pointer-events: none; user-select: none; }
-.cc-radial-wedge:hover path, .cc-radial-wedge:focus-visible path, .cc-radial-loop:hover path, .cc-radial-loop:focus-visible path,
+.cc-radial-loop, .cc-radial-step { pointer-events: visiblePainted; cursor: pointer; outline: none; }
+.cc-radial-loop path { fill: var(--cc-node); stroke: var(--cc-background); stroke-width: 1.5; transition: fill var(--cc-motion-quick) ease-out; }
+.cc-radial-loop text { fill: var(--cc-text); font: 600 11px var(--cc-font-family, sans-serif); pointer-events: none; user-select: none; }
+.cc-radial-loop:hover path, .cc-radial-loop:focus-visible path,
 .cc-radial-loop[aria-checked="true"] path { fill: var(--cc-ink); }
-.cc-radial-wedge:hover text, .cc-radial-wedge:focus-visible text, .cc-radial-loop:hover text, .cc-radial-loop:focus-visible text,
+.cc-radial-loop:hover text, .cc-radial-loop:focus-visible text,
 .cc-radial-loop[aria-checked="true"] text { fill: var(--cc-background); }
 .cc-radial-step { fill: var(--cc-border); transition: fill var(--cc-motion-quick) ease-out; }
 .cc-radial-step[aria-checked="true"] { fill: var(--cc-muted-text); }
 .cc-radial-step:hover, .cc-radial-step:focus-visible { fill: var(--cc-ink); }
-.cc-radial-caption { position: absolute; left: 50%; margin: 0; transform: translateX(-50%); white-space: nowrap; pointer-events: none; }
+/* Short captions stay on one line; a long loop wraps inside the box */
+.cc-radial-caption { position: absolute; left: 50%; width: max-content; margin: 0; transform: translateX(-50%); text-align: center; text-wrap: balance; pointer-events: none; }
 /* Loops only within reach, not through the node, are a step lighter */
 .cc-radial-nearby path { fill: var(--cc-surface); stroke: var(--cc-border); stroke-width: 1; }
 .cc-radial-nearby text { fill: var(--cc-muted-text); }
+/* The trace button below the rings: neutral, ink while tracing */
+.cc-radial-trace { pointer-events: visiblePainted; cursor: pointer; outline: none; }
+.cc-radial-trace circle { fill: var(--cc-background); stroke: var(--cc-border); stroke-width: 1.5; transition: fill var(--cc-motion-quick) ease-out; }
+.cc-radial-trace text { fill: var(--cc-text); font: 600 12px var(--cc-font-family, sans-serif); pointer-events: none; user-select: none; }
+.cc-radial-trace:hover circle, .cc-radial-trace:focus-visible circle, .cc-radial-trace[aria-checked="true"] circle { fill: var(--cc-ink); stroke: var(--cc-ink); }
+.cc-radial-trace:hover text, .cc-radial-trace:focus-visible text, .cc-radial-trace[aria-checked="true"] text { fill: var(--cc-background); }
+/* The node's details, beside its menu, in place of a hover tooltip */
+.cc-radial-card { position: absolute; top: 50%; width: max-content; max-width: 280px; transform: translateY(-50%); pointer-events: none; }
+
+/* Cycle controls remain separate from neighbourhood depth. */
+.cc-loop-settings > label { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.cc-loop-settings input[type="number"] { width: 90px; margin-left: auto; }
+.cc-loop-settings p { margin: 8px 0; }
+
+/* Held menu: distance thresholds and the currently chosen direction/step. */
+.cc-marking-feedback { pointer-events: none; }
+.cc-marking-threshold { fill: none; stroke: var(--cc-muted-text); stroke-opacity: .4; stroke-dasharray: 3 5; }
+.cc-marking-feedback [data-active="true"] .cc-marking-threshold { stroke: var(--cc-ink); stroke-opacity: .8; stroke-dasharray: none; }
+.cc-marking-band { fill: var(--cc-ink); fill-opacity: .12; stroke: var(--cc-ink); stroke-opacity: .4; }
+.cc-marking-feedback text { fill: var(--cc-muted-text); font: 500 11px var(--cc-font-family, sans-serif); paint-order: stroke; stroke: var(--cc-background); stroke-width: 4px; }
+.cc-marking-feedback [data-active="true"] text { fill: var(--cc-ink); font-weight: 700; }
+.cc-marking-bearing { stroke: var(--cc-ink); stroke-width: 1.5; }

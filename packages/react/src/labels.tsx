@@ -71,6 +71,9 @@ export interface CausalLabels {
   linkedBothWays: string;
   /** Marks a loop that doesn't pass through the node, but lies within the steps shown. */
   loopWithin: (steps: number) => string;
+  tracePaths: string;
+  /** Shown while tracing, until the other end is chosen. */
+  tracingHint: string;
 }
 
 export const defaultLabels: CausalLabels = {
@@ -92,7 +95,7 @@ export const defaultLabels: CausalLabels = {
   zoomIn: "Zoom in",
   zoomOut: "Zoom out",
   fit: "Fit graph",
-  seeAll: (count) => `Click the node to see all ${count}`,
+  seeAll: (count) => `All ${count} are in the sidebar`,
   darkMode: "Dark mode",
   lightMode: "Light mode",
   graph: "Causal graph. Use the arrow keys to move between nodes, and Enter to select one.",
@@ -112,7 +115,7 @@ export const defaultLabels: CausalLabels = {
   polarityChanged: "Polarity changed",
   noChanges: "No changes",
   selectHint: "Click a node to see what causes it and what it leads to.",
-  pathHint: "Select a second node to trace the paths between them.",
+  pathHint: "Choose ⤳ in the node's menu to trace the paths to another node.",
   clearSelection: "Clear selection",
   exportImage: "Export PNG",
   copyLink: "Copy link",
@@ -138,6 +141,8 @@ export const defaultLabels: CausalLabels = {
   stepsReach: (steps, nodes) => `${steps} steps: ${nodes} ${nodes === 1 ? "node" : "nodes"}`,
   linkedBothWays: "Causes and follows from",
   loopWithin: (steps) => `Within ${steps} ${steps === 1 ? "step" : "steps"}`,
+  tracePaths: "Trace paths to another node",
+  tracingHint: "Choose a node to trace paths to. Escape cancels",
 };
 
 const LabelsContext = createContext(defaultLabels);

@@ -270,23 +270,21 @@ export function ZoomControls({
   );
 }
 
-/** A hover preview of a node and its first few pieces of evidence. */
+/**
+ * A node's first few pieces of evidence. The label is left out, as it's already on the node.
+ * Renders nothing when the node has no evidence to show.
+ */
 export function NodeTooltip({ node, limit = 3 }: { node: CausalNode; limit?: number }): ReactNode {
   const labels = useCausalLabels();
   const evidence = (node.evidence ?? []).filter(({ text }) => text);
+  if (evidence.length === 0) return null;
   return (
     <div className="cc-tooltip">
-      <strong>{node.label}</strong>
-      {evidence.length > 0 && (
-        <ul className="cc-list">
-          {evidence
-            .filter(({ text }) => text)
-            .slice(0, limit)
-            .map(({ text }, index) => (
-              <li key={index}>{text}</li>
-            ))}
-        </ul>
-      )}
+      <ul className="cc-list">
+        {evidence.slice(0, limit).map(({ text }, index) => (
+          <li key={index}>{text}</li>
+        ))}
+      </ul>
       {evidence.length > limit && <p className="cc-muted">{labels.seeAll(evidence.length)}</p>}
     </div>
   );

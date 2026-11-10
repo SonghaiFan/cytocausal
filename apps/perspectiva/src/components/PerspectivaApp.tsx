@@ -2,11 +2,9 @@
 import {
   changeMarks,
   diffSnapshots,
-  findFeedbackLoops,
   listContributors,
   type CausalDataset,
   type CausalEdge,
-  type CausalNode,
   type Snapshot,
 } from "@cytocausal/core";
 import {
@@ -23,6 +21,10 @@ import {
 import type { Core } from "cytoscape";
 import {
   CausalRoot,
+  CausalLabelsProvider,
+  LoopSettingsProvider,
+  LoopSearchControls,
+  useLoopSearch,
   CompareView,
   ContributorFilter,
   DepthControl,
@@ -45,7 +47,6 @@ import {
 } from "@cytocausal/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import datasetsJson from "../../data/datasets.json";
-import { NodeTooltip } from "@/components/NodeTooltip";
 import { annotationLegend, graphStyles } from "@/graph-style";
 
 const datasets = datasetsJson as CausalDataset[];
@@ -58,7 +59,7 @@ const DOCS_URL = `${process.env.NEXT_PUBLIC_DOCS_URL ?? "http://localhost:3200"}
 
 const WORKSHOP = "workshop";
 const COMBINED_LOOPS = { maxLength: 6 };
-const renderTooltip = (node: CausalNode) => <NodeTooltip node={node} />;
+// A node's terms and contributions sit beside its radial menu, in place of a hover tooltip
 const renderLinkTooltip = (link: CausalEdge, snapshot: Snapshot) => (
   <LinkTooltip link={link} snapshot={snapshot} />
 );
@@ -94,8 +95,8 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
   const comparing = view === "Compare";
 
   // One graph for each pane. In a single view, only `main` is on screen.
-  const main = useCausalGraph({ maxSelected: 2, motion: theme.motion });
-  const right = useCausalGraph({ maxSelected: 2, motion: theme.motion });
+  const main = useCausalGraph({ motion: theme.motion });
+  const right = useCausalGraph({ motion: theme.motion });
   const paneOf = (snapshotId: string) => (comparing && snapshotId === RIGHT ? right : main);
   const snapshotOf = (id: string) => dataset.snapshots.find((snapshot) => snapshot.id === id)!;
 
@@ -128,18 +129,6 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
   }, [contributors, comparing, version, filter, leftCy, rightCy]);
 
   const shownVersions = comparing ? [LEFT, RIGHT] : [version];
-  const loopGroups = useMemo(
-    () =>
-      shownVersions.map((id) => {
-        const snapshot = dataset.snapshots.find((item) => item.id === id)!;
-        // Everyone's links together form thousands of loops, so the combined map lists short ones
-        const search = findFeedbackLoops(snapshot, combined ? COMBINED_LOOPS : undefined);
-        return { snapshot, loops: search.loops, complete: search.complete };
-      }),
-    // The array is rebuilt on each render, but only these decide its contents
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dataset, comparing, version],
-  );
 
   const toggleLoop = (snapshotId: string, route: Route) => {
     const target = paneOf(snapshotId);
@@ -186,11 +175,12 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
     stylesheet,
     motion: theme.motion,
     positionCache,
-    renderTooltip,
     renderLinkTooltip,
   };
 
   return (
+    <CausalLabelsProvider labels={{ loops: combined ? "Workshop cycles" : "Participant cycles", noLoops: "No cycles found within this range" }}>
+    <LoopSettingsProvider key={dataset.id} settings={{ title: combined ? "Workshop cycles" : "Participant cycles", description: combined ? "Cycles across the combined contributions of the workshop." : "Reinforcing and balancing cycles in this participant’s diagram.", maxLength: combined ? COMBINED_LOOPS.maxLength : Infinity, limit: 1000 }}>
     <CausalRoot theme={theme} className="cc-workspace h-screen">
       <div className="cc-graph">
         {comparing ? (
@@ -312,20 +302,19 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
           chosen={contributors}
           onChange={setContributors}
         />
+        <LoopSearchControls />
         <SelectionPanel graph={active} snapshot={activeSnapshot} />
 
-        {loopGroups.map(({ snapshot, loops, complete }) => (
-          <LoopList
+        {shownVersions.map((id) => { const snapshot = snapshotOf(id); return (
+          <SnapshotCycles
             key={snapshot.id}
-            title={loopGroups.length > 1 ? `Feedback loops: ${snapshot.id}` : undefined}
+            title={`${combined ? "Workshop cycles" : "Participant cycles"}: ${snapshot.id}`}
             snapshot={snapshot}
-            loops={loops}
-            complete={complete}
             active={paneOf(snapshot.id).activeRoute}
             onToggle={(route) => toggleLoop(snapshot.id, route)}
             onPreview={paneOf(snapshot.id).previewRoute}
           />
-        ))}
+        ); })}
 
         <VersionDiff
           dataset={dataset}
@@ -347,5 +336,12 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
         </details>
       </aside>
     </CausalRoot>
+    </LoopSettingsProvider>
+    </CausalLabelsProvider>
   );
+}
+
+function SnapshotCycles(props: React.ComponentProps<typeof LoopList>) {
+  const search = useLoopSearch(props.snapshot!);
+  return <LoopList {...props} loops={search.loops} complete={search.complete} status={search.status} elapsedMs={search.elapsedMs} error={search.error} onCancel={search.cancel} />;
 }

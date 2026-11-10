@@ -1,5 +1,6 @@
 import { filterByContributors, type ChangeMarks, type Snapshot } from "@cytocausal/core";
 import type { Core } from "cytoscape";
+import { centerView } from "./view.ts";
 import { refreshLabels } from "./labels.ts";
 import { resolveMotion } from "./motion.ts";
 import type { CausalMotion } from "./theme.ts";
@@ -118,6 +119,6 @@ export function hideExceptContributors(cy: Core, snapshot: Snapshot, contributor
 export function focusNode(cy: Core, id: string, { zoom = 2, motion }: FocusOptions = {}) {
   const node = cy.getElementById(id);
   if (node.length > 0) {
-    cy.animate({ center: { eles: node }, zoom }, { duration: resolveMotion(motion).focus });
+    centerView(cy, node.position(), zoom, resolveMotion(motion).focus);
   }
 }

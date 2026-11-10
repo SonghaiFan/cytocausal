@@ -163,3 +163,20 @@ export function summary(dataset: CausalDataset) {
 Links are compared by the nodes they join, so parallel links between two nodes count as one. When they disagree, their polarity is `"mixed"`.
 
 To mark a diff on a graph, `changeMarks(diff, side)` sorts it into what one snapshot can show: `"from"` for the earlier, with what was removed, or `"to"` for the later, with what was added. Both include what's in both versions but changed: renamed, merged, split or regrouped nodes, and links whose polarity flipped. Pass the result to `highlightChanges`. Added parts are blue and removed parts vermilion. What stayed the same fades, so changed parts stand out by keeping full contrast, with `±` on flipped links.
+
+### Interactive cycle searches
+
+Browser views run cycle enumeration in a Web Worker. The core search first isolates strongly connected components, keeping singleton self-loops and discarding edges between components. Results remain shortest first. Changing the graph, selected node or length terminates the previous worker; cancellation terminates computation rather than just hiding its result. Cancelled and failed searches are not shown as empty completed results.
+
+`LoopSettingsProvider` and `LoopSearchControls` share the length and cancellation state across the lists and radial menus of a case. `CausalProvider` accepts `loopSettings`; standalone views can use `LoopSettingsProvider` with `useLoopSearch`. The synchronous core API remains available for scripts.
+
+| Case | Label | Initial maximum length | Result limit per search |
+| --- | --- | --- | --- |
+| Explorer | Event cycles | 4 | 30 |
+| Perspectiva participant | Participant cycles | Unlimited | 1000 |
+| Perspectiva combined | Workshop cycles | 6 | 1000 |
+| Starter | Coffee shop cycles | Unlimited | 1000 |
+
+Length counts nodes (including one-node self-loops), independently of the neighbourhood's “Steps shown”. Removing the length bound does not remove the result limit. A `+` on a result count means the search may be incomplete. The combined and participant scenarios reset their settings when the dataset changes.
+
+The cancel button is shown only while workers are running. Completed lists show their cycle count and elapsed time. The shared controls deduplicate cycles within each snapshot and show the longest completed search time; cancelled and failed searches are not reported as completed.

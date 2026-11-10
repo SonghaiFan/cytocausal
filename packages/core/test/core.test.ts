@@ -407,3 +407,26 @@ test("change marks put each kind of change on the side that has it", () => {
   assert.deepEqual(merged.changed.sort(), ["a", "b"]);
   assert.deepEqual(changeMarks(diffSnapshots(merge, "V1", "final"), "to").changed, ["ab"]);
 });
+
+test("SCC pruning removes dead-end paths while preserving cycles and self-loops", () => {
+  const graph = snapshot("s", ["a", "b", "c", "d", "e", "f"], [
+    ["a", "b"], ["b", "a"], ["b", "c"], ["c", "d"], ["d", "e"], ["e", "e"],
+  ]);
+  const all = findFeedbackLoops(graph, { maxLength: 2, limit: Infinity });
+  assert.deepEqual(all.loops.map(l => l.nodes), [["e"], ["a", "b"]]);
+  assert.equal(all.complete, true);
+  assert.deepEqual(findFeedbackLoops(graph, { through: "c" }), { loops: [], complete: true });
+  assert.deepEqual(findFeedbackLoops(graph, { through: "f" }), { loops: [], complete: true });
+  assert.deepEqual(findFeedbackLoops(graph, { through: "missing" }), { loops: [], complete: true });
+});
+
+test("SCC pruning preserves distinct parallel-edge cycles and global shortest ordering", () => {
+  const graph = snapshot("s", ["a", "b", "c", "d", "e"], [
+    ["a", "b"], ["b", "c"], ["c", "a"], ["c", "d"], ["d", "e"], ["e", "d"],
+  ]);
+  graph.edges.push({ id: "parallel", source: "d", target: "e", polarity: "negative" });
+  const all = findFeedbackLoops(graph, { limit: Infinity });
+  assert.deepEqual(all.loops.map(l => l.nodes.length), [2, 2, 3]);
+  assert.equal(new Set(all.loops.map(l => l.edges.join())).size, 3);
+  assert.equal(all.complete, true);
+});

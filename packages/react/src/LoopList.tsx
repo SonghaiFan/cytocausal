@@ -3,9 +3,14 @@ import type { FeedbackLoop, Snapshot } from "@cytocausal/core";
 import type { Route } from "@cytocausal/cytoscape";
 import { required, useOptionalCausal } from "./CausalProvider.tsx";
 import { useCausalLabels } from "./labels.tsx";
+import { formatSearchTime, type LoopSearchStatus } from "./LoopSearch.tsx";
 import { RouteButton } from "./RouteButton.tsx";
 
 export interface LoopListProps {
+  elapsedMs?: number;
+  status?: LoopSearchStatus;
+  error?: string;
+  onCancel?: () => void;
   snapshot?: Snapshot;
   loops?: FeedbackLoop[];
   active?: Route | null;
@@ -26,6 +31,10 @@ const count = (loops: FeedbackLoop[], type: FeedbackLoop["type"]) =>
 
 /** Lists feedback loops, marked reinforcing or balancing, for choosing one to highlight. */
 export function LoopList({
+  elapsedMs: givenElapsed,
+  status: givenStatus,
+  error,
+  onCancel,
   snapshot: given,
   loops: givenLoops,
   active,
@@ -43,7 +52,9 @@ export function LoopList({
   const complete = givenComplete ?? (givenLoops ? true : causal?.loopsComplete);
   const labelOf = (id: string) => snapshot.nodes.find((node) => node.id === id)?.label ?? id;
   const typed = loops.some((loop) => loop.type !== "unknown");
-  const heading = title ?? `${labels.loops} (${loops.length}${complete ? "" : "+"})`;
+  const status = givenStatus ?? (givenLoops ? "complete" : causal?.loopSearch.status) ?? "complete";
+  const elapsedMs = givenElapsed ?? (givenLoops ? undefined : causal?.loopSearch.elapsedMs);
+  const heading = `${title ?? labels.loops}${status === "complete" ? ` (${loops.length}${complete ? "" : "+"})` : ""}`;
 
   return (
     <section
@@ -51,7 +62,13 @@ export function LoopList({
       className={`${bare ? "" : "cc-panel"} ${className}`}
     >
       <h3 className="cc-heading">{heading}</h3>
-      {loops.length === 0 ? (
+      {status === "complete" && elapsedMs !== undefined && <p role="status" className="cc-muted">{loops.length}{complete ? "" : "+"} cycles · {formatSearchTime(elapsedMs)}</p>}
+      {status !== "complete" ? (
+        <p role="status" className="cc-muted">
+          {status === "searching" ? "Calculating…" : status === "cancelled" ? "Calculation cancelled." : status === "error" ? (error ?? causal?.loopSearch.error ?? "Calculation failed.") : "Select a node to search."}
+          {status === "searching" && <button type="button" className="cc-button" onClick={onCancel ?? causal?.loopSearch.cancel}>Cancel</button>}
+        </p>
+      ) : loops.length === 0 ? (
         <p className="cc-muted">{labels.noLoops}</p>
       ) : (
         <>

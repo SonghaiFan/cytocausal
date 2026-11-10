@@ -2,7 +2,6 @@
 import {
   changeMarks,
   diffSnapshots,
-  findFeedbackLoops,
   getSnapshot,
   listContributors,
   validateDataset,
@@ -40,7 +39,10 @@ import { CausalLabelsProvider, type CausalLabels } from "./labels.tsx";
 import { CausalRoot, useColorScheme, type ColorScheme } from "./theme.tsx";
 import { useCausalGraph, type CausalGraphOptions } from "./useCausalGraph.ts";
 
+import { LoopSettingsProvider, useLoopSearch, type LoopSettings } from "./LoopSearch.tsx";
+
 export interface CausalProviderProps {
+  loopSettings?: LoopSettings;
   dataset: CausalDataset;
   /** Text to replace, such as to translate the interface. Keep this stable between renders. */
   labels?: Partial<CausalLabels>;
@@ -69,12 +71,12 @@ export interface CausalProviderProps {
   /** The snapshot to start on. Defaults to the first. */
   initialVersion?: string;
   /** Extra options for `useCausalGraph`, such as for large graphs. */
-  graphOptions?: Pick<CausalGraphOptions, "readableLabels" | "focusZoom">;
+  graphOptions?: Pick<CausalGraphOptions, "readableLabels" | "focusZoom" | "maxDepth">;
   /** Keep the version and selection in the page address, so a link reopens the same view. */
   shareInUrl?: boolean;
   /**
-   * Limits for listing the loops of the shown snapshot. Defaults to loops of up to six nodes on
-   * graphs of more than 60 nodes, and every loop on smaller ones. Keep this stable between renders.
+   * Result budget and initial length when loopSettings is not provided.
+   * Defaults to length four and 1000 results. Keep this stable between renders.
    */
   loopOptions?: LoopOptions;
   className?: string;
@@ -82,10 +84,6 @@ export interface CausalProviderProps {
 }
 
 const defaultThemes = { light: lightTheme, dark: darkTheme };
-
-// The number of loops can explode on large graphs, so only short ones are listed
-const LARGE_GRAPH = 60;
-const LARGE_GRAPH_SEARCH = { maxLength: 6 };
 
 function useCausalState({
   dataset,
@@ -95,7 +93,7 @@ function useCausalState({
   layout,
   layouts,
   initialLayout,
-  maxSelected = 2,
+  maxSelected = Infinity,
   initialSelected = [],
   initialLink,
   initialVersion,
@@ -167,14 +165,8 @@ function useCausalState({
   );
 
   const issues = useMemo(() => validateDataset(dataset), [dataset]);
-  const { loops, complete } = useMemo(
-    () =>
-      findFeedbackLoops(
-        snapshot,
-        loopOptions ?? (snapshot.nodes.length > LARGE_GRAPH ? LARGE_GRAPH_SEARCH : undefined),
-      ),
-    [snapshot, loopOptions],
-  );
+  const loopSearch = useLoopSearch(snapshot, loopOptions);
+  const { loops, complete } = loopSearch;
 
   const positionCache = useRef<Record<string, Positions>>({});
   const hasPositions = snapshot.nodes.every(({ position }) => position);
@@ -241,6 +233,7 @@ function useCausalState({
     positionCache,
     loops,
     loopsComplete: complete,
+    loopSearch,
     issues,
     /** The snapshots that changes are measured between. */
     firstVersion: first,
@@ -288,7 +281,14 @@ function Provider({
   const state = useCausalState(options);
   return (
     <CausalContext.Provider value={state}>
-      <CausalRoot theme={state.theme} className={className}>
+      <CausalRoot theme={state.theme} className={className} onKeyDown={(event) => {
+        // Handle Escape only within this workspace; nested controls can consume it first.
+        if (event.key === "Escape" && !event.defaultPrevented) {
+          event.preventDefault();
+          event.stopPropagation();
+          state.graph.dismiss();
+        }
+      }}>
         {children}
       </CausalRoot>
     </CausalContext.Provider>
@@ -299,10 +299,12 @@ function Provider({
  * Holds everything a causal interface shares. Components inside it connect themselves, so they
  * need no props.
  */
-export function CausalProvider({ labels, ...props }: CausalProviderProps) {
+export function CausalProvider({ labels, loopSettings, ...props }: CausalProviderProps) {
   return (
     <CausalLabelsProvider labels={labels}>
-      <Provider {...props} />
+      <LoopSettingsProvider settings={loopSettings ?? { title: labels?.loops ?? "Cycles", description: "Directed routes that return to their starting node.", maxLength: props.loopOptions?.maxLength ?? 4, limit: props.loopOptions?.limit ?? 1000 }}>
+        <Provider {...props} />
+      </LoopSettingsProvider>
     </CausalLabelsProvider>
   );
 }

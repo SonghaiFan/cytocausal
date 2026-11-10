@@ -24,7 +24,7 @@ import {
   type Positions,
 } from "@cytocausal/cytoscape";
 import cytoscape, { type Core, type LayoutOptions, type Layouts, type Stylesheet } from "cytoscape";
-import { menuArea, placementTransform, tooltipPlacement, type TooltipPlacement } from "./overlay.ts";
+import { menuArea, menuPointing, placementTransform, tooltipPlacement, type TooltipPlacement } from "./overlay.ts";
 import {
   useCallback,
   useEffect,
@@ -219,8 +219,14 @@ export function GraphView({
     const touch = typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
     let waiting: ReturnType<typeof setTimeout> | undefined;
     let resting = false;
-    const placeTooltip = (kind: "node" | "link", id: string, event: MouseEvent) => {
-      const pointer = { x: event.clientX, y: event.clientY };
+    const placeTooltip = (kind: "node" | "link", event: cytoscape.EventObject) => {
+      const id = event.target.id();
+      const original = event.originalEvent as MouseEvent;
+      const pointer = { x: original.clientX, y: original.clientY };
+      // Around the radial menu, its caption names where pointing leads, and the faded backdrop
+      // behind it says nothing
+      const pointing = menuPointing(instance, event.target, event.renderedPosition);
+      if (pointing.leadsTo || pointing.backdrop) return setTooltip(null);
       const placement = tooltipPlacement(menuArea(instance), pointer, kind === "node" ? id : undefined);
       const { nodes, edges } = latest.current.snapshot;
       const node = kind === "node" ? nodes.find((candidate) => candidate.id === id) : undefined;
@@ -230,13 +236,11 @@ export function GraphView({
     };
     const point = (kind: "node" | "link") => (event: cytoscape.EventObject) => {
       if (touch) return;
-      const id = event.target.id();
-      const original = event.originalEvent as MouseEvent;
-      if (resting) return placeTooltip(kind, id, original);
+      if (resting) return placeTooltip(kind, event);
       clearTimeout(waiting);
       waiting = setTimeout(() => {
         resting = true;
-        placeTooltip(kind, id, original);
+        placeTooltip(kind, event);
       }, tooltipDelay);
     };
     const hideTooltip = () => {
@@ -251,9 +255,8 @@ export function GraphView({
     instance.on("zoom pan drag", hideTooltip);
     // A dragged node changes its links' lengths, so their bends follow
     instance.on("free", "node", () => curveLinks(instance));
-    instance.on("tap", (event) => {
-      if (event.target === instance) hideTooltip();
-    });
+    // A committed click hands feedback to the selection/menu, never an old tooltip.
+    instance.on("tap", hideTooltip);
 
     const initial = instance.layout(initialLayout);
     if (!waitForAnchors) {
@@ -326,6 +329,7 @@ export function GraphView({
       <div ref={container} className={className} style={{ width: "100%", height: "100%" }} />
       {tooltip && (tooltip.node ? renderTooltip : renderLinkTooltip) && (
         <div
+          className="cc-floating"
           style={{
             position: "fixed",
             left: tooltip.x,

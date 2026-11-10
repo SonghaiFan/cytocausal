@@ -33,7 +33,7 @@ import "@cytocausal/react/styles.css";
 | `styleOptions` | None | Options for `createCausalStyle` |
 | `layout` | Automatic | Saved positions if every node has one, or else an automatic layout |
 | `layouts`, `initialLayout` | None, the first | Named layouts to choose between, in place of `layout`. The workspace shows a switch, and a shared link keeps the choice |
-| `maxSelected` | `2` | How many nodes can be selected. Selecting two lists the paths between them |
+| `maxSelected` | `2` | How many nodes can be selected. A click selects one; ⤳ in the radial menu adds a second and lists the paths between them |
 | `scheme` | System | Sets `light` or `dark`, and hides the switch button |
 | `initialVersion`, `initialSelected` | First snapshot, none | Where to start |
 | `shareInUrl` | `true` | Keeps the version and selection in the page address, so a link reopens the same view |
@@ -98,7 +98,7 @@ Hovering a row in `LoopList` or `PathList` previews it on the graph. Clicking ke
 
 `VersionSwitcher`, `Legend` and `DepthControl` take `bare`, which leaves out the panel so they can sit on the graph.
 
-`CausalGraph` shows who stated a link when it's hovered. Pass `renderLinkTooltip` to show something else, as `renderTooltip` does for nodes. Pass `styleOptions={{ weightBySupport: true }}` to draw links thicker the more people stated them, defined outside your component.
+`CausalGraph` shows who stated a link when it's hovered. Pass `renderLinkTooltip` to show something else. Nodes have no tooltip: their details are in `SelectionPanel`. Without a sidebar, pass `renderNodeInfo` to show a card beside the radial menu. Pass `styleOptions={{ weightBySupport: true }}` to draw links thicker the more people stated them, defined outside your component.
 
 For large graphs, `CausalProvider` takes `graphOptions`, such as `{ readableLabels: true }`, and `CausalGraph` takes `maxZoom`. `SelectionPanel` takes `loopOptions` to list the loops through each node.
 

@@ -1,6 +1,6 @@
 "use client";
 import { darkTheme, lightTheme, themeVariables, type CausalTheme } from "@cytocausal/cytoscape";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type KeyboardEventHandler, type ReactNode } from "react";
 
 export type ColorScheme = "light" | "dark";
 
@@ -30,10 +30,12 @@ export function CausalRoot({
   theme,
   className,
   children,
+  onKeyDown,
 }: {
   theme: CausalTheme;
   className?: string;
   children: ReactNode;
+  onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
 }) {
   const style = {
     ...themeVariables(theme),
@@ -42,7 +44,7 @@ export function CausalRoot({
     fontFamily: theme.fontFamily,
   } as CSSProperties;
   return (
-    <div className={className} style={style}>
+    <div className={className} style={style} onKeyDown={onKeyDown}>
       {children}
     </div>
   );

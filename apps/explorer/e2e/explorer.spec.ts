@@ -66,9 +66,15 @@ const pointOf = async (page: Page, id: string) => {
   );
 };
 
-const clickNode = async (page: Page, id: string) => {
+/** Clicks a node; with `add`, first asks the menu to trace paths to it. */
+const clickNode = async (page: Page, id: string, { add = false } = {}) => {
+  if (add) await page.getByRole("menuitemcheckbox", { name: "Trace paths to another node" }).click();
   const { x, y } = await pointOf(page, id);
   await page.mouse.click(x, y);
+  if (!add) {
+    await page.getByLabel(/^Causal graph/).focus();
+    await page.keyboard.press("Shift+F10");
+  }
 };
 
 const search = (page: Page) => page.getByLabel("Search events and descriptions");
@@ -125,15 +131,81 @@ test("sentences stay open after the mouse leaves", async ({ page }) => {
 test("two nodes can be compared, and clicking the background clears them", async ({ page }) => {
   await ready(page);
   await clickNode(page, first.id);
-  await clickNode(page, second.id);
+  // Tracing adds a node to compare; a plain click on a third starts again from it
+  await clickNode(page, second.id, { add: true });
   await expect(panels(page)).toHaveCount(2);
   await clickNode(page, third.id);
-  await expect(panels(page)).toHaveCount(2);
-  await expect(page.getByLabel(`Node ${first.id}`)).toHaveCount(0);
+  await expect(panels(page)).toHaveCount(1);
+  await expect(page.getByLabel(`Node ${third.id}`)).toHaveCount(1);
 
   await withCy(page, "cy.fit(); cy.panBy({ x: 3000, y: 0 });");
   await page.mouse.click(300, 450);
   await expect(panels(page)).toHaveCount(0);
+});
+
+test("dense neighbour fans follow real bearings without a minimum width", async ({ page }) => {
+  await ready(page);
+  const id = await withCy<string>(page,
+    `return cy.nodes().sort((a, b) => b.neighborhood("node").length - a.neighborhood("node").length)[0].id();`);
+  await clickNode(page, id);
+  await expect(page.locator(".cc-radial")).toBeVisible();
+  await expect.poll(() => withCy<boolean>(page, `
+    const area = cy.scratch("cytocausal-radial-area");
+    if (!area?.sectors?.length) return false;
+    const centre = cy.getElementById(area.node).renderedPosition();
+    return area.sectors.every((sector) => {
+      const point = cy.getElementById(sector.node).renderedPosition();
+      const bearing = Math.atan2(point.y - centre.y, point.x - centre.x);
+      const along = ((bearing - sector.from) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+      return along <= sector.to - sector.from + 1e-8;
+    });
+  `)).toBe(true);
+});
+
+test("faded links don't block pointing toward a linked node", async ({ page }) => {
+  await ready(page);
+  // A node with a handful of links, in the middle of the view, at the zoom people see it
+  const id = await withCy<string>(
+    page,
+    `const node = cy.nodes().filter((n) => { const k = n.neighborhood("node").length; return k >= 4 && k <= 6; })[0];
+     return node.id();`,
+  );
+  await clickNode(page, id);
+  await expect(page.locator(".cc-radial")).toBeVisible();
+  await page.waitForTimeout(800);
+
+  // A point in one of the node's directions where the link under the pointer is an unrelated,
+  // faded one, as a dense graph has almost everywhere
+  const spot = await withCy<{ x: number; y: number; link: string } | null>(
+    page,
+    `const area = cy.scratch("cytocausal-radial-area");
+     const box = div.getBoundingClientRect();
+     const pan = cy.pan(), zoom = cy.zoom();
+     const centre = cy.getElementById(area.node).renderedPosition();
+     for (const sector of area.sectors) {
+       for (let r = area.radius + 20; r < sector.reach - 10; r += 6) {
+         for (let f = 0.2; f <= 0.8; f += 0.1) {
+           const angle = sector.from + (sector.to - sector.from) * f;
+           const x = centre.x + r * Math.cos(angle), y = centre.y + r * Math.sin(angle);
+           const hit = cy.renderer().findNearestElement((x - pan.x) / zoom, (y - pan.y) / zoom, true, false);
+           if (hit && hit.isEdge() && hit.hasClass("dimmed") && !sector.links.includes(hit.id()))
+             return { x: box.left + x, y: box.top + y, link: hit.id(), node: sector.node };
+         }
+       }
+     }
+     return null;`,
+  );
+  expect(spot, "a faded link inside a direction").not.toBeNull();
+  const label = nodes.find((node) => node.id === (spot as any).node)!.label;
+
+  await page.mouse.move(spot!.x, spot!.y);
+  await expect(page.locator(".cc-radial-caption")).toContainText(`: ${label}`);
+  await page.waitForTimeout(600);
+  await expect(page.locator(".cc-floating")).toHaveCount(0);
+
+  // Clicking walks there, rather than choosing the faded link
+  await page.mouse.click(spot!.x, spot!.y);
+  await expect(page.getByLabel(`Node ${(spot as any).node}`)).toBeVisible();
 });
 
 test("causes and effects follow edge direction", async ({ page }) => {
@@ -177,7 +249,7 @@ test("feedback loops can be isolated", async ({ page }) => {
   await ready(page);
   await clickNode(page, outsideLoops.id);
   await expect(panels(page)).toHaveCount(1);
-  await page.getByLabel("Show only feedback loops").check();
+  await page.getByLabel("Show only cyclic events").check();
   await expect(page.getByText(new RegExp(`^${inLoops.length} nodes, \\d+ edges$`))).toBeVisible();
   await expect(panels(page)).toHaveCount(0);
   await expect
@@ -187,7 +259,7 @@ test("feedback loops can be isolated", async ({ page }) => {
   await search(page).fill(first.id);
   await expect(page.getByRole("status").filter({ hasText: "match" })).toBeVisible();
 
-  await page.getByLabel("Show only feedback loops").uncheck();
+  await page.getByLabel("Show only cyclic events").uncheck();
   await expect(page.getByText(`${nodes.length} nodes, ${edges.length} edges`)).toBeVisible();
   await expect
     .poll(() => withCy<number>(page, 'return cy.nodes(":visible").length;'))
@@ -197,7 +269,7 @@ test("feedback loops can be isolated", async ({ page }) => {
 test("a node lists its short feedback loops, and choosing one highlights it", async ({ page }) => {
   await ready(page);
   await clickNode(page, first.id);
-  await expect(page.getByText(/^Short feedback loops \(\d+\+?\)$/)).toBeVisible();
+  await expect(page.getByText(/^Event cycles \(\d+\+?\)$/)).toBeVisible();
 
   const panel = page.getByLabel(`Node ${first.id}`);
   const loop = panel.getByRole("button", { pressed: false }).filter({ hasText: "→" }).first();
@@ -218,11 +290,13 @@ test("a node lists its short feedback loops, and choosing one highlights it", as
   expect((await counts()).causes).toBeGreaterThan(0);
 });
 
-test("hovering shows a preview", async ({ page }) => {
+test("hovering a node only highlights it", async ({ page }) => {
   await ready(page);
   const { x, y } = await pointOf(page, first.id);
   await page.mouse.move(x, y);
-  await expect(page.getByText(`Click the node to see all ${first.evidence.length}`)).toBeVisible();
+  await page.waitForTimeout(600);
+  await expect(page.locator(".cc-floating")).toHaveCount(0);
+  await expect.poll(() => withCy<string[]>(page, "return cy.nodes('.focus').map((n) => n.id());")).toEqual([first.id]);
 });
 
 test("labels stay readable at every zoom level", async ({ page }) => {
@@ -305,7 +379,7 @@ test("a highlight labels what it reaches without stacking labels", async ({ page
        };`,
     );
 
-  for (const depth of ["1", "2", "3"]) {
+  for (const depth of ["1", "2"]) {
     await page.getByRole("button", { name: depth, exact: true }).click();
     await page.waitForTimeout(300);
     const { labels, overlapping, dimmed, selected, outline } = await measure();
@@ -467,7 +541,7 @@ test("with a computed layout, showing only loops lays out what's left", async ({
   await ready(page);
   await page.getByRole("button", { name: "Force", exact: true }).click();
   const all = await settledPositions(page);
-  await page.getByLabel("Show only feedback loops").check();
+  await page.getByLabel("Show only cyclic events").check();
   const loops = await settledPositions(page);
   const hidden = nodes.filter((node) => !node.metadata.inFeedbackLoop).map((node) => node.id);
   const shown = nodes.filter((node) => node.metadata.inFeedbackLoop).map((node) => node.id);
@@ -523,4 +597,60 @@ test("the flow layout runs causes into effects, and the address keeps the layout
 
   await page.reload();
   await expect(page.getByRole("button", { name: "Flow", exact: true })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("cycle searches run in workers, can be cancelled, and restart with the selected length", async ({ page }) => {
+  await page.addInitScript(() => {
+    const NativeWorker = window.Worker;
+    const tracker = { started: 0, terminated: 0, hold: true };
+    (window as any).cycleWorkers = tracker;
+    window.Worker = class extends NativeWorker {
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super(url, options);
+        tracker.started++;
+      }
+      postMessage(message: any) {
+        // Keep work pending deterministically, including fast sample graphs.
+        if (!tracker.hold) super.postMessage(message);
+      }
+      terminate() { tracker.terminated++; super.terminate(); }
+    };
+  });
+  await ready(page);
+  await clickNode(page, first.id);
+  const panel = page.getByLabel(`Node ${first.id}`);
+  await expect(panel.getByText("Calculating…")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cancel calculation", exact: true })).toBeVisible();
+  await expect(page.getByRole("spinbutton", { name: "Maximum cycle length" })).toHaveValue("4");
+  const previous = await page.evaluate(() => (window as any).cycleWorkers.terminated);
+  await page.getByRole("spinbutton", { name: "Maximum cycle length" }).fill("5");
+  await expect.poll(() => page.evaluate(() => (window as any).cycleWorkers.terminated)).toBeGreaterThan(previous);
+  await expect(panel.getByText("Calculating…")).toBeVisible();
+  await panel.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(panel.getByText("Calculation cancelled.")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const t = (window as any).cycleWorkers; return t.started === t.terminated;
+  })).toBe(true);
+  await page.getByRole("spinbutton", { name: "Maximum cycle length" }).fill("6");
+  await expect(panel.getByText("Calculation cancelled.")).toBeVisible();
+  await page.evaluate(() => { (window as any).cycleWorkers.hold = false; });
+  await page.getByRole("button", { name: "Resume calculation" }).click();
+  await expect(panel.getByRole("heading", { name: /^Event cycles \(\d+\+?\)$/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cancel calculation", exact: true })).toHaveCount(0);
+  await expect(panel.getByRole("button", { name: "Cancel", exact: true })).toHaveCount(0);
+  await expect(panel.getByRole("status")).toContainText(/\d+\+? cycles · [\d.]+ (ms|s)/);
+  await expect(page.locator(".cc-loop-settings").getByRole("status")).toContainText(/\d+\+? cycles · Longest search: [\d.]+ (ms|s)/);
+  await page.getByRole("spinbutton", { name: "Maximum cycle length" }).fill("1");
+  await expect(panel.getByText("No event cycles found within this range")).toBeVisible();
+});
+
+test("a failed worker is reported instead of claiming there are no cycles", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.Worker = class { constructor() { throw new Error("Worker unavailable for test"); } } as any;
+  });
+  await ready(page);
+  await clickNode(page, first.id);
+  const panel = page.getByLabel(`Node ${first.id}`);
+  await expect(panel.getByText("Worker unavailable for test")).toBeVisible();
+  await expect(panel.getByText("No event cycles found within this range")).toHaveCount(0);
 });

@@ -1,7 +1,6 @@
 "use client";
 import {
   contributorsOf,
-  findFeedbackLoops,
   linksInto,
   linksOutOf,
   type NeighbourLinks,
@@ -9,7 +8,7 @@ import {
   type Snapshot,
 } from "@cytocausal/core";
 import type { Route } from "@cytocausal/cytoscape";
-import { useMemo } from "react";
+import { useLoopSearch } from "./LoopSearch.tsx";
 import { required, useOptionalCausal } from "./CausalProvider.tsx";
 import { useCausalLabels } from "./labels.tsx";
 import { LoopList } from "./LoopList.tsx";
@@ -102,10 +101,7 @@ export function NodeDetails({
   const onClose = closed ?? (() => causal?.graph.toggle(nodeId));
   const onShowLink = showLink ?? causal?.graph.toggleLink;
   const node = snapshot.nodes.find(({ id }) => id === nodeId);
-  const search = useMemo(
-    () => findFeedbackLoops(snapshot, { ...loopOptions, through: nodeId }),
-    [snapshot, nodeId, loopOptions],
-  );
+  const search = useLoopSearch(onToggleRoute ? snapshot : null, { ...loopOptions, through: nodeId });
   if (!node) return null;
   const evidence = (node.evidence ?? []).filter(({ text }) => text);
 
@@ -143,13 +139,17 @@ export function NodeDetails({
         onSelect={onSelect}
         onShowLink={onShowLink}
       />
-      {onToggleRoute && search.loops.length > 0 && (
+      {onToggleRoute && (
         <LoopList
           bare
           className="cc-block"
           snapshot={snapshot}
           loops={search.loops}
           complete={search.complete}
+          status={search.status}
+          elapsedMs={search.elapsedMs}
+          error={search.error}
+          onCancel={search.cancel}
           active={activeRoute}
           onToggle={onToggleRoute}
         />

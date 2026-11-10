@@ -1,3 +1,4 @@
+import { stronglyConnectedComponents } from "./graph.ts";
 import type { CausalEdge, Snapshot } from "./types.ts";
 
 export type LoopType = "reinforcing" | "balancing" | "unknown";
@@ -40,6 +41,18 @@ export function findFeedbackLoops(
   { nodes, edges }: Snapshot,
   { through, maxLength = Infinity, limit = 1000 }: LoopOptions = {},
 ): LoopSearch {
+  // A cycle cannot cross strongly connected components. Retain singleton self-loops.
+  const selfLoops = new Set(edges.filter((e) => e.source === e.target).map((e) => e.source));
+  const components = stronglyConnectedComponents({ id: "loops", nodes, edges })
+    .filter((group) =>
+      (group.length > 1 || selfLoops.has(group[0])) && (!through || group.includes(through)),
+    );
+  const componentOf = new Map(components.flatMap((group, index) => group.map((id) => [id, index] as const)));
+  nodes = nodes.filter((node) => componentOf.has(node.id));
+  edges = edges.filter((edge) =>
+    componentOf.has(edge.source) && componentOf.get(edge.source) === componentOf.get(edge.target),
+  );
+  if (!nodes.length) return { loops: [], complete: true };
   const outgoing = new Map<string, CausalEdge[]>(nodes.map(({ id }) => [id, []]));
   for (const edge of edges) outgoing.get(edge.source)?.push(edge);
 

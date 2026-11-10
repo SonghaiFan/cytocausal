@@ -5,6 +5,7 @@ import type { LayoutOptions } from "cytoscape";
 import {
   CausalGraph,
   CausalProvider,
+  LoopSearchControls,
   DepthControl,
   Legend,
   LayoutSwitcher,
@@ -21,6 +22,7 @@ import type { ZoomMode } from "@cytocausal/cytoscape";
 
 // The largest group of loops is too big to list, so panels show the shortest ones
 const LOOP_SEARCH = { maxLength: 4, limit: 30 };
+const LOOP_SETTINGS = { ...LOOP_SEARCH, title: "Event cycles", description: "Sequences of events that lead back to the starting event." };
 const GRAPH_OPTIONS = { readableLabels: true, focusZoom: 2 };
 const DOCS_URL = `${process.env.NEXT_PUBLIC_DOCS_URL ?? "http://localhost:3200"}/en/case-explorer/`;
 
@@ -28,7 +30,8 @@ const labels = {
   search: "Search events and descriptions…",
   node: "Cluster",
   evidence: "Descriptions",
-  loops: "Short feedback loops",
+  loops: "Event cycles",
+  noLoops: "No event cycles found within this range",
 };
 
 export function ExplorerApp() {
@@ -49,6 +52,7 @@ export function ExplorerApp() {
   return (
     <CausalProvider
       dataset={dataset}
+      loopSettings={LOOP_SETTINGS}
       labels={labels}
       styleOptions={styleOptions[zoom]}
       layouts={layoutChoices}
@@ -72,6 +76,9 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
   const { nodes, edges } = snapshot;
   const { keepSelected, fit, cy } = graph;
   const [loopsOnly, setLoopsOnly] = useState(false);
+  // Add ?debug=directions to the address to see the area around a selected node that leads to
+  // each linked node
+  const [showDirections] = useState(() => new URLSearchParams(window.location.search).get("debug") === "directions");
   // Read when the filter changes, not as a reason to run it
   const shownLayout = useRef<LayoutOptions>(layout);
   shownLayout.current = layout;
@@ -112,7 +119,7 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
 
   return (
     <>
-      <CausalGraph maxZoom={10} loopOptions={LOOP_SEARCH}>
+      <CausalGraph maxZoom={10} loopOptions={LOOP_SEARCH} showDirections={showDirections}>
         <div className="cc-overlay cc-overlay-top">
           <label className="cc-check">
             <input
@@ -120,7 +127,7 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
               checked={loopsOnly}
               onChange={(event) => setLoopsOnly(event.target.checked)}
             />
-            Show only feedback loops
+            Show only cyclic events
           </label>
           <div className="cc-buttons">
             <LayoutSwitcher bare format={layoutName} />
@@ -164,6 +171,7 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
         </SidebarHeader>
 
         <NodeSearch nodes={visibleNodes} />
+        <LoopSearchControls />
         <SelectionPanel loopOptions={LOOP_SEARCH} />
 
         <details className="cc-panel cc-disclosure" open={graph.selected.length === 0}>

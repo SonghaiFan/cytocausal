@@ -6,6 +6,7 @@ import { CausalProvider, useCausal, type CausalProviderProps } from "./CausalPro
 import { LayoutSwitcher, Legend, SidebarHeader, VersionSwitcher } from "./controls.tsx";
 import { useCausalLabels } from "./labels.tsx";
 import { ContributorFilter } from "./ContributorFilter.tsx";
+import { LoopSearchControls } from "./LoopSearch.tsx";
 import { LoopList } from "./LoopList.tsx";
 import { NodeSearch } from "./NodeSearch.tsx";
 
@@ -13,15 +14,17 @@ export interface CausalWorkspaceProps extends Omit<CausalProviderProps, "childre
   title?: string;
   /** Extra panels, shown at the end of the sidebar. */
   children?: ReactNode;
+  /** Draw the area around a selected node that leads to each linked node, for debugging. */
+  showDirections?: boolean;
 }
 
-function Workspace({ title, children }: Pick<CausalWorkspaceProps, "title" | "children">) {
+function Workspace({ title, children, showDirections }: Pick<CausalWorkspaceProps, "title" | "children" | "showDirections">) {
   const labels = useCausalLabels();
   const { scheme, toggleScheme, issues, exportImage, copyLink, copied } = useCausal();
 
   return (
     <>
-      <CausalGraph>
+      <CausalGraph showDirections={showDirections}>
         <div className="cc-overlay cc-overlay-top">
           <div className="cc-buttons">
             <VersionSwitcher bare />
@@ -53,6 +56,7 @@ function Workspace({ title, children }: Pick<CausalWorkspaceProps, "title" | "ch
         )}
         <NodeSearch />
         <ContributorFilter />
+        <LoopSearchControls />
         <SelectionPanel />
         <LoopList />
         <VersionDiff />
@@ -67,11 +71,14 @@ export function CausalWorkspace({
   title,
   children,
   shareInUrl = true,
+  showDirections,
   ...props
 }: CausalWorkspaceProps) {
   return (
     <CausalProvider {...props} shareInUrl={shareInUrl} className="cc-workspace">
-      <Workspace title={title}>{children}</Workspace>
+      <Workspace title={title} showDirections={showDirections}>
+        {children}
+      </Workspace>
     </CausalProvider>
   );
 }

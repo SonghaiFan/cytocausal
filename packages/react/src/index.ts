@@ -19,3 +19,5 @@ export * from "./NodeSearch.tsx";
 export * from "./RadialMenu.tsx";
 export * from "./theme.tsx";
 export * from "./useCausalGraph.ts";
+
+export * from "./LoopSearch.tsx";

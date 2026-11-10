@@ -71,7 +71,7 @@ export function transitionToSnapshot(
 
   const added: Collection[] = [];
   cy.batch(() => {
-    const addOrUpdate = (element: ElementDefinition, addition: Partial<ElementDefinition>) => {
+    const addOrUpdate = (element: ElementDefinition, addition: Partial<ElementDefinition>, fadeIn: boolean) => {
       const existing = cy.getElementById(element.data.id!);
       if (existing.length > 0) {
         // An edge can keep its id while pointing at different nodes in this version
@@ -82,7 +82,11 @@ export function transitionToSnapshot(
         existing.data(element.data);
         existing.removeStyle("opacity");
       } else {
-        added.push(cy.add({ ...element, ...addition }));
+        const created = cy.add({ ...element, ...addition });
+        // A temporary animation start value, applied within the same batch so
+        // there is no visible frame at full opacity. Element definitions stay clean.
+        if (fadeIn) created.style("opacity", 0);
+        added.push(created);
       }
     };
 
@@ -92,11 +96,10 @@ export function transitionToSnapshot(
       addOrUpdate(node, {
         group: "nodes",
         position: start ?? { x: 0, y: 0 },
-        style: sources[id] ? {} : { opacity: 0 },
-      } as Partial<ElementDefinition>);
+      } as Partial<ElementDefinition>, !sources[id]);
     });
     edges.forEach((edge) =>
-      addOrUpdate(edge, { group: "edges", style: { opacity: 0 } } as Partial<ElementDefinition>),
+      addOrUpdate(edge, { group: "edges" }, true),
     );
     replaced.style("opacity", 0);
   });

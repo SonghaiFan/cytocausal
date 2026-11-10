@@ -1,6 +1,7 @@
 "use client";
 import {
   fitNodes,
+  centerView,
   focusNode,
   highlightCausalNeighbours,
   highlightRoute,
@@ -14,11 +15,13 @@ import {
   type CausalMotion,
   type Route,
 } from "@cytocausal/cytoscape";
-import type { Core } from "cytoscape";
+import { selectionPaths } from "./selection-paths.ts";
+import type { Core, EventObject } from "cytoscape";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { menuArea, menuPointing } from "./overlay.ts";
 
 export interface CausalGraphOptions {
-  /** How many nodes can be selected at once, such as 2 to compare them. */
+  /** Optional selection cap. Unlimited by default. */
   maxSelected?: number;
   /** Select and highlight nodes on tap and hover. Turn off to control selection yourself. */
   selectable?: boolean;
@@ -31,13 +34,39 @@ export interface CausalGraphOptions {
   /** A link to start with selected. It takes the place of `initialSelected`. */
   initialLink?: string | null;
   motion?: CausalMotion;
+  /**
+   * The most links away a highlight can reach, offered by the step buttons and the radial menu's
+   * rings. Defaults to 2, as further than that a dense graph lights up almost everything.
+   */
+  maxDepth?: number;
 }
 
-const firstNode = (cy: Core) =>
-  cy
-    .nodes(":visible")
-    .sort((a, b) => b.degree(false) - a.degree(false))
-    .first();
+/**
+ * Bounded paths for every selected pair, in both directions, merged with all selected nodes.
+ * It searches the graph as drawn, so filters apply.
+ */
+function pathsBetween(cy: Core, selected: string[]): Route {
+  const snapshot = {
+    id: "shown",
+    nodes: cy.nodes(":visible").map((node) => ({ id: node.id(), label: "" })),
+    edges: cy.edges(":visible").map((edge) => ({
+      id: edge.id(),
+      source: edge.source().id(),
+      target: edge.target().id(),
+    })),
+  };
+  // Hover updates must not repeat the same pair searches on an unchanged graph.
+  const key = JSON.stringify([selected, snapshot.nodes.map(n => n.id), snapshot.edges]);
+  const cached = cy.scratch("cytocausal-selection-paths") as { key: string; route: Route } | undefined;
+  if (cached?.key === key) return cached.route;
+  const found = selectionPaths(snapshot, selected).flatMap(search => search.paths);
+  const route = {
+    nodes: [...new Set(found.flatMap((path) => path.nodes))],
+    edges: [...new Set(found.flatMap((path) => path.edges))],
+  };
+  cy.scratch("cytocausal-selection-paths", { key, route });
+  return route;
+}
 
 /**
  * Selection, hover, loop highlighting and view controls for one graph. Pass `attach` to the
@@ -45,21 +74,32 @@ const firstNode = (cy: Core) =>
  * over the hovered one.
  */
 export function useCausalGraph({
-  maxSelected = 1,
+  maxSelected = Infinity,
   selectable = true,
   readableLabels = false,
   focusZoom,
   initialSelected = [],
   initialLink = null,
   motion,
+  maxDepth = 2,
 }: CausalGraphOptions = {}) {
   const cy = useRef<Core | null>(null);
   const [selected, setSelected] = useState(initialLink ? [] : initialSelected);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [multiSelecting, setMultiSelecting] = useState(false);
   const [selectedLink, setSelectedLink] = useState<string | null>(initialLink);
   const [hovered, setHovered] = useState<string | null>(null);
   const [activeRoute, setActiveRoute] = useState<Route | null>(null);
   const [previewedRoute, setPreviewedRoute] = useState<Route | null>(null);
-  const [depth, setDepth] = useState(1);
+  const [depth, setChosenDepth] = useState(1);
+  // A depth past the limit is held to it
+  const setDepth = useCallback(
+    (steps: number) => {
+      setPreviewedDepth(null);
+      setChosenDepth(Math.max(1, Math.min(maxDepth, steps)));
+    },
+    [maxDepth],
+  );
   const [previewedDepth, setPreviewedDepth] = useState<number | null>(null);
   // Counts each new Cytoscape instance, so overlays such as the radial menu can follow it
   const [instanceCount, setInstanceCount] = useState(0);
@@ -69,6 +109,7 @@ export function useCausalGraph({
 
   const latest = useRef({
     selected,
+    multiSelecting,
     selectedLink,
     hovered,
     activeRoute,
@@ -92,6 +133,16 @@ export function useCausalGraph({
       if (route) {
         highlightCausalNeighbours(instance, []);
         highlightRoute(instance, route);
+      } else if (selected.length >= 2) {
+        // Union of paths across every selected pair. Unconnected selected nodes
+        // remain bright too; selection is not limited to endpoints of found paths.
+        const paths = pathsBetween(instance, selected);
+        highlightRoute(instance, null);
+        if (paths.edges.length) {
+          highlightCausalNeighbours(instance, []);
+          highlightRoute(instance, paths);
+          instance.batch(() => selected.forEach((id) => instance.getElementById(id).removeClass("dimmed").addClass("focus")));
+        } else highlightCausalNeighbours(instance, selected, 0);
       } else {
         highlightRoute(instance, null);
         const ids = selected.length ? selected : hovered ? [hovered] : [];
@@ -106,6 +157,7 @@ export function useCausalGraph({
   useEffect(() => {
     latest.current = {
       selected,
+      multiSelecting,
       selectedLink,
       hovered,
       activeRoute,
@@ -113,12 +165,58 @@ export function useCausalGraph({
       depth: previewedDepth ?? depth,
     };
     applyHighlight();
-  }, [selected, selectedLink, hovered, activeRoute, previewedRoute, depth, previewedDepth, applyHighlight]);
+  }, [selected, multiSelecting, selectedLink, hovered, activeRoute, previewedRoute, depth, previewedDepth, applyHighlight]);
 
   const add = useCallback(
     (ids: string[], id: string) => (ids.includes(id) ? ids : [...ids, id].slice(-maxSelected)),
     [maxSelected],
   );
+
+  // Tracing is a child of a single-node selection, never a parallel selection mode.
+  const [tracing, setTracing] = useState(false);
+  const tracingNow = useRef(false);
+  tracingNow.current = tracing;
+  const canTrace = maxSelected > 1;
+  const resetPreview = useCallback(() => {
+    setHovered(null);
+    setPreviewedRoute(null);
+    setPreviewedDepth(null);
+  }, []);
+  const stopTracing = useCallback(() => {
+    tracingNow.current = false;
+    setTracing(false);
+    resetPreview();
+  }, [resetPreview]);
+  const startTracing = useCallback(() => {
+    if (!canTrace || latest.current.selected.length !== 1 || latest.current.selectedLink) return;
+    resetPreview();
+    setActiveRoute(null);
+    tracingNow.current = true;
+    setTracing(true);
+  }, [canTrace, resetPreview]);
+
+  const selectMultiple = useCallback((ids: string[], toggleOne = false) => {
+    setMenuVisible(false);
+    stopTracing();
+    setMultiSelecting(true);
+    setSelectedLink(null);
+    setActiveRoute(null);
+    setSelected((previous) => {
+      if (toggleOne && previous.includes(ids[0])) return previous.filter((id) => id !== ids[0]);
+      return ids.reduce((selection, id) => add(selection, id), previous);
+    });
+  }, [add, stopTracing]);
+
+  // Cytoscape's native selection and the application's selection have one source of truth.
+  useEffect(() => {
+    const instance = cy.current;
+    if (!instance || instance.destroyed()) return;
+    instance.batch(() => {
+      instance.elements(":selected").unselect();
+      selected.forEach((id) => instance.getElementById(id).select());
+      if (selectedLink) instance.getElementById(selectedLink).select();
+    });
+  }, [selected, selectedLink, multiSelecting, tracing, instanceCount]);
 
   /**
    * Selects a link and highlights it with the nodes it joins, or deselects it. It takes the
@@ -126,12 +224,15 @@ export function useCausalGraph({
    */
   const toggleLink = useCallback(
     (id: string) => {
+      stopTracing();
+      setMenuVisible(false);
+      setMultiSelecting(false);
       const route = latest.current.selectedLink === id ? null : routeOf(id);
       setSelectedLink(route ? id : null);
       setActiveRoute(route);
       if (route) setSelected([]);
     },
-    [routeOf],
+    [routeOf, stopTracing],
   );
 
   /** Selects a node, or deselects it if it's already selected. */
@@ -139,22 +240,55 @@ export function useCausalGraph({
     (id: string) => {
       setSelectedLink(null);
       setActiveRoute(null);
+      stopTracing();
       setSelected((ids) => (ids.includes(id) ? ids.filter((item) => item !== id) : add(ids, id)));
     },
-    [add],
+    [add, stopTracing],
   );
 
-  /** Selects a node and moves the view to it. */
-  const focus = useCallback(
-    (id: string) => {
+  /**
+   * Chooses a node. It becomes the only node selected, or is deselected if it was. While tracing
+   * paths, or with `add` from code, it joins the selection instead, so the paths between the two
+   * can be traced.
+   */
+  const choose = useCallback(
+    (id: string, { add: adding = false }: { add?: boolean } = {}) => {
+      // Cancelling endpoint picking at its origin preserves whichever menu state
+      // initiated it (held menus close on release; keyboard menus stay open).
+      if (!(tracingNow.current && latest.current.selected.length === 1 && latest.current.selected[0] === id)) setMenuVisible(false);
+      setMultiSelecting(false);
+      const joins = canTrace && (adding || tracingNow.current);
+      stopTracing();
       setSelectedLink(null);
       setActiveRoute(null);
-      setSelected((ids) => add(ids, id));
+      setSelected((ids) => {
+        if (joins) return add(ids, id);
+        return ids.length === 1 && ids[0] === id && !latest.current.multiSelecting ? [] : [id];
+      });
+    },
+    [add, canTrace, stopTracing],
+  );
+
+  /**
+   * Selects a node and moves the view to it. It replaces the selection, unless `add` is set or
+   * paths are being traced.
+   */
+  const focus = useCallback(
+    (id: string, { add: adding = false }: { add?: boolean } = {}) => {
+      // Cancelling endpoint picking at its origin preserves whichever menu state
+      // initiated it (held menus close on release; keyboard menus stay open).
+      if (!(tracingNow.current && latest.current.selected.length === 1 && latest.current.selected[0] === id)) setMenuVisible(false);
+      setMultiSelecting(false);
+      const joins = canTrace && (adding || tracingNow.current);
+      stopTracing();
+      setSelectedLink(null);
+      setActiveRoute(null);
+      setSelected((ids) => (joins ? add(ids, id) : [id]));
       if (cy.current) {
         focusNode(cy.current, id, { zoom: focusZoom ?? cy.current.zoom(), motion });
       }
     },
-    [add, focusZoom, motion],
+    [add, canTrace, focusZoom, motion, stopTracing],
   );
 
   /**
@@ -163,32 +297,69 @@ export function useCausalGraph({
    */
   const walkTo = useCallback(
     (id: string) => {
+      setMenuVisible(true);
+      setMultiSelecting(false);
+      stopTracing();
       setSelectedLink(null);
       setActiveRoute(null);
       setPreviewedRoute(null);
       setSelected([id]);
       if (cy.current) focusNode(cy.current, id, { zoom: cy.current.zoom(), motion });
     },
-    [motion],
+    [motion, stopTracing],
   );
 
   /** Clears the selection and any highlighted loop. */
   const clear = useCallback(() => {
+    setMenuVisible(false);
+    setMultiSelecting(false);
+    stopTracing();
+    cursor.current = null;
+    cy.current?.nodes().removeClass("keyboard-cursor");
     setSelected([]);
     setSelectedLink(null);
     setActiveRoute(null);
-  }, []);
+  }, [stopTracing]);
+
+  /** Long-press opens without moving the camera underneath the held pointer. */
+  const beginMarking = useCallback((id: string) => {
+    stopTracing();
+    setMultiSelecting(false);
+    setSelectedLink(null);
+    setActiveRoute(null);
+    setSelected([id]);
+    setMenuVisible(true);
+  }, [stopTracing]);
+  /** Mouse release commits the preview but dismisses only the menu. */
+  const finishMarking = useCallback((target: string | null, route: Route | null, steps?: number) => {
+    stopTracing();
+    setMenuVisible(false);
+    if (target) setSelected([target]);
+    setActiveRoute(route);
+    if (steps !== undefined) setDepth(steps);
+  }, [stopTracing, setDepth]);
+
+  /** Escape leaves the current layer; Clear selection always leaves everything. */
+  const dismiss = useCallback(() => {
+    if (tracingNow.current) return stopTracing();
+    resetPreview();
+    if (latest.current.activeRoute && !latest.current.selectedLink) setActiveRoute(null);
+    else clear();
+  }, [clear, resetPreview, stopTracing]);
 
   /** Keeps only the selected nodes that pass a test, such as after filtering the graph. */
   const keepSelected = useCallback((test: (id: string) => boolean) => {
+    stopTracing();
+    setActiveRoute(null);
     setSelected((ids) => ids.filter(test));
-  }, []);
+  }, [stopTracing]);
 
   /** Highlights a loop or path, or removes the highlight if it's already showing. */
   const toggleRoute = useCallback((route: Route) => {
+    stopTracing();
     setSelectedLink(null);
     setActiveRoute((current) => (sameRoute(current, route) ? null : route));
-  }, []);
+  }, [stopTracing]);
 
   const fit = useCallback(() => {
     if (cy.current) fitNodes(cy.current, resolveMotion(motion).view);
@@ -212,7 +383,7 @@ export function useCausalGraph({
       cursor.current = id;
       setHovered(id);
       setAnnouncement(String(node.data("label")));
-      instance.animate({ center: { eles: node } }, { duration: resolveMotion(motion).view });
+      centerView(instance, node.position(), instance.zoom(), resolveMotion(motion).view);
     },
     [motion],
   );
@@ -227,34 +398,94 @@ export function useCausalGraph({
         keepLabelsReadable(instance);
       }
       if (selectable) {
-        instance.on("tap", "node", (event) => toggle(event.target.id()));
-        instance.on("tap", "edge", (event) => toggleLink(event.target.id()));
-        instance.on("tap", (event) => {
-          if (event.target === instance) clear();
+        // Plain clicks inspect; Shift gestures multi-select only outside the modal.
+        // While the radial menu is open, pointing toward a linked node walks there, and a click
+        // on its backdrop elsewhere closes it, like a modal: see menuPointing. A tap sent from
+        // code has no position, so it does only what it names
+        const tapped = (event: EventObject, own: () => void) => {
+          if (instance.scratch("cytocausal-marking-release")) return;
+          if (tracingNow.current) {
+            if (event.target !== instance && event.target.isNode()) own();
+            else stopTracing();
+            return;
+          }
+          const pointing = event.renderedPosition
+            ? menuPointing(instance, event.target, event.renderedPosition)
+            : { leadsTo: null, backdrop: event.target === instance };
+          if (pointing.leadsTo) walkTo(pointing.leadsTo);
+          else if (pointing.backdrop || event.target === instance) clear();
+          else own();
+        };
+        instance.on("tap", "node", (event) => tapped(event, () => {
+          const shift = (event.originalEvent as MouseEvent | undefined)?.shiftKey;
+          if (shift && !menuArea(instance) && !tracingNow.current) selectMultiple([event.target.id()], true);
+          else choose(event.target.id());
+        }));
+        let boxNodes: Set<string> | null = null;
+        instance.on("boxstart", (event) => {
+          boxNodes = (event.originalEvent as MouseEvent | undefined)?.shiftKey && !menuArea(instance)
+            ? new Set() : null;
         });
-        instance.on("mouseover", "node", (event) => setHovered(event.target.id()));
+        instance.on("box", "node", (event) => boxNodes?.add(event.target.id()));
+        instance.on("boxend", () => {
+          // Cytoscape emits each element's box event after boxend, in the same turn.
+          const collected = boxNodes;
+          queueMicrotask(() => {
+            boxNodes = null;
+            if (instance.destroyed()) return;
+            // Drop native edge picks and ignored box gestures as well as stale picks.
+            instance.elements(":selected").unselect();
+            latest.current.selected.forEach((id) => instance.getElementById(id).select());
+            if (latest.current.selectedLink) instance.getElementById(latest.current.selectedLink).select();
+            if (!instance.destroyed() && collected?.size && !menuArea(instance)) {
+              selectMultiple([...collected].sort());
+            }
+          });
+        });
+        instance.on("tap", "edge", (event) => tapped(event, () => toggleLink(event.target.id())));
+        instance.on("tap", (event) => {
+          if (event.target === instance) tapped(event, clear);
+        });
+        instance.on("mouseover", "node", (event) => {
+          const pointing = event.renderedPosition
+            ? menuPointing(instance, event.target, event.renderedPosition)
+            : { backdrop: false, leadsTo: null };
+          setHovered(pointing.backdrop || pointing.leadsTo ? null : event.target.id());
+        });
         instance.on("mouseout", "node", () => setHovered(null));
       }
       if (selectable) {
         const container = instance.container()!;
         const onKeyDown = (event: KeyboardEvent) => {
-          const nodes = instance.nodes(":visible").sort((a, b) => a.id().localeCompare(b.id()));
+          const modal = menuArea(instance)?.sectors;
+          const allowed = modal ? new Set([menuArea(instance)!.node, ...modal.map(({ node }) => node)]) : null;
+          const nodes = instance.nodes(":visible").filter((node) => !allowed || allowed.has(node.id())).sort((a, b) => a.id().localeCompare(b.id()));
           const current = cursor.current ? instance.getElementById(cursor.current) : null;
-          const here = current?.length ? current : null;
+          const here = current?.length && (!allowed || allowed.has(current.id())) ? current : null;
           const index = here ? nodes.toArray().findIndex((node) => node.id() === here.id()) : -1;
           const step = (offset: number) => nodes[(index + offset + nodes.length) % nodes.length];
+          const first = allowed
+            ? instance.getElementById(menuArea(instance)!.node)
+            : instance.nodes(":visible").sort((a, b) => b.degree(false) - a.degree(false)).first();
 
+          const menuOrigin = here?.id() ?? (latest.current.selected.length === 1 ? latest.current.selected[0] : null);
+          if ((event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) && menuOrigin) {
+            event.preventDefault();
+            beginMarking(menuOrigin);
+            return;
+          }
           let next: { id(): string } | undefined;
-          if (event.key === "ArrowRight") next = here ? here.outgoers("node").first() : firstNode(instance);
-          else if (event.key === "ArrowLeft") next = here ? here.incomers("node").first() : firstNode(instance);
-          else if (event.key === "ArrowDown") next = here ? step(1) : firstNode(instance);
-          else if (event.key === "ArrowUp") next = here ? step(-1) : firstNode(instance);
-          else if ((event.key === "Enter" || event.key === " ") && here) toggle(here.id());
+          if (event.key === "ArrowRight") next = here ? here.outgoers("node").filter((node) => !allowed || allowed.has(node.id())).first() : first;
+          else if (event.key === "ArrowLeft") next = here ? here.incomers("node").filter((node) => !allowed || allowed.has(node.id())).first() : first;
+          else if (event.key === "ArrowDown") next = here ? step(1) : first;
+          else if (event.key === "ArrowUp") next = here ? step(-1) : first;
+          else if ((event.key === "Enter" || event.key === " ") && here) {
+            if (allowed && here.id() !== menuArea(instance)!.node) walkTo(here.id());
+            else choose(here.id());
+          }
           else if (event.key === "Escape") {
-            instance.nodes().removeClass("keyboard-cursor");
-            cursor.current = null;
-            setHovered(null);
-            clear();
+            event.stopPropagation();
+            dismiss();
           } else return;
 
           event.preventDefault();
@@ -277,7 +508,7 @@ export function useCausalGraph({
       }
       applyHighlight();
     },
-    [applyHighlight, clear, moveCursor, readableLabels, routeOf, selectable, toggle, toggleLink],
+    [applyHighlight, beginMarking, choose, clear, dismiss, moveCursor, readableLabels, routeOf, selectable, selectMultiple, stopTracing, toggleLink, walkTo],
   );
 
   return {
@@ -285,6 +516,10 @@ export function useCausalGraph({
     /** The connected Cytoscape instance, for anything this hook doesn't cover. */
     cy,
     selected,
+    multiSelecting,
+    menuVisible,
+    beginMarking,
+    finishMarking,
     /** The selected link's id, if a link rather than nodes is selected. */
     selectedLink,
     toggleLink,
@@ -292,9 +527,18 @@ export function useCausalGraph({
     activeRoute,
     depth,
     setDepth,
+    /** The most links away a highlight can reach. */
+    maxDepth,
     /** Shows the highlight this many steps out while pointing at a control, without keeping it. */
-    previewDepth: setPreviewedDepth,
+    previewDepth: (steps: number | null) => { if (!tracingNow.current || steps === null) setPreviewedDepth(steps); },
     walkTo,
+    choose,
+    /** Whether a second node can be selected, to trace the paths between two. */
+    canTrace,
+    /** Whether the next node chosen will join the selection, to trace paths to it. */
+    tracing,
+    startTracing,
+    stopTracing,
     /** Goes up by one each time a new Cytoscape instance is connected. */
     instanceCount,
     /** Text for a live region, so screen readers hear where the keyboard cursor is. */
@@ -302,10 +546,11 @@ export function useCausalGraph({
     toggle,
     focus,
     clear,
+    dismiss,
     keepSelected,
     toggleRoute,
     /** Shows a route while pointing at it, without changing the kept highlight. */
-    previewRoute: setPreviewedRoute,
+    previewRoute: (route: Route | null) => { if (!tracingNow.current || route === null) setPreviewedRoute(route); },
     fit,
     zoomIn,
     zoomOut,

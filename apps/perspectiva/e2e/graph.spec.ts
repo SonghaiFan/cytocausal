@@ -222,7 +222,7 @@ test("both versions list their loops, and a chosen loop is highlighted in its ow
 test("a diagram without loops says so", async ({ page }) => {
   await page.goto("/?dataset=advocate_7");
   await settled(page, 2);
-  await expect(page.getByText("No feedback loops")).toHaveCount(2);
+  await expect(page.getByText("No cycles found within this range")).toHaveCount(2);
 });
 
 test("changing version clears the highlighted loop", async ({ page }) => {
@@ -240,7 +240,7 @@ test("changing version clears the highlighted loop", async ({ page }) => {
   await expect(page.getByLabel("Loops in final").getByRole("button")).toHaveCount(11);
 });
 
-test("hovering a node shows its terms", async ({ page }) => {
+test("hovering a node only highlights, and choosing it shows its terms in the sidebar", async ({ page }) => {
   await page.goto("/?dataset=expert_9");
   await settled(page, 2);
   const point = await page.evaluate(() => {
@@ -249,9 +249,14 @@ test("hovering a node shows its terms", async ({ page }) => {
     const { x, y } = div._cyreg.cy.nodes()[0].renderedPosition();
     return { x: left + x, y: top + y };
   });
+  // Hovering only highlights; a short click selects details without opening a menu
   await page.mouse.move(point.x, point.y);
-  await expect(page.getByText("Terms", { exact: true })).toBeVisible();
-  await expect(page.getByText("Contributions", { exact: true })).toBeVisible();
+  await page.waitForTimeout(600);
+  await expect(page.locator(".cc-floating")).toHaveCount(0);
+  await page.mouse.click(point.x, point.y);
+  await expect(page.locator(".cc-radial")).toHaveCount(0);
+  await expect(page.locator(".cc-radial-card")).toHaveCount(0);
+  await expect(page.locator(".cc-evidence").first()).toBeVisible();
 });
 
 test("the header links back to the docs", async ({ page }) => {
@@ -374,4 +379,59 @@ test("both versions pan, zoom and drag together", async ({ page }) => {
   expect(Math.hypot(moved.x, moved.y)).toBeGreaterThan(5);
   expect(end.right.x - start.right.x).toBeCloseTo(moved.x, 3);
   expect(end.right.y - start.right.y).toBeCloseTo(moved.y, 3);
+});
+
+test("two nodes with no path between them stand alone", async ({ page }) => {
+  await page.goto("/?dataset=expert_9");
+  await settled(page, 2);
+  await page.getByRole("button", { name: "Single", exact: true }).click();
+  await settled(page, 1);
+
+  // Find two nodes on screen that neither leads to the other
+  const pair = await page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    const cy = div._cyreg.cy;
+    const { left, top } = div.getBoundingClientRect();
+    const reaches = (from: any, to: any) => from.successors().nodes().has(to);
+    const nodes = cy.nodes().toArray();
+    for (const a of nodes) {
+      for (const b of nodes) {
+        if (a === b || reaches(a, b) || reaches(b, a)) continue;
+        const point = (node: any) => ({ id: node.id(), x: left + node.renderedPosition().x, y: top + node.renderedPosition().y });
+        return [point(a), point(b)];
+      }
+    }
+    return null;
+  });
+  expect(pair).not.toBeNull();
+  const [a, b] = pair!;
+  await page.keyboard.down("Shift");
+  await page.mouse.click(a.x, a.y);
+  await page.mouse.click(b.x, b.y);
+  await page.keyboard.up("Shift");
+
+  const shown = () =>
+    page.evaluate(() => {
+      const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+      const cy = div._cyreg.cy;
+      return {
+        bright: cy.nodes().not(".dimmed").map((n: any) => n.id()).sort(),
+        neighbours: cy.nodes(".cause, .effect").length,
+        routes: cy.elements(".route-node, .route-link").length,
+      };
+    });
+  await expect.poll(shown).toEqual({ bright: [a.id, b.id].sort(), neighbours: 0, routes: 0 });
+  await expect(page.getByText("No paths found").first()).toBeVisible();
+});
+
+test("participant and workshop scenarios have independent cycle defaults", async ({ page }) => {
+  await page.goto('/?dataset=citizen_3');
+  await expect(page.getByRole('heading', { name: 'Participant cycles', exact: true })).toBeVisible();
+  await expect(page.getByLabel('No length limit')).toBeChecked();
+  await page.getByLabel('No length limit').uncheck();
+  await page.getByRole('spinbutton', { name: 'Maximum cycle length' }).fill('2');
+  await page.getByLabel('Dataset', { exact: true }).selectOption('workshop');
+  await expect(page.getByRole('heading', { name: 'Workshop cycles', exact: true })).toBeVisible();
+  await expect(page.getByRole('spinbutton', { name: 'Maximum cycle length' })).toHaveValue('6');
+  await expect(page.getByLabel('No length limit')).not.toBeChecked();
 });
