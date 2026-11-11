@@ -17,8 +17,8 @@ The mark expresses directed relationships and progressive exploration; it is not
 ## Logo assets
 
 - [Primary mark — SVG](/brand/mark.svg): navigation, favicon, repository avatar and small application marks.
-- [Wordmark — SVG](/brand/wordmark.svg): presentations and light-background headers. The bold lowercase wordmark highlights `cyto` on a rounded yellow field. All letters are vector outlines, so rendering does not depend on installed fonts.
-- [Dark-background wordmark — SVG](/brand/wordmark-dark.svg): keeps `cyto` black on yellow and makes `causal` light.
+- [Wordmark — SVG](/brand/wordmark.svg): presentations and light-background headers. The bold lowercase wordmark is plain black text, separate from the yellow mark. All letters are vector outlines, so rendering does not depend on installed fonts.
+- [Dark-background wordmark — SVG](/brand/wordmark-dark.svg): uses the same lettering in a light colour.
 - [Monochrome mark — SVG](/brand/mark-mono.svg): one-colour printing, with the yellow field omitted.
 - [Identity board — SVG](/brand/identity.svg): project introduction and presentation reference.
 

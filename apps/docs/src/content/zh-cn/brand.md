@@ -17,8 +17,8 @@ title: "视觉识别"
 ## Logo 素材
 
 - [主标记 SVG](/brand/mark.svg)：导航、favicon、仓库头像和小尺寸应用标记。
-- [组合字标 SVG](/brand/wordmark.svg)：演示文稿、浅色背景页头。粗体小写字标以黄色圆角底突出 `cyto`。所有字母已转为矢量轮廓，不依赖设备安装字体。
-- [深色背景字标 SVG](/brand/wordmark-dark.svg)：`cyto` 保持黑字黄底，`causal` 使用浅色。
+- [组合字标 SVG](/brand/wordmark.svg)：演示文稿、浅色背景页头。粗体小写字标为纯黑文字，与黄色图标分开使用。所有字母已转为矢量轮廓，不依赖设备安装字体。
+- [深色背景字标 SVG](/brand/wordmark-dark.svg)：字形相同，使用浅色填充。
 - [单色标记 SVG](/brand/mark-mono.svg)：单色印刷，去除黄色底。
 - [视觉规范图 SVG](/brand/identity.svg)：项目介绍与演示参考。
 
