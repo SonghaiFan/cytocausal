@@ -39,6 +39,11 @@ export interface CausalGraphOptions {
    * rings. Defaults to 2, as further than that a dense graph lights up almost everything.
    */
   maxDepth?: number;
+  /**
+   * How many links away hovering or selecting a node highlights, until changed with
+   * `setDefaultDepth`, as `DepthControl` does. Defaults to 1.
+   */
+  defaultDepth?: number;
 }
 
 /**
@@ -82,6 +87,7 @@ export function useCausalGraph({
   initialLink = null,
   motion,
   maxDepth = 2,
+  defaultDepth: initialDefaultDepth = 1,
 }: CausalGraphOptions = {}) {
   const cy = useRef<Core | null>(null);
   const [selected, setSelected] = useState(initialLink ? [] : initialSelected);
@@ -91,7 +97,13 @@ export function useCausalGraph({
   const [hovered, setHovered] = useState<string | null>(null);
   const [activeRoute, setActiveRoute] = useState<Route | null>(null);
   const [previewedRoute, setPreviewedRoute] = useState<Route | null>(null);
-  const [depth, setChosenDepth] = useState(1);
+  const clampDepth = (steps: number) => Math.max(1, Math.min(maxDepth, steps));
+  // The default is a setting, kept across selections; `depth` is the current selection's, which
+  // the radial menu's rings can take further, and which each new selection resets to the default
+  const [defaultDepth, setDefaultDepthState] = useState(() => clampDepth(initialDefaultDepth));
+  const defaultDepthNow = useRef(defaultDepth);
+  defaultDepthNow.current = defaultDepth;
+  const [depth, setChosenDepth] = useState(defaultDepth);
   // A depth past the limit is held to it
   const setDepth = useCallback(
     (steps: number) => {
@@ -101,6 +113,21 @@ export function useCausalGraph({
     [maxDepth],
   );
   const [previewedDepth, setPreviewedDepth] = useState<number | null>(null);
+  const setDefaultDepth = useCallback(
+    (steps: number) => {
+      const clamped = Math.max(1, Math.min(maxDepth, steps));
+      setDefaultDepthState(clamped);
+      setPreviewedDepth(null);
+      setChosenDepth(clamped);
+    },
+    [maxDepth],
+  );
+  // Each new selection starts back at the default
+  const selectionKey = selected.join("\n");
+  useEffect(() => {
+    setChosenDepth(defaultDepthNow.current);
+    setPreviewedDepth(null);
+  }, [selectionKey]);
   // Counts each new Cytoscape instance, so overlays such as the radial menu can follow it
   const [instanceCount, setInstanceCount] = useState(0);
   const [announcement, setAnnouncement] = useState("");
@@ -166,8 +193,14 @@ export function useCausalGraph({
       previewedRoute,
       depth: previewedDepth ?? depth,
     };
+  }, [selected, multiSelecting, selectedLink, hovered, activeRoute, previewedRoute, depth, previewedDepth]);
+
+  // A selection or route owns the highlight. Keep the hover state for consumers,
+  // but do not reread/reapply the entire graph's styles when it cannot change it.
+  const highlightedHover = selected.length || activeRoute || previewedRoute ? null : hovered;
+  useEffect(() => {
     applyHighlight();
-  }, [selected, multiSelecting, selectedLink, hovered, activeRoute, previewedRoute, depth, previewedDepth, applyHighlight]);
+  }, [selected, multiSelecting, selectedLink, highlightedHover, activeRoute, previewedRoute, depth, previewedDepth, applyHighlight]);
 
   const add = useCallback(
     (ids: string[], id: string) => (ids.includes(id) ? ids : [...ids, id].slice(-maxSelected)),
@@ -530,8 +563,14 @@ export function useCausalGraph({
     toggleLink,
     hovered,
     activeRoute,
+    /** How many links away the current hover or selection highlights. */
     depth,
+    /** Sets `depth` for the current selection only; the next one starts at `defaultDepth`. */
     setDepth,
+    /** How many links away each new hover or selection highlights: a setting, kept across selections. */
+    defaultDepth,
+    /** Sets `defaultDepth`, and the current selection's depth with it. `DepthControl` calls this. */
+    setDefaultDepth,
     /** The most links away a highlight can reach. */
     maxDepth,
     /** Shows the highlight this many steps out while pointing at a control, without keeping it. */

@@ -494,3 +494,36 @@ test("whole workshop hover highlights without starting per-element fades", async
   })).toBeGreaterThan(0);
   expect(await page.evaluate(() => (window as any).__hoverFades)).toBe(0);
 });
+
+test("hovering other nodes does not recompute a committed selection", async ({ page }) => {
+  await page.goto("/?dataset=workshop");
+  await settled(page, 2);
+  const points = await page.evaluate(() => {
+    const d = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
+    const r = d.getBoundingClientRect();
+    return d._cyreg.cy.nodes().slice(0, 8).map((n: any) => ({ x: r.x + n.renderedPosition().x, y: r.y + n.renderedPosition().y }));
+  });
+  await page.mouse.click(points[0].x, points[0].y);
+  await expect.poll(() => page.evaluate(() => {
+    const c = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy)._cyreg.cy;
+    return c.nodes(":selected").length === 1 && c.elements().filter((e: any) => e.animated()).length === 0;
+  })).toBe(true);
+  await page.evaluate(() => {
+    const c = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy)._cyreg.cy;
+    const proto = Object.getPrototypeOf(c.nodes()[0]), original = proto.style;
+    (window as any).__selectedHoverReads = 0;
+    (window as any).__selectedBeforeHover = c.nodes(":selected").map((n: any) => n.id());
+    proto.style = function (...args: any[]) {
+      if (args.length === 1 && typeof args[0] === "string") (window as any).__selectedHoverReads++;
+      return original.apply(this, args);
+    };
+  });
+  for (const p of points.slice(1)) { await page.mouse.move(p.x, p.y); await page.waitForTimeout(30); }
+  const result = await page.evaluate(() => {
+    const c = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy)._cyreg.cy;
+    return { reads: (window as any).__selectedHoverReads, before: (window as any).__selectedBeforeHover, after: c.nodes(":selected").map((n: any) => n.id()) };
+  });
+  expect(result.after).toEqual(result.before);
+  // Pointer hit-testing may read a few styles; a graph-wide fade scans thousands.
+  expect(result.reads).toBeLessThan(100);
+});

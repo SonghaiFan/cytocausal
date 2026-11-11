@@ -235,6 +235,10 @@ test("each visual channel keeps one meaning", () => {
     }
     const dashed = rules.filter(({ style }) => style["line-style"] !== undefined).map(({ selector }) => selector);
     assert.deepEqual(dashed, ['edge[polarity="negative"]']);
+    // A border is kept for the node a long press locked the menu on, in ink, never the accent
+    const held = rules.find(({ selector }) => selector === "node.menu-held")!;
+    assert.ok(held.style["border-width"]);
+    assert.equal(held.style["border-color"], lightTheme.colors.ink);
   }
 });
 

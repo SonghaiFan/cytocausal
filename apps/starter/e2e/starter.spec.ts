@@ -239,13 +239,14 @@ test("the starter runs out of the box", async ({ page }) => {
   await page.goto("/");
 
   await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
-  await expect(page.getByText("Coffee shop cycles (1)")).toBeVisible();
+  // The cycle panel counts what its search found
+  await expect(page.getByRole("status").filter({ hasText: /^1 cycles · / })).toBeVisible();
   await expect(page.getByRole("button", { name: /^B Balancing/ })).toHaveCount(1);
   await expect(page.locator("aside [role=alert]")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Fit graph" })).toBeVisible();
 
   await page.getByRole("button", { name: "final", exact: true }).click();
-  await expect(page.getByText("Coffee shop cycles (2)")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: /^2 cycles · / })).toBeVisible();
   await expect(page.getByRole("button", { name: /^R Reinforcing/ })).toHaveCount(1);
   await expect.poll(async () => await graph(page)).toMatchObject({ nodes: 5, animating: 0 });
 
@@ -307,9 +308,20 @@ test("the highlight reaches further upstream and downstream on request", async (
   await expect.poll(() => nodesWith(page, ".cause")).toEqual(["customers"]);
   await expect.poll(() => nodesWith(page, ".effect")).toEqual(["staff"]);
 
-  await page.getByRole("button", { name: "2", exact: true }).click();
+  // The menu's ring reaches a step further; the default is one
+  await page.getByRole("menuitemradio", { name: /^2 steps/ }).dispatchEvent("click");
   await expect.poll(() => nodesWith(page, ".cause")).toEqual(["customer-satisfaction", "customers"]);
   await expect.poll(() => nodesWith(page, ".effect")).toEqual(["queue", "staff"]);
+});
+
+test("a new selection starts back at one step", async ({ page }) => {
+  await openFinal(page);
+  await choose(page, "revenue", /^Revenue/);
+  await page.getByRole("menuitemradio", { name: /^2 steps/ }).dispatchEvent("click");
+  await expect.poll(() => nodesWith(page, ".effect")).toEqual(["queue", "staff"]);
+  await choose(page, "staff", /^Staff on shift/);
+  await expect.poll(() => nodesWith(page, ".effect")).toEqual(["queue"]);
+  await expect.poll(() => nodesWith(page, ".cause")).toEqual(["revenue"]);
 });
 
 /** The ids of links with a class, sorted. */
@@ -467,10 +479,12 @@ test("the sidebar says what to do next, and the selection can be cleared", async
 
   await choose(page, "queue", /^Queue length/);
   await expect(page.getByText("Click a node to see")).toHaveCount(0);
-  await expect(page.getByText("Choose ⤳ in the node's menu")).toBeVisible();
+  // One node can trace paths to another; with two chosen, the paths between them show instead
+  const trace = page.getByRole("button", { name: "Trace paths to another node" });
+  await expect(trace).toBeVisible();
 
   await chooseAlso(page, "customers", /^Customers/);
-  await expect(page.getByText("Choose ⤳ in the node's menu")).toHaveCount(0);
+  await expect(trace).toHaveCount(0);
 
   await page.getByRole("button", { name: "Clear selection" }).click();
   await expect(page.getByText("Click a node to see")).toBeVisible();
@@ -510,8 +524,9 @@ test("highlights fade in and reverse from where they are", async ({ page }) => {
     `return cy.getElementById("revenue").renderedPosition();`,
   );
 
-  // Staff is two steps from nothing: hovering Queue length leaves Revenue dimmed
-  await page.mouse.move(box.x + position.x, box.y + position.y);
+  // Hover follows the pointer at once, but a selection fades: choosing Revenue fades Queue length,
+  // two steps away
+  await page.mouse.click(box.x + position.x, box.y + position.y);
   const fading = await inPage<number[]>(
     page,
     `const samples = [];
@@ -521,12 +536,13 @@ test("highlights fade in and reverse from where they are", async ({ page }) => {
   const partWay = fading.filter((value) => value > 0.2 && value < 0.95);
   expect(partWay.length, fading.join()).toBeGreaterThan(1);
 
-  // Leaving half way turns the fade around, with no jump at the end
-  await page.mouse.move(box.x + 2, box.y + box.height / 2);
+  // Clearing it half way turns the fade around, with no jump at the end
+  const clear = page.getByRole("button", { name: "Clear selection" });
+  await clear.click();
   await expect.poll(() => inPage<number>(page, `return opacity("queue");`)).toBe(1);
-  await page.mouse.move(box.x + position.x, box.y + position.y);
+  await page.mouse.click(box.x + position.x, box.y + position.y);
   await page.waitForTimeout(60);
-  await page.mouse.move(box.x + 2, box.y + box.height / 2);
+  await clear.click();
   const reversing = await inPage<number[]>(
     page,
     `const samples = [];
@@ -773,11 +789,10 @@ test("the radial menu walks to linked nodes and cycles are selected from the sid
     });
   const one = await highlighted();
   // A ring's middle is the node, so click on the ring itself rather than its centre
-  // Steps stop at 2 by default: one ring, and buttons for 1 and 2
+  // Steps stop at 2 by default: one ring. The graph has no separate steps control
   await expect(next.getByRole("menuitemradio")).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "3", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Steps shown" })).toHaveCount(0);
   await next.getByRole("menuitemradio", { name: /^2 steps/ }).dispatchEvent("click");
-  await expect(page.getByRole("button", { name: "2", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect.poll(highlighted).toBeGreaterThan(one);
 
   // A loop arc highlights the loop, and the loop list shows it chosen
@@ -794,7 +809,7 @@ test("the radial menu works from the keyboard", async ({ page }) => {
   await two.focus();
   await expect(page.locator(".cc-radial-caption")).toHaveText(/^2 steps/);
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", { name: "2", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(two).toHaveAttribute("aria-checked", "true");
 
   await two.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
@@ -922,8 +937,19 @@ test("the empty graph toward a linked node leads there, out to just past it", as
   expect(walked).not.toBeNull();
   await expect(page.getByRole("menu", { name: new RegExp(`${walked}$`) })).toBeVisible();
 
-  // Past every direction's reach, the background clears as before
-  await page.mouse.click(far.x, far.y);
+  // Past every direction's reach, the background clears as before. The menu has moved, so the
+  // point is found from where it is now
+  const past = await page.evaluate((fallback) => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    const area = div._cyreg.cy.scratch("cytocausal-radial-area");
+    const box = div.getBoundingClientRect();
+    const reach = Math.max(area.radius, ...area.sectors.map((sector: any) => sector.reach)) + 20;
+    const spots = [];
+    for (let x = box.left + 20; x < box.right - 20; x += 40)
+      for (let y = box.top + 80; y < box.bottom - 60; y += 40) spots.push({ x, y });
+    return spots.find(({ x, y }) => Math.hypot(x - area.x, y - area.y) > reach) ?? fallback;
+  }, far);
+  await page.mouse.click(past.x, past.y);
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect.poll(() => nodesWith(page, ".focus")).toEqual([]);
 });
@@ -958,15 +984,17 @@ test("the linked node, and the link to it, lead there too", async ({ page }) => 
       const to = link.targetEndpoint();
       const pan = cy.pan();
       const zoom = cy.zoom();
-      // Walk along from the middle toward the end until the renderer finds the link under the
-      // point. It works in graph coordinates; the page in rendered ones
+      // Walk along from the middle toward the end to the first point outside the menu. The link
+      // takes no pointer while the menu is open, so the renderer must not find it there. It
+      // works in graph coordinates; the page in rendered ones
       for (let step = 0; step <= 20; step++) {
         const x = from.x + ((to.x - from.x) * step) / 20;
         const y = from.y + ((to.y - from.y) * step) / 20;
         const [pageX, pageY] = [box.left + pan.x + x * zoom, box.top + pan.y + y * zoom];
         if (Math.hypot(pageX - at.x, pageY - at.y) <= radius + 4) continue;
         const hit = cy.renderer().findNearestElement(x, y, true, false);
-        if (hit && hit.id() === link.id()) return { x: pageX, y: pageY, id: link.id() };
+        if (hit?.id() === link.id()) return null;
+        return { x: pageX, y: pageY, id: link.id() };
       }
       return null;
     },
@@ -1307,7 +1335,7 @@ test("the modal keyboard cursor cannot select unrelated background nodes", async
     return { drag: div._cyreg.cy.autoungrabify(), box: div._cyreg.cy.boxSelectionEnabled() };
   });
   await expect.poll(draggingBlocked).toEqual({ drag: true, box: false });
-  await page.getByRole("button", { name: "2", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: /^2 steps/ }).dispatchEvent("click");
   await page.getByLabel(/^Causal graph/).focus();
   for (let i = 0; i < 7; i++) {
     await page.keyboard.press("ArrowDown");
@@ -1482,6 +1510,12 @@ test("a long press locks the menu: moving steers, a click commits, and a click o
   await expect(page.getByRole("menu", { name: /Customers$/ })).toBeVisible();
   // The held node is bordered, so it reads as chosen
   await expect.poll(() => nodesWith(page, ".menu-held")).toEqual(["customers"]);
+  // Links take no pointer while the menu is open, so only nodes and the fan answer a click
+  const linkEvents = () => page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    return [...new Set(div._cyreg.cy.edges().map((edge: any) => edge.style("events")))];
+  });
+  await expect.poll(linkEvents).toEqual(["no"]);
 
   // Dragging to a direction and letting go commits it, and the menu stays, on that node
   const revenue = await towardIn(page, "revenue");
@@ -1501,12 +1535,39 @@ test("a long press locks the menu: moving steers, a click commits, and a click o
   await expect(page.getByRole("menu", { name: /Staff on shift$/ })).toBeVisible();
   await expect(page.getByLabel("Node staff")).toBeVisible();
   await expect.poll(() => nodesWith(page, ".menu-held")).toEqual(["staff"]);
+  // The walk keeps growing, and each step is numbered on its node
+  await expect(page.locator('.cc-trail-step[data-node="revenue"]')).toHaveText("1");
+  await expect(page.locator('.cc-trail-step[data-node="staff"]')).toHaveText("2");
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "revenue", "staff"]);
 
   // A click outside the canvas leaves: the menu closes and the node stays selected
   await page.getByText("cytocausal starter").click();
   await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.locator(".cc-trail-step")).toHaveCount(0);
   await expect(page.getByLabel("Node staff")).toBeVisible();
+  // The walk stays lit after leaving
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "revenue", "staff"]);
+  await expect.poll(linkEvents).toEqual(["yes"]);
   await expect.poll(() => nodesWith(page, ".menu-held")).toEqual([]);
+});
+
+test("a locked walk doesn't go back over a link it took", async ({ page }) => {
+  await openFinal(page);
+  const p = await pagePoint(page, "queue");
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.down();
+  await expect(page.getByRole("menu", { name: /Queue length$/ })).toBeVisible();
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  const satisfaction = await towardIn(page, "customer-satisfaction");
+  await page.mouse.move(satisfaction.x, satisfaction.y, { steps: 8 });
+  await page.mouse.click(satisfaction.x, satisfaction.y);
+  await expect(page.getByRole("menu", { name: /Customer satisfaction$/ })).toBeVisible();
+  // Customer satisfaction's fan leads on to Customers, but not back to Queue length
+  await page.mouse.move(satisfaction.x + 5, satisfaction.y + 5);
+  const feedback = page.locator(".cc-marking-feedback");
+  await expect(feedback.locator('.cc-marking-halo[data-target="customers"]')).toHaveCount(1);
+  await expect(feedback.locator('.cc-marking-halo[data-target="queue"]')).toHaveCount(0);
 });
 
 test("a hold and release keeps the menu locked, and Escape leaves it", async ({ page }) => {
@@ -1527,6 +1588,33 @@ test("a hold and release keeps the menu locked, and Escape leaves it", async ({ 
   await expect.poll(() => nodesWith(page, ".menu-held")).toEqual([]);
 });
 
+test("in a locked menu, a click outside the directions' areas leaves", async ({ page }) => {
+  await page.goto("/?version=final&debug=directions");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(5);
+  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
+  const p = await pagePoint(page, "staff");
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.down();
+  await expect(page.getByRole("menu", { name: /Staff on shift$/ })).toBeVisible();
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+
+  // An empty corner of the canvas, far past every area: moving there chooses nothing
+  const corner = await page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
+    const box = div.getBoundingClientRect();
+    return { x: box.right - 24, y: box.top + 24 };
+  });
+  await page.mouse.move(corner.x, corner.y, { steps: 12 });
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual([]);
+  // Only one step's fan is drawn at a time
+  await expect(page.locator(".cc-radial-directions")).toHaveCount(1);
+  await page.mouse.click(corner.x, corner.y);
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.getByLabel("Node staff")).toBeVisible();
+  await expect.poll(() => nodesWith(page, ".menu-held")).toEqual([]);
+});
+
 
 test("moving before the hold threshold drags the node without opening its menu", async ({ page }) => {
   await openFinal(page);
@@ -1543,7 +1631,7 @@ test("moving before the hold threshold drags the node without opening its menu",
 });
 
 for (const reducedMotion of ["no-preference", "reduce"] as const) {
-test(`step two creates new fans and transitions between centres (${reducedMotion})`, async ({ page }) => {
+test(`the fan stays on the last committed node, and moves on with each commit (${reducedMotion})`, async ({ page }) => {
   await page.emulateMedia({ reducedMotion });
   await openFinal(page);
   await page.evaluate(() => {
@@ -1570,31 +1658,36 @@ test(`step two creates new fans and transitions between centres (${reducedMotion
     const fan = area.sectors.find((s: any) => s.node === "revenue");
     return { x: area.x + fan.reach + 20, y: area.y };
   });
+  // Past the fan's reach nothing is chosen, and the fan stays on the node it's on: it moves on
+  // only when a step is committed
   await page.mouse.move(far.x, far.y, { steps: 5 });
   const feedback = page.locator(".cc-marking-feedback");
-  await expect(feedback).toHaveAttribute("data-step", "2");
-  await expect(feedback.locator(".cc-marking-band, .cc-marking-threshold")).toHaveCount(0);
+  await expect(feedback).toHaveAttribute("data-step", "1");
+  await expect(feedback.locator(".cc-marking-center")).toHaveAttribute("data-node", "customers");
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual([]);
+  await expect(page.locator(".cc-trail-step")).toHaveCount(0);
+
+  // Back inside Revenue's area, it's chosen, and letting go commits it: the fan moves there
+  const revenue = await towardIn(page, "revenue");
+  await page.mouse.move(revenue.x, revenue.y, { steps: 5 });
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "revenue"]);
+  await page.mouse.up();
+  await expect(page.getByRole("menu", { name: /Revenue$/ })).toBeVisible();
   await expect(feedback.locator(".cc-marking-center")).toHaveAttribute("data-node", "revenue");
   await expect(feedback.locator(".cc-marking-sunburst")).toHaveCount(1);
   await expect(feedback.locator(".cc-marking-halo").first()).toHaveCSS("stroke", "none");
   await expect(feedback.locator('.cc-marking-halo[data-target="staff"]')).toBeVisible();
-  await expect.poll(() => nodesWith(page, ".route-node, .focus")).toContain("revenue");
-  await expect(feedback.locator("text")).toHaveCount(1);
-  await expect(feedback.locator(".cc-marking-step")).toHaveText("2");
-  const movement = await feedback.locator('.cc-marking-center').evaluate(el => getComputedStyle(el).transitionDuration);
+  await expect(feedback.locator("text")).toHaveCount(0);
+  const movement = await feedback.locator(".cc-marking-center").evaluate(el => getComputedStyle(el).transitionDuration);
   expect(movement).toBe(reducedMotion === "reduce" ? "0s" : "0.22s");
-  const child = await pagePoint(page, "revenue");
-  await page.mouse.move(child.x, child.y + 100, { steps: 5 });
+
+  // The next step is chosen from Revenue's fan, and a click commits it
+  await page.waitForTimeout(300);
+  const staff = await towardIn(page, "staff");
+  await page.mouse.move(staff.x, staff.y, { steps: 5 });
   await expect(feedback.locator('.cc-marking-halo[data-target="staff"]')).toHaveAttribute("data-active", "true");
   await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "revenue", "staff"]);
-  await page.mouse.move(p.x + 30, p.y, { steps: 5 });
-  await expect(feedback).toHaveAttribute("data-step", "1");
-  await expect(feedback.locator(".cc-marking-center")).toHaveAttribute("data-node", "customers");
-  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "revenue"]);
-  await page.mouse.move(far.x, far.y, { steps: 5 });
-  await page.mouse.move(child.x, child.y + 100, { steps: 5 });
-  await page.mouse.up();
-  // Letting go commits, and the locked menu moves to the node reached
+  await page.mouse.click(staff.x, staff.y);
   await expect(page.getByRole("menu", { name: /Staff on shift$/ })).toBeVisible();
   await expect(page.getByLabel("Node staff")).toBeVisible();
   await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "revenue", "staff"]);

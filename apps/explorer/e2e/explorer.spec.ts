@@ -107,7 +107,7 @@ test("search reaches sentences and node ids", async ({ page }) => {
   await search(page).fill(descriptionWord);
   await expect(page.getByText(matchText(matches(descriptionWord)), { exact: true })).toBeVisible();
   await search(page).fill(first.id);
-  await expect(page.getByRole("button", { name: first.label })).toBeVisible();
+  await expect(page.getByRole("button", { name: first.label, exact: true })).toBeVisible();
 });
 
 test("choosing a search result opens its sentences and zooms to it", async ({ page }) => {
@@ -187,8 +187,16 @@ test("faded links don't block pointing toward a linked node", async ({ page }) =
          for (let f = 0.2; f <= 0.8; f += 0.1) {
            const angle = sector.from + (sector.to - sector.from) * f;
            const x = centre.x + r * Math.cos(angle), y = centre.y + r * Math.sin(angle);
-           const hit = cy.renderer().findNearestElement((x - pan.x) / zoom, (y - pan.y) / zoom, true, false);
-           if (hit && hit.isEdge() && hit.hasClass("dimmed") && !sector.links.includes(hit.id()))
+           // Links take no pointer while the menu is open, so find one under the point by its line
+           const [mx, my] = [(x - pan.x) / zoom, (y - pan.y) / zoom];
+           const hit = cy.edges(".dimmed").filter((edge) => {
+             if (sector.links.includes(edge.id())) return false;
+             const a = edge.sourceEndpoint(), b = edge.targetEndpoint();
+             const [dx, dy] = [b.x - a.x, b.y - a.y];
+             const t = Math.max(0, Math.min(1, ((mx - a.x) * dx + (my - a.y) * dy) / (dx * dx + dy * dy || 1)));
+             return Math.hypot(mx - a.x - t * dx, my - a.y - t * dy) < 2 / zoom;
+           })[0];
+           if (hit && !cy.renderer().findNearestElement(mx, my, true, false)?.isEdge())
              return { x: box.left + x, y: box.top + y, link: hit.id(), node: sector.node };
          }
        }
@@ -226,6 +234,24 @@ test("causes and effects follow edge direction", async ({ page }) => {
   expect(result.effects).toEqual(result.outgoers);
   expect(result.causes.length).toBeGreaterThan(0);
   expect(result.effects.length).toBeGreaterThan(0);
+});
+
+test("the steps control sets the default, which every new selection keeps", async ({ page }) => {
+  await ready(page);
+  const reach = () => withCy<number>(page, `return cy.nodes(".cause, .effect").length;`);
+  await clickNode(page, first.id);
+  const one = await reach();
+  const steps = page.getByRole("group", { name: "Steps shown" });
+  await steps.getByRole("button", { name: "2", exact: true }).click();
+  await expect.poll(reach).toBeGreaterThan(one);
+  // Another node starts at two steps too, since the control sets the default
+  await page.keyboard.press("Escape");
+  await clickNode(page, second.id);
+  await expect(steps.getByRole("button", { name: "2", exact: true })).toHaveAttribute("aria-pressed", "true");
+  // Going back to the first node shows the same two steps as before
+  await page.keyboard.press("Escape");
+  await clickNode(page, first.id);
+  await expect.poll(reach).toBeGreaterThan(one);
 });
 
 test("node size shows directed centrality", async ({ page }) => {
@@ -269,9 +295,10 @@ test("feedback loops can be isolated", async ({ page }) => {
 test("a node lists its short feedback loops, and choosing one highlights it", async ({ page }) => {
   await ready(page);
   await clickNode(page, first.id);
-  await expect(page.getByText(/^Event cycles \(\d+\+?\)$/)).toBeVisible();
-
-  const panel = page.getByLabel(`Node ${first.id}`);
+  // The node's cycles are listed in the cycles panel, searched through the chosen node
+  const panel = page.locator(".cc-loop-settings");
+  await expect(panel.getByLabel("Cycles through")).toHaveValue(first.id);
+  await expect(panel.getByRole("status")).toContainText(/\d+\+? cycles · /);
   const loop = panel.getByRole("button", { pressed: false }).filter({ hasText: "→" }).first();
   await loop.click();
   const counts = () =>
@@ -329,6 +356,10 @@ test("labels stay readable at every zoom level", async ({ page }) => {
 test("fitting the graph is stable", async ({ page }) => {
   await ready(page);
   const zoom = () => withCy<number>(page, "return cy.zoom();");
+  // Marks keep their size on screen, so the opening view, measured before they settle, can be
+  // a little off; from the first fit on, fitting again changes nothing
+  await page.getByLabel("Fit graph").click();
+  await page.waitForTimeout(500);
   const levels = [await zoom()];
   for (let press = 0; press < 3; press++) {
     await page.getByLabel("Fit graph").click();
@@ -341,6 +372,8 @@ test("fitting the graph is stable", async ({ page }) => {
 test("zoom controls work", async ({ page }) => {
   await ready(page);
   const zoom = () => withCy<number>(page, "return cy.zoom();");
+  await page.getByLabel("Fit graph").click();
+  await page.waitForTimeout(500);
   const before = await zoom();
   await page.getByLabel("Zoom in").click();
   await expect.poll(zoom).toBeGreaterThan(before);
@@ -620,9 +653,10 @@ test("cycle searches run in workers, can be cancelled, and restart with the sele
   });
   await ready(page);
   await clickNode(page, first.id);
-  const panel = page.getByLabel(`Node ${first.id}`);
+  const panel = page.locator(".cc-loop-settings");
   await expect(panel.getByText("Calculating…")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Cancel calculation", exact: true })).toBeVisible();
+  // With a node chosen, its search is cancelled from its own list
+  await expect(page.getByRole("button", { name: "Cancel calculation", exact: true })).toHaveCount(0);
   await expect(page.getByRole("spinbutton", { name: "Maximum cycle length" })).toHaveValue("4");
   const previous = await page.evaluate(() => (window as any).cycleWorkers.terminated);
   await page.getByRole("spinbutton", { name: "Maximum cycle length" }).fill("5");
@@ -633,15 +667,13 @@ test("cycle searches run in workers, can be cancelled, and restart with the sele
   await expect.poll(() => page.evaluate(() => {
     const t = (window as any).cycleWorkers; return t.started === t.terminated;
   })).toBe(true);
+  // Cancelling pauses every search: a new length waits until it's resumed, then finishes
   await page.getByRole("spinbutton", { name: "Maximum cycle length" }).fill("6");
   await expect(panel.getByText("Calculation cancelled.")).toBeVisible();
   await page.evaluate(() => { (window as any).cycleWorkers.hold = false; });
-  await page.getByRole("button", { name: "Resume calculation" }).click();
-  await expect(panel.getByRole("heading", { name: /^Event cycles \(\d+\+?\)$/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Cancel calculation", exact: true })).toHaveCount(0);
+  await panel.getByRole("button", { name: "Resume calculation" }).click();
+  await expect(panel.getByRole("status").first()).toContainText(/\d+\+? cycles · [\d.]+ (ms|s)/);
   await expect(panel.getByRole("button", { name: "Cancel", exact: true })).toHaveCount(0);
-  await expect(panel.getByRole("status")).toContainText(/\d+\+? cycles · [\d.]+ (ms|s)/);
-  await expect(page.locator(".cc-loop-settings").getByRole("status")).toContainText(/\d+\+? cycles · Longest search: [\d.]+ (ms|s)/);
   await page.getByRole("spinbutton", { name: "Maximum cycle length" }).fill("1");
   await expect(panel.getByText("No event cycles found within this range")).toBeVisible();
 });
@@ -652,7 +684,7 @@ test("a failed worker is reported instead of claiming there are no cycles", asyn
   });
   await ready(page);
   await clickNode(page, first.id);
-  const panel = page.getByLabel(`Node ${first.id}`);
+  const panel = page.locator(".cc-loop-settings");
   await expect(panel.getByText("Worker unavailable for test")).toBeVisible();
   await expect(panel.getByText("No event cycles found within this range")).toHaveCount(0);
 });

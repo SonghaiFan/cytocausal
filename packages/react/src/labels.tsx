@@ -61,6 +61,16 @@ export interface CausalLabels {
   linksAdded: string;
   linksRemoved: string;
   polarityChanged: string;
+  /** Heads the key to how changes are drawn on the graph. */
+  onGraph: string;
+  addedHint: string;
+  removedHint: string;
+  /** Renamed, merged, split or regrouped nodes. */
+  changedHint: string;
+  /** Explains the ± drawn on a link whose polarity flipped. */
+  flippedHint: string;
+  unchanged: string;
+  unchangedHint: string;
   noChanges: string;
   selectHint: string;
   pathHint: string;
@@ -155,6 +165,13 @@ export const defaultLabels: CausalLabels = {
   linksAdded: "Links added",
   linksRemoved: "Links removed",
   polarityChanged: "Polarity changed",
+  onGraph: "On the graph",
+  addedHint: "new in this version",
+  removedHint: "gone from this version",
+  changedHint: "renamed, merged, split or regrouped",
+  flippedHint: "the link's sign flipped, + to − or − to +",
+  unchanged: "Faded",
+  unchangedHint: "didn't change",
   noChanges: "No changes",
   selectHint: "Click a node to see what causes it and what it leads to.",
   pathHint: "Use the sidebar to trace paths to another node.",

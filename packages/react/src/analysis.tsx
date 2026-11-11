@@ -19,7 +19,11 @@ import { LinkDetails } from "./LinkDetails.tsx";
 import { NodeDetails } from "./NodeDetails.tsx";
 import { RouteButton } from "./RouteButton.tsx";
 
-/** Buttons for how many links away a highlight reaches. */
+/**
+ * Buttons for how many links away hovering or selecting a node highlights. Opt-in: it sets the
+ * graph's `defaultDepth`, which every new selection starts at. Without it, each selection starts
+ * at one step, and the radial menu's rings reach further for that selection only.
+ */
 export function DepthControl({
   value,
   onChange,
@@ -27,7 +31,9 @@ export function DepthControl({
   bare = false,
   className = "",
 }: {
+  /** Defaults to the provider graph's `defaultDepth`. */
   value?: number;
+  /** Defaults to the provider graph's `setDefaultDepth`. */
   onChange?: (depth: number) => void;
   /** Defaults to every step up to the graph's `maxDepth`. */
   steps?: number[];
@@ -37,8 +43,8 @@ export function DepthControl({
 }) {
   const labels = useCausalLabels();
   const causal = useOptionalCausal();
-  const current = value ?? causal?.graph.depth;
-  const choose = onChange ?? causal?.graph.setDepth;
+  const current = value ?? causal?.graph.defaultDepth;
+  const choose = onChange ?? causal?.graph.setDefaultDepth;
   const steps = given ?? Array.from({ length: causal?.graph.maxDepth ?? 2 }, (_, index) => index + 1);
 
   const buttons = (
@@ -207,11 +213,16 @@ export function SelectionPanel({
   );
 }
 
-function ChangeGroup({ title, items }: { title: string; items: ReactNode[] }) {
+function ChangeGroup({ title, items, glyph }: { title: string; items: ReactNode[]; glyph?: string }) {
   if (items.length === 0) return null;
   return (
     <details className="cc-diff">
       <summary>
+        {glyph && (
+          <span className="cc-glyph cc-change-glyph" aria-hidden="true">
+            {glyph}
+          </span>
+        )}
         {title} ({items.length})
       </summary>
       <ul className="cc-list cc-evidence">
@@ -298,7 +309,7 @@ function Differences({
   const link = (nodes: CausalNode[]) => (edge: { source: string; target: string }) =>
     `${labelIn(nodes, edge.source)} → ${labelIn(nodes, edge.target)}`;
 
-  const groups: [string, ReactNode[]][] = [
+  const groups: [string, ReactNode[], string?][] = [
     [labels.added, diff.addedNodes.map(({ label }) => label)],
     [labels.removed, diff.removedNodes.map(({ label }) => label)],
     [labels.renamed, diff.renamedNodes.map((item) => `${item.from.label} → ${item.to.label}`)],
@@ -323,7 +334,7 @@ function Differences({
     ],
     [labels.linksAdded, diff.addedLinks.map(link(toNodes))],
     [labels.linksRemoved, diff.removedLinks.map(link(fromNodes))],
-    [labels.polarityChanged, diff.changedLinks.map(({ to: edge }) => link(toNodes)(edge))],
+    [labels.polarityChanged, diff.changedLinks.map(({ to: edge }) => link(toNodes)(edge)), "±"],
   ];
   const changed = groups.some(([, items]) => items.length > 0);
 
@@ -349,24 +360,44 @@ function Differences({
         />
       )}
       {!changed && <p className="cc-muted">{labels.noChanges}</p>}
-      {shown && (
-        <ul className="cc-legend">
-          <li>
-            <Swatch color="var(--cc-added)" />
-            {labels.added}
-          </li>
-          <li>
-            <Swatch color="var(--cc-removed)" />
-            {labels.removed}
-          </li>
-          <li>
-            <Swatch color="var(--cc-ink)" />
-            {labels.changed}
-          </li>
-        </ul>
+      {shown && changed && (
+        <div className="cc-change-key" role="group" aria-label={labels.onGraph}>
+          <p className="cc-change-key-title">{labels.onGraph}</p>
+          <ul className="cc-legend cc-legend-stacked">
+            <li>
+              <Swatch color="var(--cc-added)" />
+              <strong>{labels.added}</strong>
+              <span className="cc-muted">{labels.addedHint}</span>
+            </li>
+            <li>
+              <Swatch color="var(--cc-removed)" />
+              <strong>{labels.removed}</strong>
+              <span className="cc-muted">{labels.removedHint}</span>
+            </li>
+            <li>
+              <Swatch color="var(--cc-ink)" />
+              <strong>{labels.changed}</strong>
+              <span className="cc-muted">{labels.changedHint}</span>
+            </li>
+            {diff.changedLinks.length > 0 && (
+              <li>
+                <span className="cc-glyph cc-change-glyph" aria-hidden="true">
+                  ±
+                </span>
+                <strong>{labels.polarityChanged}</strong>
+                <span className="cc-muted">{labels.flippedHint}</span>
+              </li>
+            )}
+            <li>
+              <Swatch color="var(--cc-ink)" mark="fill" faded />
+              <strong>{labels.unchanged}</strong>
+              <span className="cc-muted">{labels.unchangedHint}</span>
+            </li>
+          </ul>
+        </div>
       )}
-      {groups.map(([title, items]) => (
-        <ChangeGroup key={title} title={title} items={items} />
+      {groups.map(([title, items, glyph]) => (
+        <ChangeGroup key={title} title={title} items={items} glyph={glyph} />
       ))}
     </section>
   );

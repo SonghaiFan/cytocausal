@@ -90,7 +90,7 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `PathList` | The paths between two nodes, in both directions |
 | `LoopList` | Feedback loops, marked reinforcing or balancing |
 | `VersionDiff` | What changed between the shown version and the provider's `baseline`: the version before by default, or the first. With more than two versions it offers the choice, and the address keeps it as `since` |
-| `DepthControl` | How far a highlight reaches |
+| `DepthControl` | Opt-in: how many steps hovering or selecting a node highlights, kept across selections |
 | `Legend` | A key to what the graph draws: swatches, outlines or glyphs |
 | `ZoomControls` | Zoom and fit buttons |
 | `Segmented` | One choice from a few options, as joined buttons |
@@ -101,6 +101,8 @@ Hovering a row in `LoopList` or `PathList` previews it on the graph. Clicking ke
 `VersionSwitcher`, `Legend` and `DepthControl` take `bare`, which leaves out the panel so they can sit on the graph.
 
 `CausalGraph` shows who stated a link when it's hovered. Pass `renderLinkTooltip` to show something else. Nodes have no tooltip: their details are in `SelectionPanel`. Without a sidebar, pass `renderNodeInfo` to show a card beside the radial menu. Pass `styleOptions={{ weightBySupport: true }}` to draw links thicker the more people stated them, defined outside your component.
+
+Hovering or selecting a node highlights one step by default, and the radial menu's ring reaches further for that selection only. To let readers set the default, show `DepthControl` (`<CausalWorkspace depthControl />` puts it on the graph), or set it in code with `graphOptions={{ defaultDepth: 2 }}`.
 
 For large graphs, `CausalProvider` takes `graphOptions`, such as `{ readableLabels: true }`, and `CausalGraph` takes `maxZoom`. `SelectionPanel` takes `loopOptions` to list the loops through each node.
 

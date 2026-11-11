@@ -15,9 +15,14 @@ export interface CausalWorkspaceProps extends Omit<CausalProviderProps, "childre
   children?: ReactNode;
   /** Draw the area around a selected node that leads to each linked node, for debugging. */
   showDirections?: boolean;
+  /**
+   * Show `DepthControl` on the graph, to set how many steps hovering or selecting a node
+   * highlights. Off by default: each selection then shows one step.
+   */
+  depthControl?: boolean;
 }
 
-function Workspace({ title, children, showDirections }: Pick<CausalWorkspaceProps, "title" | "children" | "showDirections">) {
+function Workspace({ title, children, showDirections, depthControl = false }: Pick<CausalWorkspaceProps, "title" | "children" | "showDirections" | "depthControl">) {
   const labels = useCausalLabels();
   const { scheme, toggleScheme, issues, exportImage, copyLink, copied } = useCausal();
 
@@ -42,7 +47,7 @@ function Workspace({ title, children, showDirections }: Pick<CausalWorkspaceProp
         </div>
         <div className="cc-overlay cc-overlay-bottom">
           <Legend bare />
-          <DepthControl bare />
+          {depthControl && <DepthControl bare />}
         </div>
       </CausalGraph>
 
@@ -70,11 +75,12 @@ export function CausalWorkspace({
   children,
   shareInUrl = true,
   showDirections,
+  depthControl,
   ...props
 }: CausalWorkspaceProps) {
   return (
     <CausalProvider {...props} shareInUrl={shareInUrl} className="cc-workspace">
-      <Workspace title={title} showDirections={showDirections}>
+      <Workspace title={title} showDirections={showDirections} depthControl={depthControl}>
         {children}
       </Workspace>
     </CausalProvider>

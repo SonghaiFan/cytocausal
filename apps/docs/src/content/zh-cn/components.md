@@ -90,7 +90,7 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `PathList` | 两个节点之间双向的路径 |
 | `LoopList` | 反馈回路，并标记增强或平衡 |
 | `VersionDiff` | 当前版本与 provider 的 `baseline` 之间的变化：默认是上一版，也可以是第一版。超过两个版本时可以选择，并以 `since` 保存在地址里 |
-| `DepthControl` | 高亮的延伸范围 |
+| `DepthControl` | 可选：悬停或选中节点时高亮几步，切换选择后保持 |
 | `Legend` | 图中标记的说明：色块、轮廓或符号 |
 | `ZoomControls` | 缩放和适应按钮 |
 | `Segmented` | 从几个选项中选一个，显示为相连的按钮 |
@@ -101,6 +101,8 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 `VersionSwitcher`、`Legend` 和 `DepthControl` 支持 `bare`，去掉外层面板，可以直接放在图上。
 
 悬停在连线上时，`CausalGraph` 会显示它的提出者。传入 `renderLinkTooltip` 可以改成别的内容。节点没有提示框，它的详情在 `SelectionPanel` 里。没有侧栏时，可以传入 `renderNodeInfo` 在环形菜单旁显示卡片。传入 `styleOptions={{ weightBySupport: true }}`（定义在组件外部）会让提出人数越多的连线越粗。
+
+悬停或选中节点默认只高亮一步，径向菜单的环只为当前选择扩展更远。要让读者设置默认步数，显示 `DepthControl`（`<CausalWorkspace depthControl />` 会把它放在图上），或在代码里设置 `graphOptions={{ defaultDepth: 2 }}`。
 
 大型图可以给 `CausalProvider` 传 `graphOptions`，比如 `{ readableLabels: true }`，给 `CausalGraph` 传 `maxZoom`。`SelectionPanel` 的 `loopOptions` 会列出经过每个节点的回路。
 

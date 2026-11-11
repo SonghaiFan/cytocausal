@@ -295,11 +295,17 @@ export interface LegendItem {
 }
 
 /** One legend swatch, filled or outlined. */
-export function Swatch({ color, mark = "fill" }: Pick<LegendItem, "color" | "mark">) {
-  const style =
-    mark === "fill"
+export function Swatch({
+  color,
+  mark = "fill",
+  faded = false,
+}: Pick<LegendItem, "color" | "mark"> & { faded?: boolean }) {
+  const style = {
+    ...(mark === "fill"
       ? { background: color }
-      : { border: `2px ${mark === "ring" ? "solid" : mark} ${color}`, background: "var(--cc-node)" };
+      : { border: `2px ${mark === "ring" ? "solid" : mark} ${color}`, background: "var(--cc-node)" }),
+    ...(faded ? { opacity: 0.2 } : {}),
+  };
   return <span className="cc-swatch" style={style} aria-hidden="true" />;
 }
 

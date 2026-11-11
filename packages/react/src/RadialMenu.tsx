@@ -12,10 +12,10 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type Keyboard
 import { directionCells } from "./radial.ts";
 import { required, useOptionalCausal } from "./CausalProvider.tsx";
 import { useCausalLabels } from "./labels.tsx";
-import { menuArea, menuPointing, setMenuArea } from "./overlay.ts";
+import { menuArea, menuPointing, menuTarget, setMenuArea, type MenuArea } from "./overlay.ts";
 import type { useCausalGraph } from "./useCausalGraph.ts";
 
-import { moveMarking, markingRoute, type MarkingState } from "./marking.ts";
+import { markingRoute, type MarkingState } from "./marking.ts";
 
 type Graph = ReturnType<typeof useCausalGraph>;
 type Direction = "cause" | "effect" | "both";
@@ -291,19 +291,32 @@ export function RadialMenu({
         }));
     const area = { x: geometry.x, y: geometry.y, radius, inner: geometry.radius, node: id, sectors };
     setMenuArea(cy, area);
-    setMarkingFeedback(current => current?.levels.length === 0 ? { levels: [{ area, chosen: null }] } : current);
+    // A locked fan is drawn from the latest area, which settles after the menu moves to a node
+    setMarkingFeedback(current => {
+      if (!current) return current;
+      const fan = unwalked(area, walkedLinks.current);
+      const chosen = current.levels[0]?.chosen;
+      return { levels: [{ area: fan, chosen: fan.sectors?.find(sector => sector.node === chosen?.node) ?? null }] };
+    });
   }, [cy, id, geometry, ordered, hitCells, graph.tracing, rings]);
 
   // The modal owns graph interaction: backdrop nodes cannot be dragged out from
-  // under a fan. Panning and zooming the canvas remain available.
+  // under a fan, and links take no pointer at all, so only nodes and the fan answer a click.
+  // Panning and zooming the canvas remain available.
   useEffect(() => {
     if (!cy || cy.destroyed() || !id) return;
     const previous = cy.autoungrabify();
     const boxSelection = cy.boxSelectionEnabled();
     cy.autoungrabify(true);
     cy.boxSelectionEnabled(false);
+    cy.edges().addClass("menu-inert");
+    // Links that arrive while the menu is open, such as from a version change, too
+    const inert = (event: EventObject) => event.target.addClass("menu-inert");
+    cy.on("add", "edge", inert);
     return () => {
       if (!cy.destroyed()) {
+        cy.removeListener("add", "edge", inert);
+        cy.edges().removeClass("menu-inert");
         cy.autoungrabify(previous);
         cy.boxSelectionEnabled(boxSelection);
       }
@@ -311,6 +324,12 @@ export function RadialMenu({
   }, [cy, id]);
 
   const [markingFeedback, setMarkingFeedback] = useState<MarkingState | null>(null);
+  // The locked menu's trail: the node it locked on, then each node committed after it, and the
+  // nodes the pointer is steering toward now. Only a locked menu numbers its steps
+  const [trail, setTrail] = useState<{ nodes: string[]; ahead: string[] } | null>(null);
+  // Links the locked walk has taken. They aren't offered again, so the walk can't go back and
+  // forth over one link; a loop can still close by another
+  const walkedLinks = useRef<string[]>([]);
   const markingGraph = useLatest(graph);
   const markingSnapshot = useLatest(snapshot);
   // Leaves a locked menu without committing, when the menu closes some other way
@@ -326,8 +345,11 @@ export function RadialMenu({
     let timer: ReturnType<typeof setTimeout> | undefined;
     let origin: { x: number; y: number; node: string } | null = null;
     // A long press locks the menu open, like a modal. Moving then steers through it without
-    // holding the button, a click commits, and a click outside the canvas, or Escape, leaves
+    // holding the button, a click in a direction commits, and a click outside the directions'
+    // areas, outside the canvas, or Escape, leaves
     let locked = false;
+    // Whether the pointer is beyond every area of the current fan, where a click leaves
+    let outside = false;
     // Whether the press that locked the menu is still held
     let pressed = false;
     let navigation: MarkingState | null = null;
@@ -336,16 +358,55 @@ export function RadialMenu({
     let target: string | null = null;
     let route: Route | null = null;
     let step: number | undefined;
+    // What earlier commits walked, and what the next one would add
+    let walked: { nodes: string[]; edges: string[] } = { nodes: [], edges: [] };
+    let ahead: { nodes: string[]; edges: string[] } = { nodes: [], edges: [] };
+    const walkedRoute = (): Route | null => walked.edges.length ? { nodes: [...new Set(walked.nodes)], edges: [...new Set(walked.edges)] } : null;
     const cancelTimer = () => { clearTimeout(timer); timer = undefined; };
     /** Borders the node the locked menu is on, so it reads as chosen. */
     const markRoot = (node: string | null) => {
       cy.nodes(".menu-held").removeClass("menu-held");
       if (node) cy.getElementById(node).addClass("menu-held");
     };
+    // The pointer moves far more often than what it shows changes, and each of these updates
+    // renders the whole graph again. Built anew on every move, they kept React rendering until
+    // it reported an update loop, so steering sets them only when what they show changes.
+    // Undefined means unknown, such as after something else set them, so the next one is set
+    let shownTrail: string | undefined;
+    let shownFeedback: string | undefined;
+    let shownRoute: string | undefined;
+    let shownDepth: number | null | undefined;
+    const showTrail = (next: { nodes: string[]; ahead: string[] } | null) => {
+      const key = next ? `${next.nodes.join(",")}|${next.ahead.join(",")}` : "";
+      if (key === shownTrail) return;
+      shownTrail = key;
+      setTrail(next);
+    };
+    const showFeedback = (next: MarkingState | null) => {
+      const key = next
+        ? JSON.stringify(next.levels.map(({ area, chosen }) => [
+            area.node, area.x, area.y, area.radius, area.inner,
+            area.sectors?.map(({ node, from, to, reach }) => [node, from, to, reach]),
+            chosen?.node ?? null,
+          ]))
+        : "";
+      if (key === shownFeedback) return;
+      shownFeedback = key;
+      setMarkingFeedback(next);
+    };
+    const showPreview = (depth: number | null, next: Route | null) => {
+      const g = markingGraph.current;
+      if (depth !== shownDepth) { shownDepth = depth; g.previewDepth(depth); }
+      const key = next ? `${next.nodes.join(",")}|${next.edges.join(",")}` : "";
+      if (key !== shownRoute) { shownRoute = key; g.previewRoute(next); }
+    };
     const resetSteering = () => {
-      target = null; route = null; step = undefined;
+      target = null; route = null; step = undefined; outside = false;
+      ahead = { nodes: [], edges: [] };
       navigation = null;
+      shownTrail = shownFeedback = shownRoute = shownDepth = undefined;
       setMarkingFeedback({ levels: [] });
+      setTrail({ nodes: [...walked.nodes], ahead: [] });
     };
     const down = (event: EventObject) => {
       // Inside a locked menu, a click commits instead
@@ -362,6 +423,8 @@ export function RadialMenu({
         cy.userPanningEnabled(false);
         cy.stop(true, false);
         cy.scratch(RELEASE, true);
+        walked = { nodes: [origin.node], edges: [] };
+        walkedLinks.current = [];
         resetSteering();
         markRoot(origin.node);
         markingGraph.current.beginMarking(origin.node);
@@ -378,42 +441,47 @@ export function RadialMenu({
       event.stopImmediatePropagation();
       const g = markingGraph.current;
       target = null; route = null; step = undefined;
-      const area = menuArea(cy);
+      const shownArea = menuArea(cy);
+      const area = shownArea && unwalked(shownArea, walked.edges);
 
       if (area) {
-        navigation ??= { levels: [{ area, chosen: null }] };
-        navigation = moveMarking(navigation, { x: event.clientX, y: event.clientY }, g.maxDepth, (node, visited) => {
-          const source = cy.getElementById(node);
-          const center = source.renderedPosition();
-          const box = cy.container()!.getBoundingClientRect();
-          const radius = Math.max(source.renderedOuterWidth(), source.renderedOuterHeight()) / 2;
-          const ringCount = Math.max(0, g.maxDepth - 1);
-          const neighbours = neighboursOf(markingSnapshot.current, node)
-            .filter(n => !visited.includes(n.id))
-            .map(n => {
-              const point = cy.getElementById(n.id).renderedPosition();
-              return { ...n, angle: Math.atan2(point.y - center.y, point.x - center.x), distance: Math.hypot(point.x - center.x, point.y - center.y) };
-            }).sort((a, b) => a.angle - b.angle);
-          const cells = directionCells(neighbours.map(n => n.angle), { min: 0, reach: REACH });
-          return { node, x: box.left + center.x, y: box.top + center.y, radius: menuRadius(radius, ringCount), inner: radius,
-            sectors: neighbours.map((n, i) => ({ node: n.id, links: n.links, from: cells[i].from, to: cells[i].to, reach: directionReach(radius, ringCount, n.distance) })) };
-        });
-        const current = navigation.levels[navigation.levels.length - 1];
-        target = current.chosen?.node ?? (navigation.levels.length > 1 ? current.area.node : null);
-        step = navigation.levels.length;
-        const path = markingRoute(navigation);
-        route = path.edges.length ? path : null;
-        setMarkingFeedback(navigation);
+        // The fan stays on the last node committed. Pointing inside one of its areas chooses
+        // that direction; anywhere else, past its reach too, chooses nothing, and the fan
+        // doesn't move on until a click commits
+        const pointer = { x: event.clientX, y: event.clientY };
+        const aimedAt = menuTarget(area, pointer);
+        const inCentre = Math.hypot(pointer.x - area.x, pointer.y - area.y) <= (area.inner ?? area.radius);
+        outside = !inCentre && aimedAt === null;
+        navigation = { levels: [{ area, chosen: area.sectors?.find(sector => sector.node === aimedAt) ?? null }] };
+        const shown = navigation;
+        const last = shown.levels[shown.levels.length - 1];
+        step = shown.levels.length;
+        // What's highlighted is what a click commits, so outside the areas nothing is
+        if (outside) {
+          ahead = { nodes: [], edges: [] };
+        } else {
+          const nodes = shown.levels.slice(1).map(level => level.area.node);
+          if (last.chosen) nodes.push(last.chosen.node);
+          ahead = { nodes, edges: markingRoute(shown).edges };
+        }
+        target = ahead.nodes[ahead.nodes.length - 1] ?? null;
+        // The trail so far stays lit, with the way ahead added to it
+        const lit = { nodes: [...walked.nodes, ...ahead.nodes], edges: [...walked.edges, ...ahead.edges] };
+        route = lit.edges.length ? { nodes: [...new Set(lit.nodes)], edges: [...new Set(lit.edges)] } : null;
+        showTrail({ nodes: [...walked.nodes], ahead: ahead.nodes });
+        showFeedback(shown);
         setCaption(null);
       }
-      g.previewDepth(step ?? null);
-      g.previewRoute(route);
+      showPreview(step === undefined ? null : Math.min(step, g.maxDepth), route);
     };
     /** Commits the direction pointed at: the menu moves to that node and stays locked. */
     const commit = () => {
       if (!target) return;
       const chosen = target;
-      markingGraph.current.finishMarking(chosen, route, step, { keepOpen: true });
+      walked = { nodes: [...walked.nodes, ...ahead.nodes], edges: [...walked.edges, ...ahead.edges] };
+      walkedLinks.current = walked.edges;
+      markingGraph.current.previewRoute(null);
+      markingGraph.current.finishMarking(chosen, walkedRoute(), undefined, { keepOpen: true });
       markRoot(chosen);
       resetSteering();
       setCaption(null);
@@ -429,17 +497,23 @@ export function RadialMenu({
         cy.removeScratch(RELEASE);
         markRoot(null);
       }
+      walked = { nodes: [], edges: [] };
+      ahead = { nodes: [], edges: [] };
+      walkedLinks.current = [];
       setMarkingFeedback(null);
+      setTrail(null);
       setCaption(null);
     };
-    /** Leaves the locked menu: it closes, and the node stays selected. */
+    /** Leaves the locked menu: it closes, and the node and the walk to it stay selected. */
     const unlock = () => {
       if (!locked) return;
+      // The walk committed so far stays lit after leaving; only what was being steered goes
+      const kept = walkedRoute();
       unlockQuietly();
       const g = markingGraph.current;
       g.previewDepth(null);
       g.previewRoute(null);
-      g.finishMarking(null, null, undefined);
+      g.finishMarking(null, kept, undefined);
     };
     leaveLock.current = unlockQuietly;
     const release = (event?: MouseEvent) => {
@@ -456,9 +530,12 @@ export function RadialMenu({
     const click = (event: MouseEvent) => {
       if (suppressClick) { event.preventDefault(); event.stopImmediatePropagation(); return; }
       if (!locked || !container.contains(event.target as Node)) return;
+      // Where the click lands decides, even without a move before it
+      move(event);
       event.preventDefault();
       event.stopImmediatePropagation();
-      commit();
+      if (outside) unlock();
+      else commit();
     };
     // Outside the canvas, a press leaves; the menu's own rings and buttons still work
     const pressOutside = (event: MouseEvent) => {
@@ -544,7 +621,27 @@ export function RadialMenu({
   const center = labelOf(id);
   const node = snapshot.nodes.find((item) => item.id === id);
 
-  const directions = showDirections && !graph.tracing && (
+  // Only one step's fan is drawn at a time: the one steering is in, else the menu's own
+  const level = markingFeedback?.levels[markingFeedback.levels.length - 1];
+  const bearingFrom = (from: string, to: string) => {
+    const a = cy!.getElementById(from).renderedPosition();
+    const b = cy!.getElementById(to).renderedPosition();
+    return Math.atan2(b.y - a.y, b.x - a.x);
+  };
+  const directions = showDirections && !graph.tracing && (level && cy && !cy.destroyed() ? (
+    <DirectionsOverlay
+      x={level.area.x}
+      y={level.area.y}
+      inner={level.area.inner ?? level.area.radius}
+      areas={(level.area.sectors ?? []).map((sector) => ({
+        label: labelOf(sector.node),
+        from: sector.from,
+        to: sector.to,
+        reach: sector.reach,
+        bearing: bearingFrom(level.area.node, sector.node),
+      }))}
+    />
+  ) : (
     <DirectionsOverlay
       x={geometry.x}
       y={geometry.y}
@@ -556,11 +653,12 @@ export function RadialMenu({
         reach: directionReach(geometry.radius, rings, geometry.distances[neighbour.id]),
       }))}
     />
-  );
+  ));
 
   return (
     <>
     {directions}
+    {trail && cy && <TrailSteps cy={cy} nodes={trail.nodes} ahead={trail.ahead} />}
     <div
       className={`cc-radial ${className}`}
       style={{ left: geometry.x - size, top: geometry.y - size, width: size * 2, height: size * 2 }}
@@ -624,6 +722,62 @@ export function RadialMenu({
   );
 }
 
+/** A fan without the directions whose every link the walk has already taken. */
+function unwalked(area: MenuArea, links: string[]): MenuArea {
+  if (!links.length || !area.sectors) return area;
+  return { ...area, sectors: area.sectors.filter((sector) => !sector.links.every((link) => links.includes(link))) };
+}
+
+/**
+ * Numbers each step of a locked menu's walk on the graph: the nodes committed after the one it
+ * locked on, then, fainter, the ones the pointer is steering toward. A node reached twice shows
+ * both numbers.
+ */
+function TrailSteps({ cy, nodes, ahead }: { cy: Core; nodes: string[]; ahead: string[] }) {
+  // Follows the camera and the nodes, so each number stays on its node
+  const [, redraw] = useState(0);
+  useEffect(() => {
+    if (cy.destroyed()) return;
+    let frame = 0;
+    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => redraw(n => n + 1)); };
+    cy.on("viewport position", schedule);
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (!cy.destroyed()) cy.removeListener("viewport position", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, [cy]);
+  if (cy.destroyed()) return null;
+  const numbers = new Map<string, { step: number; ahead: boolean }[]>();
+  [...nodes.slice(1), ...ahead].forEach((node, index) => {
+    const list = numbers.get(node) ?? [];
+    list.push({ step: index + 1, ahead: index >= nodes.length - 1 });
+    numbers.set(node, list);
+  });
+  const box = cy.container()!.getBoundingClientRect();
+  return (
+    <div className="cc-trail-steps" aria-hidden="true">
+      {[...numbers].map(([node, steps]) => {
+        const element = cy.getElementById(node);
+        if (element.empty()) return null;
+        const { x, y } = element.renderedPosition();
+        return (
+          <span
+            key={node}
+            className="cc-trail-step"
+            data-node={node}
+            data-ahead={steps.every((item) => item.ahead)}
+            style={{ left: box.left + x + element.renderedOuterWidth() / 2, top: box.top + y - element.renderedOuterHeight() / 2 }}
+          >
+            {steps.map(({ step }) => step).join(", ")}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 /** One linked node's area, as `showDirections` draws it. */
 interface DirectionArea {
   label: string;
@@ -671,18 +825,6 @@ function DirectionsOverlay({ x, y, inner, areas }: { x: number; y: number; inner
 function MarkingFeedback({ state, x, y, showDirections }: {
   state: MarkingState; x: number; y: number; showDirections: boolean;
 }) {
-  const previous = useRef(state.levels);
-  const [leaving, setLeaving] = useState<MarkingState["levels"]>([]);
-  useEffect(() => {
-    const removed = previous.current.filter(old => !state.levels.some(level => level.area.node === old.area.node));
-    previous.current = state.levels;
-    if (removed.length) setLeaving(removed);
-  }, [state]);
-  useEffect(() => {
-    if (!leaving.length) return;
-    const timer = setTimeout(() => setLeaving([]), 220);
-    return () => clearTimeout(timer);
-  }, [leaving]);
   const current = state.levels[state.levels.length - 1];
   const draw = ({ area, chosen }: MarkingState["levels"][number], index: number, exiting = false) => {
     const activeLevel = !exiting && index === state.levels.length - 1;
@@ -704,8 +846,8 @@ function MarkingFeedback({ state, x, y, showDirections }: {
     </g>;
   };
   return <g className="cc-marking-feedback" aria-hidden="true" data-step={state.levels.length || 1}>
-    {showDirections && leaving.filter(old => !state.levels.some(level => level.area.node === old.area.node)).map((level, index) => draw(level, state.levels.length + index, true))}
-    {showDirections && state.levels.map((level, index) => draw(level, index))}
+    {/* Only the current step's fan: it is the whole area a click acts in */}
+    {showDirections && current && draw(current, state.levels.length - 1)}
     {current && <g className="cc-marking-center" data-node={current.area.node}
       style={{ transform: `translate(${current.area.x - x}px, ${current.area.y - y}px)` }}>
       <g className="cc-marking-sunburst">
@@ -717,7 +859,6 @@ function MarkingFeedback({ state, x, y, showDirections }: {
             d={sector(fan.from + gap, fan.to - gap, (current.area.inner ?? 12) + 3, (current.area.inner ?? 12) + 20)} />;
         })}
       </g>
-      <text className="cc-marking-step" y={-(current.area.inner ?? 12) - 14} textAnchor="middle">{state.levels.length}</text>
     </g>}
   </g>;
 }

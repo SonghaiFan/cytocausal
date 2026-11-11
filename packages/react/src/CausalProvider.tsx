@@ -73,7 +73,7 @@ export interface CausalProviderProps {
   /** What changes are measured against, to start with. Defaults to the version before. */
   initialBaseline?: Baseline;
   /** Extra options for `useCausalGraph`, such as for large graphs. */
-  graphOptions?: Pick<CausalGraphOptions, "readableLabels" | "focusZoom" | "maxDepth">;
+  graphOptions?: Pick<CausalGraphOptions, "readableLabels" | "focusZoom" | "maxDepth" | "defaultDepth">;
   /** Keep the version and selection in the page address, so a link reopens the same view. */
   shareInUrl?: boolean;
   /**

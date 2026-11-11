@@ -153,6 +153,15 @@
 .cc-graph > div:first-child:focus-visible { outline: 2px solid var(--cc-muted-text); outline-offset: -2px; }
 .cc-diff { margin: .5rem 0 0; }
 .cc-diff summary { cursor: pointer; }
+/* The key to a diff on the graph: set apart, so what each mark means is read before the lists */
+.cc-change-key { margin: .75rem 0 .25rem; padding: 10px 12px; border: 1px solid var(--cc-border); border-radius: var(--cc-radius-control); }
+.cc-change-key-title { margin: 0 0 6px; color: var(--cc-muted-text); font-size: 12px; font-weight: 550; }
+.cc-legend-stacked { flex-direction: column; gap: .375rem; }
+.cc-legend-stacked li { flex-wrap: wrap; }
+.cc-legend-stacked .cc-muted { margin: 0; }
+/* ± drawn as it is on the graph: bold ink on the background */
+.cc-change-glyph { min-width: .75rem; margin-right: .25rem; color: var(--cc-ink); font-size: 14px; font-weight: 700; line-height: 1; }
+.cc-legend .cc-change-glyph { margin-right: 0; }
 
 @media (pointer: coarse) {
   .cc-input { min-height: 44px; font-size: 16px; }
@@ -171,6 +180,13 @@
 .cc-glyph { display: inline-flex; justify-content: center; min-width: .75rem; font-weight: 600; }
 
 /* A debugging view of the area that leads to each linked node: shades of the text colour only */
+/* A locked menu's steps, numbered on their nodes; the ones ahead are fainter */
+.cc-trail-step {
+  position: fixed; z-index: 41; transform: translate(-50%, -50%); min-width: 18px; height: 18px; padding: 0 5px;
+  box-sizing: border-box; border-radius: 9px; background: var(--cc-ink); color: var(--cc-background);
+  font: 600 11px/18px var(--cc-font-family, sans-serif); text-align: center; pointer-events: none; white-space: nowrap;
+}
+.cc-trail-step[data-ahead="true"] { opacity: .45; }
 .cc-radial-directions { position: fixed; z-index: 39; overflow: visible; pointer-events: none; }
 .cc-radial-directions path { stroke: var(--cc-text); stroke-width: 1; stroke-dasharray: 4 3; stroke-opacity: .5; }
 .cc-direction-odd path { fill: var(--cc-text); fill-opacity: .08; }

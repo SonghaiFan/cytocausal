@@ -268,6 +268,8 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     // The marking sunburst supplies press feedback; suppress Cytoscape's
     // default grey rounded rectangle while a node is held.
     { selector: "node:active", style: { "overlay-opacity": 0 } },
+    // While the radial menu is open, links take no pointer: a click goes to the fan or a node
+    { selector: "edge.menu-inert", style: { events: "no" } },
     { selector: "node.labelled", style: shownLabel },
     { selector: ".dimmed", style: { opacity: dimmedOpacity } },
     // Dimmed links fade from their full colour, as they did before receding links became pale
@@ -290,8 +292,19 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     { selector: "edge.diff-added", style: highlight(colors.added) },
     { selector: "edge.diff-removed", style: highlight(colors.removed) },
     { selector: "edge.diff-changed", style: highlight(colors.ink) },
-    // A flipped link shows ± as well as its new line style
-    { selector: "edge.diff-flipped", style: { label: "±", "font-weight": "bold" } },
+    // A flipped link shows ± as well as its new line style, on a plate so a thick or dashed
+    // line can't break the glyph up
+    {
+      selector: "edge.diff-flipped",
+      style: {
+        label: "±",
+        "font-weight": "bold",
+        "text-background-color": colors.background,
+        "text-background-opacity": 1,
+        "text-background-padding": "2px",
+        "text-background-shape": "roundrectangle",
+      },
+    },
     // Focus and context come last, because what the reader chose matters more than what
     // changed. The accent is only ever a fill: chosen nodes take it, and their links keep full
     // contrast in ink, so no warm line can be mistaken for a removed one. The rest fades

@@ -288,10 +288,10 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
           />
           <DepthControl
             bare
-            value={main.depth}
+            value={main.defaultDepth}
             onChange={(depth) => {
-              main.setDepth(depth);
-              right.setDepth(depth);
+              main.setDefaultDepth(depth);
+              right.setDefaultDepth(depth);
             }}
           />
         </div>
