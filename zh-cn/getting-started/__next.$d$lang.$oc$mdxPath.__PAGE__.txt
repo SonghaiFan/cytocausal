@@ -1,0 +1,146 @@
+3:"$Sreact.fragment"
+4:"/cytocausal/_next/static/chunks/3qfy96eoyh-ek.js"
+5:I[39756,["$4"],"default"]
+6:I[37457,["$4"],"default"]
+b:"/cytocausal/_next/static/chunks/0ukdujkmkvhm8.js"
+c:"/cytocausal/_next/static/chunks/0bau-wvwyshok.js"
+d:"/cytocausal/_next/static/chunks/093v92pv8bfl4.js"
+e:"/cytocausal/_next/static/chunks/0z-c01io_5ink.js"
+f:I[55169,["$b","$c","$d","$e"],"TOCProvider"]
+10:I[769,["$b","$c","$d","$e"],"Sidebar"]
+11:I[47486,["$b","$c","$d","$e"],"ClientWrapper"]
+29:"ViewportBoundary"
+2a:I[97367,["$4"],"$29"]
+2b:"MetadataBoundary"
+2c:I[97367,["$4"],"$2b"]
+2d:"$Sreact.suspense"
+2e:I[27201,["$4"],"IconMark"]
+8:X
+8:C
+9:X
+12:Taf0,---
+title: "快速开始"
+---
+
+# 快速开始
+
+cytocausal 是基于 Cytoscape.js 的因果图 library。当前可以通过 React / Next.js starter 构建自己的应用。各 package 仍为工作区内的私有包；npm 发布属于后续规划。Studio 是独立的浏览器本地绘图应用。
+
+需要 Node.js 22.18 或更高版本。
+
+```sh
+git clone https://github.com/SonghaiFan/cytocausal.git
+cd cytocausal
+npm install
+npm run dev
+```
+
+打开 `http://localhost:3102`，可以看到一个虚构的咖啡店小模型，它有两个版本，并列出了反馈回路。
+
+可选基础知识：[Cytoscape.js 基础与扩展](/zh-cn/cytoscape-basics/)使用同一张小因果图对照原生 Cytoscape.js 和 cytocausal，适合需要自定义样式或交互时阅读。
+
+## 改成你自己的应用
+
+需要修改的内容都在 `apps/starter/src` 中：
+
+| 文件 | 作用 |
+| :--- | :--- |
+| `data.ts` | 你的图，从替换这个文件开始 |
+| `components/App.tsx` | 页面，只有一个 `CausalWorkspace` |
+
+如果想保留 starter 作为参考，请把 `apps/starter` 复制为 `apps/your-app`，并修改其 `package.json` 中的 `name`。
+
+## 添加数据
+
+要进一步定制，请参阅[组件](/zh-cn/components/)和[主题与样式](/zh-cn/theming/)。
+
+数据需要符合[数据模型](/zh-cn/data-model/)。只有 ID 和标签是必需的，所以一张图可以很简单：
+
+```ts
+import type { CausalDataset } from "@cytocausal/core";
+
+export const dataset: CausalDataset = {
+  id: "my-graph",
+  snapshots: [
+    {
+      id: "final",
+      nodes: [
+        { id: "rain", label: "Rain" },
+        { id: "floods", label: "Floods" },
+      ],
+      edges: [{ id: "rain-floods", source: "rain", target: "floods", polarity: "positive" }],
+    },
+  ],
+};
+```
+
+`validateDataset` 发现的问题会显示在 starter 侧边栏顶部。
+
+## 仓库结构
+
+| 路径 | 内容 |
+| :--- | :--- |
+| `apps/starter` | 用于开发的起点应用 |
+| `apps/perspectiva` | 示例：并排比较版本 |
+| `apps/explorer` | 示例：探索大型网络 |
+| `apps/docs` | 本站 |
+| `packages/core` | 数据模型、验证和分析 |
+| `packages/cytoscape` | 主题、样式、布局、过渡和高亮 |
+| `packages/react` | `CausalWorkspace`、各组件和 `useCausalGraph` |
+
+运行示例：`npm run dev:perspectiva` 和 `npm run dev:explorer`。
+
+## 参与贡献
+
+请参阅 [CONTRIBUTING.md](https://github.com/SonghaiFan/cytocausal/blob/main/CONTRIBUTING.md)。仓库中的数据集有单独的条款，复用前请先阅读 [DATA.md](https://github.com/SonghaiFan/cytocausal/blob/main/DATA.md)。
+
+
+## 下一步
+
+- [接入自己的数据](/zh-cn/import-data/)
+- [独立示例](/zh-cn/examples/)
+- [Core API](/zh-cn/api-core/) · [React API](/zh-cn/api-react/) · [Cytoscape API](/zh-cn/api-cytoscape/)a:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$3","c",{"children":[["$","div",null,{"className":"x:mx-auto x:flex x:max-w-(--nextra-content-width)","children":["$","$Lf",null,{"value":[{"value":"改成你自己的应用","id":"改成你自己的应用","depth":2},{"value":"添加数据","id":"添加数据","depth":2},{"value":"仓库结构","id":"仓库结构","depth":2},{"value":"参与贡献","id":"参与贡献","depth":2},{"value":"下一步","id":"下一步","depth":2}],"children":[["$","$L10",null,{}],["$","$L11",null,{"metadata":{"title":"快速开始","filePath":"src/content/zh-cn/getting-started.md","timestamp":1793881133000},"sourceCode":"$12","children":[["$","div",null,{"id":"nextra-skip-nav"}],["$","main",null,{"data-pagefind-body":true,"children":[["$","h1",null,{"className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-bold x:mt-2 x:text-4xl","children":["快速开始","$undefined"]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"cytocausal 是基于 Cytoscape.js 的因果图 library。当前可以通过 React / Next.js starter 构建自己的应用。各 package 仍为工作区内的私有包；npm 发布属于后续规划。Studio 是独立的浏览器本地绘图应用。"}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"需要 Node.js 22.18 或更高版本。"}],"\n",["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":["$L13","$L14"]}]]}],"\n","$L15","\n","$L16","\n","$L17","\n","$L18","\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n","$L19","\n","$L1a","\n","$L1b","\n","$L1c","\n","$L1d","\n","$L1e","\n","$L1f","\n","$L20","\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n","$L21","\n","$L22","\n","$L23","\n","$L24","\n","$L25","\n","$L26"]}]]}]]}]}],null,"$L27"]}],"p":"$@28","v":null,"s":"$9"}}]]
+2:[["children",{"s":{"n":"mdxPath","t":"oc","k":"getting-started","s":[]},"h":65600,"d":{"r":["$","$3","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}]}]]}],"p":"$@7","v":"$8","s":"$9"},"c":"$Qa"}]]
+1:[["children",{"s":{"n":"lang","t":"d","k":"zh-cn","s":[]},"h":196656,"c":"$Q2"}]]
+0:{"t":{"t":{"s":"","h":131152,"c":"$Q1"},"h":{"r":["$","$3","h",{"children":[null,["$","$L2a",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L2c",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$2d",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"快速开始 | cytocausal"}],["$","link","1",{"rel":"icon","href":"/cytocausal/icon.svg?icon.3c77pwa7_7hzo.svg","sizes":"any","type":"image/svg+xml"}],["$","$L2e","2",{}]]}]}],null]}],null]}],"p":"$@2f","v":null,"s":"$9"}},"a":"$@30","u":"$@31","b":"PNV-lKU2O2aN7EBl7fUyT"}
+32:"ToggleWordWrapButton"
+33:I[83987,["$b","$c","$d","$e"],"$32"]
+34:I[40493,["$b","$c","$d","$e"],"CopyToClipboard"]
+35:I[22016,["$b","$c","$d","$e"],""]
+36:I[63894,["$b","$c","$d","$e"],"HeadingAnchor"]
+3d:I[97367,["$4"],"OutletBoundary"]
+13:["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L33",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L34",null,{"className":""}]]}]
+14:["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"git"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" clone"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" https://github.com/SonghaiFan/cytocausal.git"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"cd"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" cytocausal"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"npm"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" install"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"npm"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" run"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" dev"}]]}]]}]
+15:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["打开 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"http://localhost:3102"}],"，可以看到一个虚构的咖啡店小模型，它有两个版本，并列出了反馈回路。"]}]
+16:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["可选基础知识：",["$","$L35",null,{"href":"/zh-cn/cytoscape-basics/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Cytoscape.js 基础与扩展"}],"使用同一张小因果图对照原生 Cytoscape.js 和 cytocausal，适合需要自定义样式或交互时阅读。"]}]
+17:["$","h2",null,{"id":"改成你自己的应用","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["改成你自己的应用",["$","$L36",null,{"id":"改成你自己的应用"}]]}]
+18:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["需要修改的内容都在 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"apps/starter/src"}]," 中："]}]
+19:["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"style":{"textAlign":"left"},"children":"文件","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"style":{"textAlign":"left"},"children":"作用","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"data.ts"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"你的图，从替换这个文件开始","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"components/App.tsx"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["页面，只有一个 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"CausalWorkspace"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]]}]]}]
+1a:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["如果想保留 starter 作为参考，请把 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"apps/starter"}]," 复制为 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"apps/your-app"}],"，并修改其 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"package.json"}]," 中的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"name"}],"。"]}]
+1b:["$","h2",null,{"id":"添加数据","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["添加数据",["$","$L36",null,{"id":"添加数据"}]]}]
+1c:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["要进一步定制，请参阅",["$","$L35",null,{"href":"/zh-cn/components/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"组件"}],"和",["$","$L35",null,{"href":"/zh-cn/theming/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"主题与样式"}],"。"]}]
+1d:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["数据需要符合",["$","$L35",null,{"href":"/zh-cn/data-model/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"数据模型"}],"。只有 ID 和标签是必需的，所以一张图可以很简单："]}]
+1e:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L33",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L34",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" type"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { CausalDataset } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/core\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":" "}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"export"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" dataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":":"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" CausalDataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" {"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"  id: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"my-graph\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":","}]]}],"\n",["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"  snapshots: ["}]}],"\n",["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"    {"}]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"      id: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"final\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":","}]]}],"\n",["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"      nodes: ["}]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"        { id: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"rain\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", label: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"Rain\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" },"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"        { id: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"floods\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", label: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"Floods\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" },"}]]}],"\n","$L37","\n","$L38","\n","$L39","\n","$L3a","\n","$L3b"]}]]}]]}]
+1f:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"validateDataset"}]," 发现的问题会显示在 starter 侧边栏顶部。"]}]
+20:["$","h2",null,{"id":"仓库结构","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["仓库结构",["$","$L36",null,{"id":"仓库结构"}]]}]
+21:["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"style":{"textAlign":"left"},"children":"路径","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"style":{"textAlign":"left"},"children":"内容","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"apps/starter"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"用于开发的起点应用","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"apps/perspectiva"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"示例：并排比较版本","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"apps/explorer"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"示例：探索大型网络","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"apps/docs"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"本站","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"packages/core"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"数据模型、验证和分析","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"packages/cytoscape"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"主题、样式、布局、过渡和高亮","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"packages/react"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],"$L3c"],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]]}]]}]
+22:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["运行示例：",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"npm run dev:perspectiva"}]," 和 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"npm run dev:explorer"}],"。"]}]
+23:["$","h2",null,{"id":"参与贡献","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["参与贡献",["$","$L36",null,{"id":"参与贡献"}]]}]
+24:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["请参阅 ",["$","a",null,{"href":"https://github.com/SonghaiFan/cytocausal/blob/main/CONTRIBUTING.md","target":"_blank","rel":"noreferrer","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":["CONTRIBUTING.md",[" ",["$","svg",null,{"fill":"none","stroke":"currentColor","strokeLinecap":"round","strokeLinejoin":"round","strokeWidth":1.7,"viewBox":"0 0 24 24","height":"1em","className":"x:inline x:align-baseline x:shrink-0","children":[["$","path",null,{"d":"M7 17L17 7"}],["$","path",null,{"d":"M7 7h10v10"}]]}]]]}],"。仓库中的数据集有单独的条款，复用前请先阅读 ",["$","a",null,{"href":"https://github.com/SonghaiFan/cytocausal/blob/main/DATA.md","target":"_blank","rel":"noreferrer","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":["DATA.md",[" ",["$","svg",null,{"fill":"none","stroke":"currentColor","strokeLinecap":"round","strokeLinejoin":"round","strokeWidth":1.7,"viewBox":"0 0 24 24","height":"1em","className":"x:inline x:align-baseline x:shrink-0","children":[["$","path",null,{"d":"M7 17L17 7"}],["$","path",null,{"d":"M7 7h10v10"}]]}]]]}],"。"]}]
+25:["$","h2",null,{"id":"下一步","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["下一步",["$","$L36",null,{"id":"下一步"}]]}]
+26:["$","ul",null,{"className":"x:[:is(ol,ul)_&]:my-[.75em] x:not-first:mt-[1.25em] x:list-disc x:ms-[1.5em]","children":["\n",["$","li",null,{"className":"x:my-[.5em]","children":["$","$L35",null,{"href":"/zh-cn/import-data/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"接入自己的数据"}]}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":["$","$L35",null,{"href":"/zh-cn/examples/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"独立示例"}]}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":[["$","$L35",null,{"href":"/zh-cn/api-core/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Core API"}]," · ",["$","$L35",null,{"href":"/zh-cn/api-react/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"React API"}]," · ",["$","$L35",null,{"href":"/zh-cn/api-cytoscape/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Cytoscape API"}]]}],"\n"]}]
+27:["$","$L3d",null,{"children":["$","$2d",null,{"name":"Next.MetadataOutlet","children":"$@3e"}]}]
+31:true
+9:300
+37:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"      ],"}]}]
+38:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"      edges: [{ id: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"rain-floods\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", source: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"rain\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", target: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"floods\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", polarity: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"positive\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" }],"}]]}]
+39:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"    },"}]}]
+3a:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"  ],"}]}]
+3b:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"};"}]}]
+3c:["$","td",null,{"style":{"textAlign":"left"},"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"CausalWorkspace"}],"、各组件和 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"useCausalGraph"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]
+3e:null
+9:C
+30:0
+7:"$undefined"
+2f:"$undefined"
+28:"$undefined"

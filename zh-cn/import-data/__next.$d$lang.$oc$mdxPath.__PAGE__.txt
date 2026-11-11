@@ -1,0 +1,238 @@
+3:"$Sreact.fragment"
+4:"/cytocausal/_next/static/chunks/3qfy96eoyh-ek.js"
+5:I[39756,["$4"],"default"]
+6:I[37457,["$4"],"default"]
+b:"/cytocausal/_next/static/chunks/0ukdujkmkvhm8.js"
+c:"/cytocausal/_next/static/chunks/0bau-wvwyshok.js"
+d:"/cytocausal/_next/static/chunks/093v92pv8bfl4.js"
+e:"/cytocausal/_next/static/chunks/0z-c01io_5ink.js"
+f:I[55169,["$b","$c","$d","$e"],"TOCProvider"]
+10:I[769,["$b","$c","$d","$e"],"Sidebar"]
+11:I[47486,["$b","$c","$d","$e"],"ClientWrapper"]
+17:"ViewportBoundary"
+18:I[97367,["$4"],"$17"]
+19:"MetadataBoundary"
+1a:I[97367,["$4"],"$19"]
+1b:"$Sreact.suspense"
+1c:I[27201,["$4"],"IconMark"]
+8:X
+8:C
+9:X
+12:T169c,---
+title: "接入自己的数据"
+---
+
+# 接入自己的数据
+
+import { ExampleSource } from "../../components/examples/ExampleSource.tsx";
+
+本教程从外部 JSON 表格开始，完成解析、转换、校验、显示、证据追溯和版本比较。完整代码与[工作区示例](/zh-cn/example-workspace/)共用，数据是虚构的花园模型。
+
+## 1. 先运行 Starter
+
+按照[快速开始](/zh-cn/getting-started/)运行 `npm run dev`。当前通过仓库中的 React / Next.js starter 接入，不是 npm 安装。把下面的 `garden.json` 和 `data.ts` 放入 `apps/starter/src/`，替换原有数据模块；现有 `App.tsx` 会导入它导出的 `dataset`。
+
+## 2. 整理变量与关系
+
+源 ID 表示稳定身份，标签负责显示。关系使用独立表格和独立 ID。以下数据有三个变量，以及一个平衡反馈回路。
+
+<ExampleSource name="garden.json" />
+
+| 外部字段 | Library 字段 | 规则 |
+| --- | --- | --- |
+| `variables[].id` | 节点 `id` | 稳定身份，不用标签或数组下标代替 |
+| `variables[].label` | 节点 `label` | 可读的变量或事件名称 |
+| `relationships[].id` | 连线 `id` | 每条关系的独立 ID |
+| `from`、`to` | `source`、`target` | 从原因指向结果 |
+| `sign` | `polarity` | `+` → `positive`；`-` → `negative`；空或省略 → 未知 |
+| `statement`、`person` | `evidence[].text`、`.contributor` | 保留陈述与提出者 |
+
+正负极性表示影响方向，不表示好坏或统计确定性。未知极性保持未知。CSV 数据可以在解析后使用同样的转换规则；不要直接按逗号分割，因为带引号的字段也可能包含逗号。
+
+## 3. 先解析，再转换和校验
+
+<ExampleSource name="data.ts" />
+
+`importGarden(input: unknown)` 先检查外部字段类型，再生成标准数据，最后调用 `validateDataset`。不要把任意 JSON 直接断言为 `CausalDataset`：TypeScript 不会在运行时检查网络数据。
+
+示例使用 `node:` 与 `edge:` 前缀，避免节点和连线共享 ID。Cytoscape 使用统一的元素 ID 空间，而当前校验器分别检查节点和连线内部重复，不能发现跨类型的 ID 冲突。
+
+`validateDataset` 检查已经符合类型结构的数据中的引用与身份问题。它不是 JSON schema 校验器，也不要求快照数组非空；React workspace 至少需要一个快照。示例 importer 额外要求至少一个变量，以便展示。
+
+网络数据也经过同一个 importer：
+
+```ts
+const response = await fetch("/garden.json");
+if (!response.ok) throw new Error(`Data request failed: ${response.status}`);
+const dataset = importGarden(await response.json());
+```
+
+加载完成前显示加载状态；解析或校验失败时显示错误，不挂载图，也不静默丢弃有问题的连线。
+
+## 4. 显示图
+
+Starter 已处理浏览器端加载与样式导入，最小组件如下：
+
+```tsx
+"use client";
+import { CausalWorkspace } from "@cytocausal/react";
+import { dataset } from "../data.ts";
+
+export function App() {
+  return <CausalWorkspace dataset={dataset} title="Garden model" />;
+}
+```
+
+在应用入口导入一次 `@cytocausal/react/styles.css`。脱离 starter 时，要为图提供明确高度，并在浏览器中加载；Next.js 的 `"use client"` 不等于禁止服务端预渲染，详见 [React 生命周期](/zh-cn/react-lifecycle/)。运行时更换整个数据集时，用标识本次加载的 `key` 重新挂载 workspace，让初始版本与选择状态重置。
+
+## 5. 查看证据
+
+点击节点，再点击详情里的连线，查看导入的陈述与贡献者。可以只有贡献者而没有引文，也可以只有引文而不知道贡献者，不应为了补全字段而编造信息。
+
+两名贡献者的图可以使用 `ContributorFilter` 查看各自内容。按贡献者过滤时，无署名连线会被排除。支持度统计独立贡献者，不是置信度，也不是证据条数。参见[证据与贡献者](/zh-cn/provenance/)。
+
+## 6. 添加修订版本
+
+`data.ts` 还导出了 `versionedDataset`：保留初稿，生成修订快照，用 `correspondences` 记录改名后的 ID。把 `dataset={dataset}` 换为 `dataset={versionedDataset}` 即可切换版本，或运行[版本比较示例](/zh-cn/example-versions/)。
+
+快照数组顺序就是版本顺序。身份不变时保留 ID。一旦某对版本有显式 correspondence，它就替代该版本对的按 ID 匹配，因此未变化的节点也必须包含在映射中。多个源节点映射到一个目标表示合并，反向读取会得到拆分。不要根据标签相似度猜测身份。
+
+## 7. 检查结果
+
+```ts
+import { findFeedbackLoops, getSnapshot, validateDataset } from "@cytocausal/core";
+const issues = validateDataset(versionedDataset); // []
+const result = findFeedbackLoops(getSnapshot(versionedDataset, "draft"), {
+  maxLength: 4, limit: 20,
+});
+// 一个平衡回路；在这张小图上 result.complete 为 true。
+```
+
+检查连线方向、证据归属以及跨版本对应关系。大图应限制搜索长度与数量，并显示 `complete: false` 的状态；分析可能产生很高的计算开销。
+
+## 常见问题
+
+| 表现 | 检查 |
+| --- | --- |
+| 元素消失 | 重复 ID，包括节点与连线之间的 ID 冲突 |
+| 提示缺失节点 | 空白字符、前缀不一致、关系端点没有导入 |
+| 修订后所有节点都显示新增 | ID 改变后缺少完整对应表 |
+| 回路类型为 `unknown` | 至少一条边没有极性 |
+| 图为空白或高度为零 | 容器高度、浏览器端加载和样式导入 |
+| 按贡献者过滤后没有内容 | 证据需要署名到连线，而不只是端点 |
+
+下一步：[组合界面](/zh-cn/example-compose/)、[Core API](/zh-cn/api-core/)或[主题与样式](/zh-cn/theming/)。a:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$3","c",{"children":[["$","div",null,{"className":"x:mx-auto x:flex x:max-w-(--nextra-content-width)","children":["$","$Lf",null,{"value":[{"value":"1. 先运行 Starter","id":"1-先运行-starter","depth":2},{"value":"2. 整理变量与关系","id":"2-整理变量与关系","depth":2},{"value":"3. 先解析，再转换和校验","id":"3-先解析再转换和校验","depth":2},{"value":"4. 显示图","id":"4-显示图","depth":2},{"value":"5. 查看证据","id":"5-查看证据","depth":2},{"value":"6. 添加修订版本","id":"6-添加修订版本","depth":2},{"value":"7. 检查结果","id":"7-检查结果","depth":2},{"value":"常见问题","id":"常见问题","depth":2}],"children":[["$","$L10",null,{}],["$","$L11",null,{"metadata":{"title":"接入自己的数据","filePath":"src/content/zh-cn/import-data.mdx"},"sourceCode":"$12","children":["$L13","$L14"]}]]}]}],null,"$L15"]}],"p":"$@16","v":null,"s":"$9"}}]]
+2:[["children",{"s":{"n":"mdxPath","t":"oc","k":"import-data","s":[]},"h":65600,"d":{"r":["$","$3","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}]}]]}],"p":"$@7","v":"$8","s":"$9"},"c":"$Qa"}]]
+1:[["children",{"s":{"n":"lang","t":"d","k":"zh-cn","s":[]},"h":196656,"c":"$Q2"}]]
+0:{"t":{"t":{"s":"","h":131152,"c":"$Q1"},"h":{"r":["$","$3","h",{"children":[null,["$","$L18",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L1a",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$1b",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"接入自己的数据 | cytocausal"}],["$","link","1",{"rel":"icon","href":"/cytocausal/icon.svg?icon.3c77pwa7_7hzo.svg","sizes":"any","type":"image/svg+xml"}],["$","$L1c","2",{}]]}]}],null]}],null]}],"p":"$@1d","v":null,"s":"$9"}},"a":"$@1e","u":"$@1f","b":"PNV-lKU2O2aN7EBl7fUyT"}
+20:I[22016,["$b","$c","$d","$e"],""]
+21:I[63894,["$b","$c","$d","$e"],"HeadingAnchor"]
+3c:I[97367,["$4"],"OutletBoundary"]
+13:["$","div",null,{"id":"nextra-skip-nav"}]
+14:["$","main",null,{"data-pagefind-body":true,"children":[["$","h1",null,{"className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-bold x:mt-2 x:text-4xl","children":["接入自己的数据","$undefined"]}],"\n","\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["本教程从外部 JSON 表格开始，完成解析、转换、校验、显示、证据追溯和版本比较。完整代码与",["$","$L20",null,{"href":"/zh-cn/example-workspace/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"工作区示例"}],"共用，数据是虚构的花园模型。"]}],"\n",["$","h2",null,{"id":"1-先运行-starter","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["1. 先运行 Starter",["$","$L21",null,{"id":"1-先运行-starter"}]]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["按照",["$","$L20",null,{"href":"/zh-cn/getting-started/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"快速开始"}],"运行 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"npm run dev"}],"。当前通过仓库中的 React / Next.js starter 接入，不是 npm 安装。把下面的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"garden.json"}]," 和 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"data.ts"}]," 放入 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"apps/starter/src/"}],"，替换原有数据模块；现有 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"App.tsx"}]," 会导入它导出的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"dataset"}],"。"]}],"\n",["$","h2",null,{"id":"2-整理变量与关系","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["2. 整理变量与关系",["$","$L21",null,{"id":"2-整理变量与关系"}]]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"源 ID 表示稳定身份，标签负责显示。关系使用独立表格和独立 ID。以下数据有三个变量，以及一个平衡反馈回路。"}],"\n",["$","details",null,{"className":"example-source","children":[["$","summary",null,{"children":"garden.json"}],["$","pre",null,{"children":["$","code",null,{"children":"{\n  \"variables\": [\n    {\n      \"id\": \"moisture\",\n      \"label\": \"Soil moisture\"\n    },\n    {\n      \"id\": \"growth\",\n      \"label\": \"Plant growth\"\n    },\n    {\n      \"id\": \"use\",\n      \"label\": \"Water use\"\n    }\n  ],\n  \"relationships\": [\n    {\n      \"id\": \"moisture-growth\",\n      \"from\": \"moisture\",\n      \"to\": \"growth\",\n      \"sign\": \"+\",\n      \"statement\": \"In this fictional model, moist soil supports growth.\",\n      \"person\": \"gardener\"\n    },\n    {\n      \"id\": \"growth-use\",\n      \"from\": \"growth\",\n      \"to\": \"use\",\n      \"sign\": \"+\",\n      \"statement\": \"Larger plants use more water.\",\n      \"person\": \"gardener\"\n    },\n    {\n      \"id\": \"use-moisture\",\n      \"from\": \"use\",\n      \"to\": \"moisture\",\n      \"sign\": \"-\",\n      \"statement\": \"Water use reduces soil moisture.\",\n      \"person\": \"reviewer\"\n    }\n  ]\n}\n"}]}]]}],"\n",["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"children":"外部字段","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"children":"Library 字段","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"children":"规则","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],"$L22"]}],"\n","$L23","\n","$L24","\n","$L25","\n","$L26","\n","$L27","\n","$L28","\n","$L29","\n","$L2a","\n","$L2b","\n","$L2c","\n","$L2d","\n","$L2e","\n","$L2f","\n","$L30","\n","$L31","\n","$L32","\n","$L33","\n","$L34","\n","$L35","\n","$L36","\n","$L37","\n","$L38","\n","$L39","\n","$L3a","\n","$L3b"]}]
+15:["$","$L3c",null,{"children":["$","$1b",null,{"name":"Next.MetadataOutlet","children":"$@3d"}]}]
+1f:true
+41:"ToggleWordWrapButton"
+42:I[83987,["$b","$c","$d","$e"],"$41"]
+43:I[40493,["$b","$c","$d","$e"],"CopyToClipboard"]
+9:300
+22:["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"variables[].id"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":["节点 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"id"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"稳定身份，不用标签或数组下标代替","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"variables[].label"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":["节点 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"label"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"可读的变量或事件名称","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"relationships[].id"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":["连线 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"id"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"每条关系的独立 ID","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"from"}],"、",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"to"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"source"}],"、",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"target"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"从原因指向结果","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"sign"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"polarity"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"+"}]," → ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"positive"}],"；",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"-"}]," → ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"negative"}],"；空或省略 → 未知"],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"statement"}],"、",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"person"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"evidence[].text"}],"、","$L3e"],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],"$L3f"],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]]}]
+23:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"正负极性表示影响方向，不表示好坏或统计确定性。未知极性保持未知。CSV 数据可以在解析后使用同样的转换规则；不要直接按逗号分割，因为带引号的字段也可能包含逗号。"}]
+24:["$","h2",null,{"id":"3-先解析再转换和校验","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["3. 先解析，再转换和校验",["$","$L21",null,{"id":"3-先解析再转换和校验"}]]}]
+40:Tb65,import { validateDataset, type CausalDataset, type CausalEdge } from "@cytocausal/core";
+import raw from "./garden.json" with { type: "json" };
+
+function record(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Expected an object");
+  }
+  return value as Record<string, unknown>;
+}
+function text(value: unknown, field: string): string {
+  if (typeof value !== "string" || !value.trim()) throw new Error(`Invalid ${field}`);
+  return value.trim();
+}
+
+/** Parse the external format before asking the library to validate graph structure. */
+export function importGarden(input: unknown): CausalDataset {
+  const source = record(input);
+  if (!Array.isArray(source.variables) || !Array.isArray(source.relationships)) {
+    throw new Error("Expected variables and relationships arrays");
+  }
+  const nodes = source.variables.map((value) => {
+    const row = record(value);
+    return { id: `node:${text(row.id, "variable id")}`, label: text(row.label, "label") };
+  });
+  if (!nodes.length) throw new Error("Add at least one variable to this example");
+  const edges: CausalEdge[] = source.relationships.map((value) => {
+    const row = record(value);
+    if (row.sign != null && row.sign !== "+" && row.sign !== "-") {
+      throw new Error("sign must be +, -, or null/omitted when unknown");
+    }
+    return {
+      id: `edge:${text(row.id, "relationship id")}`,
+      source: `node:${text(row.from, "from")}`,
+      target: `node:${text(row.to, "to")}`,
+      polarity: row.sign === "+" ? "positive" : row.sign === "-" ? "negative" : undefined,
+      evidence: row.statement != null || row.person != null ? [{
+        text: row.statement == null ? undefined : text(row.statement, "statement"),
+        contributor: row.person == null ? undefined : text(row.person, "person"),
+      }] : undefined,
+    };
+  });
+  const dataset: CausalDataset = { id: "garden", snapshots: [{ id: "draft", nodes, edges }] };
+  const issues = validateDataset(dataset);
+  if (issues.length) throw new Error(issues.join("\n"));
+  return dataset;
+}
+
+export const dataset = importGarden(raw);
+
+// A review renames one concept and gives it a new source-system id.
+const draft = dataset.snapshots[0];
+const renamed = (id: string) => id === "node:growth" ? "node:plant-growth" : id;
+export const versionedDataset: CausalDataset = {
+  ...dataset,
+  snapshots: [draft, {
+    id: "reviewed",
+    nodes: draft.nodes.map((node) => node.id === "node:growth"
+      ? { ...node, id: renamed(node.id), label: "Rate of plant growth" } : node),
+    edges: draft.edges.map((edge) => ({ ...edge, source: renamed(edge.source), target: renamed(edge.target) })),
+  }],
+  correspondences: [{
+    from: "draft", to: "reviewed",
+    // When an explicit map exists, include unchanged nodes too.
+    nodes: Object.fromEntries(draft.nodes.map(({ id }) => [id, renamed(id)])),
+  }],
+};
+25:["$","details",null,{"className":"example-source","children":[["$","summary",null,{"children":"data.ts"}],["$","pre",null,{"children":["$","code",null,{"children":"$40"}]}]]}]
+26:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"importGarden(input: unknown)"}]," 先检查外部字段类型，再生成标准数据，最后调用 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"validateDataset"}],"。不要把任意 JSON 直接断言为 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"CausalDataset"}],"：TypeScript 不会在运行时检查网络数据。"]}]
+27:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["示例使用 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"node:"}]," 与 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"edge:"}]," 前缀，避免节点和连线共享 ID。Cytoscape 使用统一的元素 ID 空间，而当前校验器分别检查节点和连线内部重复，不能发现跨类型的 ID 冲突。"]}]
+28:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"validateDataset"}]," 检查已经符合类型结构的数据中的引用与身份问题。它不是 JSON schema 校验器，也不要求快照数组非空；React workspace 至少需要一个快照。示例 importer 额外要求至少一个变量，以便展示。"]}]
+29:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"网络数据也经过同一个 importer："}]
+2a:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L42",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L43",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" response"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" await"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" fetch"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"("}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"/garden.json\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":");"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"if"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" ("}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"!"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"response.ok) "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"throw"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" new"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" Error"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"("}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"`Data request failed: ${"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"response"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"."}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"status"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"}`"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":");"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" dataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" importGarden"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"("}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"await"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" response."}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"json"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"());"}]]}]]}]]}]]}]
+2b:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"加载完成前显示加载状态；解析或校验失败时显示错误，不挂载图，也不静默丢弃有问题的连线。"}]
+2c:["$","h2",null,{"id":"4-显示图","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["4. 显示图",["$","$L21",null,{"id":"4-显示图"}]]}]
+2d:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Starter 已处理浏览器端加载与样式导入，最小组件如下："}]
+2e:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L42",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L43",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"use client\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { CausalWorkspace } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/react\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { dataset } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"../data.ts\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":" "}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"export"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" function"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" App"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"() {"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"  return"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" <"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"CausalWorkspace"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" dataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{dataset} "}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"title"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"Garden model\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" />;"}]]}],"\n",["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"}"}]}]]}]]}]]}]
+2f:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["在应用入口导入一次 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"@cytocausal/react/styles.css"}],"。脱离 starter 时，要为图提供明确高度，并在浏览器中加载；Next.js 的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"\"use client\""}]," 不等于禁止服务端预渲染，详见 ",["$","$L20",null,{"href":"/zh-cn/react-lifecycle/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"React 生命周期"}],"。运行时更换整个数据集时，用标识本次加载的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"key"}]," 重新挂载 workspace，让初始版本与选择状态重置。"]}]
+30:["$","h2",null,{"id":"5-查看证据","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["5. 查看证据",["$","$L21",null,{"id":"5-查看证据"}]]}]
+31:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"点击节点，再点击详情里的连线，查看导入的陈述与贡献者。可以只有贡献者而没有引文，也可以只有引文而不知道贡献者，不应为了补全字段而编造信息。"}]
+32:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["两名贡献者的图可以使用 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"ContributorFilter"}]," 查看各自内容。按贡献者过滤时，无署名连线会被排除。支持度统计独立贡献者，不是置信度，也不是证据条数。参见",["$","$L20",null,{"href":"/zh-cn/provenance/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"证据与贡献者"}],"。"]}]
+33:["$","h2",null,{"id":"6-添加修订版本","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["6. 添加修订版本",["$","$L21",null,{"id":"6-添加修订版本"}]]}]
+34:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"data.ts"}]," 还导出了 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"versionedDataset"}],"：保留初稿，生成修订快照，用 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"correspondences"}]," 记录改名后的 ID。把 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"dataset={dataset}"}]," 换为 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"dataset={versionedDataset}"}]," 即可切换版本，或运行",["$","$L20",null,{"href":"/zh-cn/example-versions/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"版本比较示例"}],"。"]}]
+35:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"快照数组顺序就是版本顺序。身份不变时保留 ID。一旦某对版本有显式 correspondence，它就替代该版本对的按 ID 匹配，因此未变化的节点也必须包含在映射中。多个源节点映射到一个目标表示合并，反向读取会得到拆分。不要根据标签相似度猜测身份。"}]
+36:["$","h2",null,{"id":"7-检查结果","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["7. 检查结果",["$","$L21",null,{"id":"7-检查结果"}]]}]
+37:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L42",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L43",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { findFeedbackLoops, getSnapshot, validateDataset } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/core\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" issues"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" validateDataset"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"(versionedDataset); "}],["$","span",null,{"style":{"--shiki-light":"#6A737D","--shiki-dark":"#6A737D"},"children":"// []"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" result"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" findFeedbackLoops"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"("}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"getSnapshot"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"(versionedDataset, "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"draft\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"), {"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"  maxLength: "}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"4"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", limit: "}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"20"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":","}]]}],"\n",["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"});"}]}],"\n",["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#6A737D","--shiki-dark":"#6A737D"},"children":"// 一个平衡回路；在这张小图上 result.complete 为 true。"}]}]]}]]}]]}]
+38:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["检查连线方向、证据归属以及跨版本对应关系。大图应限制搜索长度与数量，并显示 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"complete: false"}]," 的状态；分析可能产生很高的计算开销。"]}]
+39:["$","h2",null,{"id":"常见问题","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["常见问题",["$","$L21",null,{"id":"常见问题"}]]}]
+3a:["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"children":"表现","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"children":"检查","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"children":"元素消失","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"重复 ID，包括节点与连线之间的 ID 冲突","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":"提示缺失节点","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"空白字符、前缀不一致、关系端点没有导入","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":"修订后所有节点都显示新增","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"ID 改变后缺少完整对应表","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":["回路类型为 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"unknown"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"至少一条边没有极性","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":"图为空白或高度为零","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"容器高度、浏览器端加载和样式导入","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":"按贡献者过滤后没有内容","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"证据需要署名到连线，而不只是端点","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]]}]]}]
+3b:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["下一步：",["$","$L20",null,{"href":"/zh-cn/example-compose/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"组合界面"}],"、",["$","$L20",null,{"href":"/zh-cn/api-core/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Core API"}],"或",["$","$L20",null,{"href":"/zh-cn/theming/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"主题与样式"}],"。"]}]
+3d:null
+9:C
+3e:["$","code",null,{"className":"nextra-code","dir":"ltr","children":".contributor"}]
+3f:["$","td",null,{"children":"保留陈述与提出者","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]
+1e:0
+7:"$undefined"
+1d:"$undefined"
+16:"$undefined"

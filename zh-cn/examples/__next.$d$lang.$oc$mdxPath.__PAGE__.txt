@@ -1,0 +1,38 @@
+3:"$Sreact.fragment"
+4:"/cytocausal/_next/static/chunks/3qfy96eoyh-ek.js"
+5:I[39756,["$4"],"default"]
+6:I[37457,["$4"],"default"]
+b:"/cytocausal/_next/static/chunks/0ukdujkmkvhm8.js"
+c:"/cytocausal/_next/static/chunks/0bau-wvwyshok.js"
+d:"/cytocausal/_next/static/chunks/093v92pv8bfl4.js"
+e:"/cytocausal/_next/static/chunks/0z-c01io_5ink.js"
+f:I[55169,["$b","$c","$d","$e"],"TOCProvider"]
+10:I[769,["$b","$c","$d","$e"],"Sidebar"]
+11:I[47486,["$b","$c","$d","$e"],"ClientWrapper"]
+12:I[22016,["$b","$c","$d","$e"],""]
+18:"ViewportBoundary"
+19:I[97367,["$4"],"$18"]
+1a:"MetadataBoundary"
+1b:I[97367,["$4"],"$1a"]
+1c:"$Sreact.suspense"
+1d:I[27201,["$4"],"IconMark"]
+8:X
+8:C
+9:X
+a:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$3","c",{"children":[["$","div",null,{"className":"x:mx-auto x:flex x:max-w-(--nextra-content-width)","children":["$","$Lf",null,{"value":[],"children":[["$","$L10",null,{}],["$","$L11",null,{"metadata":{"title":"独立示例","filePath":"src/content/zh-cn/examples.md","timestamp":1794357990000},"sourceCode":"---\ntitle: \"独立示例\"\n---\n\n# 独立示例\n\n每个示例只演示一项任务，包含可操作界面、完整组件源码和同一份虚构花园数据。示例标签为英文，数据不来自研究参与者。\n\n| 任务 | 示例 |\n| --- | --- |\n| 用数据启动完整界面 | [Workspace](/zh-cn/example-workspace/) |\n| 自行组合图与侧栏 | [Composition](/zh-cn/example-compose/) |\n| 比较节点改名后的版本 | [Versions](/zh-cn/example-versions/) |\n| 直接调用路径和回路 API | [Analysis](/zh-cn/example-analysis/) |\n\n这些源码位于 `apps/docs/src/components/examples/`，直接被站点编译，而不是伪代码。当前 package 仍是工作区包：运行仓库中的 `npm run dev:docs`，或把示例及 `data.ts`、`garden.json` 复制到 starter 中使用。无需额外安装示例依赖。\n\n[Showcase](/zh-cn/showcase/) · [API](/zh-cn/api-react/)","children":[["$","div",null,{"id":"nextra-skip-nav"}],["$","main",null,{"data-pagefind-body":true,"children":[["$","h1",null,{"className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-bold x:mt-2 x:text-4xl","children":["独立示例","$undefined"]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"每个示例只演示一项任务，包含可操作界面、完整组件源码和同一份虚构花园数据。示例标签为英文，数据不来自研究参与者。"}],"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"children":"任务","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"children":"示例","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"children":"用数据启动完整界面","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":["$","$L12",null,{"href":"/zh-cn/example-workspace/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Workspace"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":"自行组合图与侧栏","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":["$","$L12",null,{"href":"/zh-cn/example-compose/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Composition"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":"比较节点改名后的版本","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":["$","$L12",null,{"href":"/zh-cn/example-versions/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Versions"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],"$L13"]}]]}],"\n","$L14","\n","$L15"]}]]}]]}]}],null,"$L16"]}],"p":"$@17","v":null,"s":"$9"}}]]
+2:[["children",{"s":{"n":"mdxPath","t":"oc","k":"examples","s":[]},"h":65600,"d":{"r":["$","$3","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}]}]]}],"p":"$@7","v":"$8","s":"$9"},"c":"$Qa"}]]
+1:[["children",{"s":{"n":"lang","t":"d","k":"zh-cn","s":[]},"h":196656,"c":"$Q2"}]]
+0:{"t":{"t":{"s":"","h":131152,"c":"$Q1"},"h":{"r":["$","$3","h",{"children":[null,["$","$L19",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L1b",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$1c",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"独立示例 | cytocausal"}],["$","link","1",{"rel":"icon","href":"/cytocausal/icon.svg?icon.3c77pwa7_7hzo.svg","sizes":"any","type":"image/svg+xml"}],["$","$L1d","2",{}]]}]}],null]}],null]}],"p":"$@1e","v":null,"s":"$9"}},"a":"$@1f","u":"$@20","b":"PNV-lKU2O2aN7EBl7fUyT"}
+21:I[97367,["$4"],"OutletBoundary"]
+13:["$","tr",null,{"children":[["$","td",null,{"children":"直接调用路径和回路 API","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":["$","$L12",null,{"href":"/zh-cn/example-analysis/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Analysis"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+14:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["这些源码位于 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"apps/docs/src/components/examples/"}],"，直接被站点编译，而不是伪代码。当前 package 仍是工作区包：运行仓库中的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"npm run dev:docs"}],"，或把示例及 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"data.ts"}],"、",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"garden.json"}]," 复制到 starter 中使用。无需额外安装示例依赖。"]}]
+15:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","$L12",null,{"href":"/zh-cn/showcase/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Showcase"}]," · ",["$","$L12",null,{"href":"/zh-cn/api-react/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"API"}]]}]
+16:["$","$L21",null,{"children":["$","$1c",null,{"name":"Next.MetadataOutlet","children":"$@22"}]}]
+20:true
+9:300
+22:null
+9:C
+1f:0
+7:"$undefined"
+1e:"$undefined"
+17:"$undefined"

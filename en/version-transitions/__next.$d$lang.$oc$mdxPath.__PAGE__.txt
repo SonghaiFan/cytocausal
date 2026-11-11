@@ -1,0 +1,147 @@
+3:"$Sreact.fragment"
+4:"/cytocausal/_next/static/chunks/3qfy96eoyh-ek.js"
+5:I[39756,["$4"],"default"]
+6:I[37457,["$4"],"default"]
+b:"/cytocausal/_next/static/chunks/0ukdujkmkvhm8.js"
+c:"/cytocausal/_next/static/chunks/0bau-wvwyshok.js"
+d:"/cytocausal/_next/static/chunks/093v92pv8bfl4.js"
+e:"/cytocausal/_next/static/chunks/0z-c01io_5ink.js"
+f:I[55169,["$b","$c","$d","$e"],"TOCProvider"]
+10:I[769,["$b","$c","$d","$e"],"Sidebar"]
+11:I[47486,["$b","$c","$d","$e"],"ClientWrapper"]
+17:"ViewportBoundary"
+18:I[97367,["$4"],"$17"]
+19:"MetadataBoundary"
+1a:I[97367,["$4"],"$19"]
+1b:"$Sreact.suspense"
+1c:I[27201,["$4"],"IconMark"]
+8:X
+8:C
+9:X
+12:Td26,---
+title: "Version transitions"
+---
+
+# Version transitions
+
+Switching between versions should show what changed. Rebuilding the graph can't do that, because nothing on screen carries over. `GraphView` with `animateSnapshots` keeps one graph and transforms it:
+
+```tsx
+"use client";
+import type { CausalDataset } from "@cytocausal/core";
+import { fcoseLayout, type Positions } from "@cytocausal/cytoscape";
+import { GraphView } from "@cytocausal/react";
+import type { Stylesheet } from "cytoscape";
+import { useRef, useState } from "react";
+
+const stylesheet: Stylesheet[] = [{ selector: "node", style: { label: "data(label)" } }];
+
+export function VersionSwitcher({ dataset }: { dataset: CausalDataset }) {
+  const [version, setVersion] = useState("V1");
+  const positionCache = useRef<Record<string, Positions>>({});
+  return (
+    <>
+      <button onClick={() => setVersion(version === "V1" ? "final" : "V1")}>Switch</button>
+      <GraphView
+        dataset={dataset}
+        snapshotId={version}
+        layout={fcoseLayout}
+        stylesheet={stylesheet}
+        positionCache={positionCache}
+        animateSnapshots
+      />
+    </>
+  );
+}
+```
+
+| Node | What happens |
+| :--- | :--- |
+| Has a counterpart | Moves from its old position to its new one |
+| Merged from several | Starts at the centre of its sources |
+| New in this version | Fades in at its target position |
+| Gone from this version | Fades out, then is removed |
+
+Edges cross-fade, because old and new links rarely line up.
+
+## Known and unknown targets
+
+When a version's positions are cached, `transitionToSnapshot` animates straight to them, so switching back and forth never drifts. When they aren't, it pins nodes that have counterparts and lets fcose place the rest. The result is then cached, so later switches are exact.
+
+## Interrupted transitions
+
+Users click faster than animations run, and every problem we hit came from a transition being interrupted. All three of these are handled in `transitionToSnapshot`, and they apply to any Cytoscape animation code.
+
+### Stopping a layout fires layoutstop
+
+`layout.stop()` fires `layoutstop` straight away, with nodes still in mid-flight. If that listener saves positions, it saves wrong ones. A transition marks itself as the current one before stopping the previous one, and a listener only runs if its transition is still current.
+
+### Interrupted animations never complete
+
+An animation's `complete` callback doesn't run after `stop()`. Cleanup placed there is skipped, which leaves stray elements on the graph. Use a timer that checks the transition is still current.
+
+### The animation pool tracks elements by id
+
+Removing an element and adding a new one with the same id strands the new element's animations. Cytoscape's pool still holds the removed element, so it treats the new one as already registered and never runs its animations. The element stays flagged as animating forever.
+
+The fix is to not remove leftovers when interrupted. They stay in the graph for the next transition to reuse or fade out.
+
+## Test the interruptions
+
+Each of these bugs looked correct on screen, or only appeared with rapid clicking. Test what you can't see: after rapid switching, check that nothing is still animating, nothing is half-faded, and positions match the first visit. `apps/perspectiva/e2e/graph.spec.ts` does this for every dataset.a:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$3","c",{"children":[["$","div",null,{"className":"x:mx-auto x:flex x:max-w-(--nextra-content-width)","children":["$","$Lf",null,{"value":[{"value":"Known and unknown targets","id":"known-and-unknown-targets","depth":2},{"value":"Interrupted transitions","id":"interrupted-transitions","depth":2},{"value":"Stopping a layout fires layoutstop","id":"stopping-a-layout-fires-layoutstop","depth":3},{"value":"Interrupted animations never complete","id":"interrupted-animations-never-complete","depth":3},{"value":"The animation pool tracks elements by id","id":"the-animation-pool-tracks-elements-by-id","depth":3},{"value":"Test the interruptions","id":"test-the-interruptions","depth":2}],"children":[["$","$L10",null,{}],["$","$L11",null,{"metadata":{"title":"Version transitions","filePath":"src/content/en/version-transitions.md","timestamp":1794275671000},"sourceCode":"$12","children":["$L13","$L14"]}]]}]}],null,"$L15"]}],"p":"$@16","v":null,"s":"$9"}}]]
+2:[["children",{"s":{"n":"mdxPath","t":"oc","k":"version-transitions","s":[]},"h":65600,"d":{"r":["$","$3","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}]}]]}],"p":"$@7","v":"$8","s":"$9"},"c":"$Qa"}]]
+1:[["children",{"s":{"n":"lang","t":"d","k":"en","s":[]},"h":196656,"c":"$Q2"}]]
+0:{"t":{"t":{"s":"","h":131152,"c":"$Q1"},"h":{"r":["$","$3","h",{"children":[null,["$","$L18",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L1a",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$1b",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Version transitions | cytocausal"}],["$","link","1",{"rel":"icon","href":"/cytocausal/icon.svg?icon.3c77pwa7_7hzo.svg","sizes":"any","type":"image/svg+xml"}],["$","$L1c","2",{}]]}]}],null]}],null]}],"p":"$@1d","v":null,"s":"$9"}},"a":"$@1e","u":"$@1f","b":"PNV-lKU2O2aN7EBl7fUyT"}
+20:"ToggleWordWrapButton"
+21:I[83987,["$b","$c","$d","$e"],"$20"]
+22:I[40493,["$b","$c","$d","$e"],"CopyToClipboard"]
+48:I[97367,["$4"],"OutletBoundary"]
+13:["$","div",null,{"id":"nextra-skip-nav"}]
+14:["$","main",null,{"data-pagefind-body":true,"children":[["$","h1",null,{"className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-bold x:mt-2 x:text-4xl","children":["Version transitions","$undefined"]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Switching between versions should show what changed. Rebuilding the graph can’t do that, because nothing on screen carries over. ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"GraphView"}]," with ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"animateSnapshots"}]," keeps one graph and transforms it:"]}],"\n",["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L21",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L22",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"use client\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" type"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { CausalDataset } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/core\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { fcoseLayout, "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"type"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" Positions } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/cytoscape\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { GraphView } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/react\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" type"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { Stylesheet } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"cytoscape\""}],"$L23"]}],"\n","$L24","\n","$L25","\n","$L26","\n","$L27","\n","$L28","\n","$L29","\n","$L2a","\n","$L2b","\n","$L2c","\n","$L2d","\n","$L2e","\n","$L2f","\n","$L30","\n","$L31","\n","$L32","\n","$L33","\n","$L34","\n","$L35","\n","$L36","\n","$L37","\n","$L38"]}]]}]]}],"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n","$L39","\n","$L3a","\n","$L3b","\n","$L3c","\n","$L3d","\n","$L3e","\n","$L3f","\n","$L40","\n","$L41","\n","$L42","\n","$L43","\n","$L44","\n","$L45","\n","$L46","\n","$L47"]}]
+15:["$","$L48",null,{"children":["$","$1b",null,{"name":"Next.MetadataOutlet","children":"$@49"}]}]
+1f:true
+4a:I[63894,["$b","$c","$d","$e"],"HeadingAnchor"]
+9:300
+23:["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]
+24:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { useRef, useState } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"react\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}]
+25:["$","span",null,{"children":" "}]
+26:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" stylesheet"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":":"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" Stylesheet"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"[] "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" [{ selector: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"node\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", style: { label: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"data(label)\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" } }];"}]]}]
+27:["$","span",null,{"children":" "}]
+28:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"export"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" function"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" VersionSwitcher"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"({ "}],["$","span",null,{"style":{"--shiki-light":"#E36209","--shiki-dark":"#FFAB70"},"children":"dataset"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" }"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":":"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { "}],["$","span",null,{"style":{"--shiki-light":"#E36209","--shiki-dark":"#FFAB70"},"children":"dataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":":"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" CausalDataset"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" }) {"}]]}]
+29:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"  const"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" ["}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"version"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", "}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"setVersion"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"] "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" useState"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"("}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"V1\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":");"}]]}]
+2a:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"  const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" positionCache"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" useRef"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"<"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"Record"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"<"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"string"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", "}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"Positions"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":">>({});"}]]}]
+2b:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"  return"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" ("}]]}]
+2c:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"    <>"}]}]
+2d:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"      <"}],["$","span",null,{"style":{"--shiki-light":"#22863A","--shiki-dark":"#85E89D"},"children":"button"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" onClick"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{() "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"=>"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" setVersion"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"(version "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"==="}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"V1\""}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ?"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"final\""}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" :"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"V1\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":")}>Switch</"}],["$","span",null,{"style":{"--shiki-light":"#22863A","--shiki-dark":"#85E89D"},"children":"button"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":">"}]]}]
+2e:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"      <"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"GraphView"}]]}]
+2f:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"        dataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{dataset}"}]]}]
+30:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"        snapshotId"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{version}"}]]}]
+31:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"        layout"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{fcoseLayout}"}]]}]
+32:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"        stylesheet"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{stylesheet}"}]]}]
+33:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"        positionCache"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{positionCache}"}]]}]
+34:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"        animateSnapshots"}]}]
+35:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"      />"}]}]
+36:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"    </>"}]}]
+37:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"  );"}]}]
+38:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"}"}]}]
+39:["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"style":{"textAlign":"left"},"children":"Node","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"style":{"textAlign":"left"},"children":"What happens","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Has a counterpart","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"Moves from its old position to its new one","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Merged from several","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"Starts at the centre of its sources","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"New in this version","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"Fades in at its target position","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Gone from this version","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"Fades out, then is removed","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]]}]]}]
+3a:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Edges cross-fade, because old and new links rarely line up."}]
+3b:["$","h2",null,{"id":"known-and-unknown-targets","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["Known and unknown targets",["$","$L4a",null,{"id":"known-and-unknown-targets"}]]}]
+3c:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["When a version’s positions are cached, ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"transitionToSnapshot"}]," animates straight to them, so switching back and forth never drifts. When they aren’t, it pins nodes that have counterparts and lets fcose place the rest. The result is then cached, so later switches are exact."]}]
+3d:["$","h2",null,{"id":"interrupted-transitions","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["Interrupted transitions",["$","$L4a",null,{"id":"interrupted-transitions"}]]}]
+3e:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Users click faster than animations run, and every problem we hit came from a transition being interrupted. All three of these are handled in ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"transitionToSnapshot"}],", and they apply to any Cytoscape animation code."]}]
+3f:["$","h3",null,{"id":"stopping-a-layout-fires-layoutstop","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-8 x:text-2xl","children":["Stopping a layout fires layoutstop",["$","$L4a",null,{"id":"stopping-a-layout-fires-layoutstop"}]]}]
+40:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"layout.stop()"}]," fires ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"layoutstop"}]," straight away, with nodes still in mid-flight. If that listener saves positions, it saves wrong ones. A transition marks itself as the current one before stopping the previous one, and a listener only runs if its transition is still current."]}]
+41:["$","h3",null,{"id":"interrupted-animations-never-complete","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-8 x:text-2xl","children":["Interrupted animations never complete",["$","$L4a",null,{"id":"interrupted-animations-never-complete"}]]}]
+42:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["An animation’s ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"complete"}]," callback doesn’t run after ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"stop()"}],". Cleanup placed there is skipped, which leaves stray elements on the graph. Use a timer that checks the transition is still current."]}]
+43:["$","h3",null,{"id":"the-animation-pool-tracks-elements-by-id","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-8 x:text-2xl","children":["The animation pool tracks elements by id",["$","$L4a",null,{"id":"the-animation-pool-tracks-elements-by-id"}]]}]
+44:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Removing an element and adding a new one with the same id strands the new element’s animations. Cytoscape’s pool still holds the removed element, so it treats the new one as already registered and never runs its animations. The element stays flagged as animating forever."}]
+45:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"The fix is to not remove leftovers when interrupted. They stay in the graph for the next transition to reuse or fade out."}]
+46:["$","h2",null,{"id":"test-the-interruptions","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["Test the interruptions",["$","$L4a",null,{"id":"test-the-interruptions"}]]}]
+47:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Each of these bugs looked correct on screen, or only appeared with rapid clicking. Test what you can’t see: after rapid switching, check that nothing is still animating, nothing is half-faded, and positions match the first visit. ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"apps/perspectiva/e2e/graph.spec.ts"}]," does this for every dataset."]}]
+49:null
+9:C
+1e:0
+7:"$undefined"
+1d:"$undefined"
+16:"$undefined"

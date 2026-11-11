@@ -1,0 +1,145 @@
+3:"$Sreact.fragment"
+4:"/cytocausal/_next/static/chunks/3qfy96eoyh-ek.js"
+5:I[39756,["$4"],"default"]
+6:I[37457,["$4"],"default"]
+b:"/cytocausal/_next/static/chunks/0ukdujkmkvhm8.js"
+c:"/cytocausal/_next/static/chunks/0bau-wvwyshok.js"
+d:"/cytocausal/_next/static/chunks/093v92pv8bfl4.js"
+e:"/cytocausal/_next/static/chunks/0z-c01io_5ink.js"
+f:I[55169,["$b","$c","$d","$e"],"TOCProvider"]
+10:I[769,["$b","$c","$d","$e"],"Sidebar"]
+11:I[47486,["$b","$c","$d","$e"],"ClientWrapper"]
+2b:"ViewportBoundary"
+2c:I[97367,["$4"],"$2b"]
+2d:"MetadataBoundary"
+2e:I[97367,["$4"],"$2d"]
+2f:"$Sreact.suspense"
+30:I[27201,["$4"],"IconMark"]
+8:X
+8:C
+9:X
+12:Tfdb,---
+title: "案例：Causal Explorer"
+---
+
+import { OpenApp } from "../../components/OpenApp.tsx";
+
+# 案例：Causal Explorer
+
+<OpenApp app="explorer">打开应用</OpenApp>
+
+Causal Explorer 展示 ACCESS 基准中的因果图，内容是日常生活中的抽象事件。GLUCOSE 数据集中的泛化事件描述被聚类为抽象事件，再由标注者判断它们之间的因果连接。研究问题是事件在大规模下如何相互连接。
+
+![Causal Explorer 显示选中节点的原因和结果](/images/explorer-selection.png)
+
+| 项目 | 详情 |
+| :--- | :--- |
+| 数据 | 一个网络，一个快照 |
+| 规模 | 725 个节点和 1,494 条边 |
+| 连接 | 有向，不带极性 |
+| 证据 | 4,708 条泛化事件描述 |
+| 位置 | 为完整基准预先计算，另可在浏览器中计算力导向布局和中心性布局 |
+
+上面的数据描述的是完整基准。公开演示只显示其中最核心的 100 个事件，完整基准可[按需申请](https://github.com/isVy08/ACCESS)。
+
+## 需求
+
+- 按含义查找事件，而不只是按名称
+- 阅读节点背后的句子
+- 查看节点的原因和结果
+- 让密集的图保持可读
+
+## 原有问题
+
+原应用基于 Sigma，数据本身没有问题，问题出在探索方式上：
+
+- 搜索只匹配标签开头，而 725 个标签中有 716 个以 “a person” 开头。搜索 `sleep` 没有结果。
+- 句子显示在悬停卡片中，鼠标移开就消失。
+- 高亮不区分原因和结果。
+- 节点大小忽略了方向。
+- 每个节点都是独立的聚类，所以筛选器变成了 1,450 个无法分组的复选框。
+
+## 迁移到 Cytoscape
+
+迁移取决于一个问题：Cytoscape 能否绘制带标签的这张图？[基准测试](/zh-cn/scale-performance/)显示为 60 fps，所以两个演示可以共用一个引擎。
+
+更难的问题是保持标签可读，这需要碰撞处理。
+
+## 框架如何解决
+
+| 需求 | 机制 | 指南 |
+| :--- | :--- | :--- |
+| 有向节点大小 | `analyzeSnapshot` | [因果分析](/zh-cn/causal-analysis/) |
+| 反馈回路开关 | `feedbackGroups` | [因果分析](/zh-cn/causal-analysis/) |
+| 经过节点的短回路 | `findFeedbackLoops` | [因果分析](/zh-cn/causal-analysis/) |
+| 原因和结果 | `highlightCausalNeighbours` | [因果分析](/zh-cn/causal-analysis/) |
+| 快速首次渲染 | 已保存的位置 | [规模与性能](/zh-cn/scale-performance/) |
+| 可读的标签 | `readableLabels` | [规模与性能](/zh-cn/scale-performance/) |
+| 选择和悬停 | `useCausalGraph` | [交互](/zh-cn/interactions/) |
+| 搜索标签和描述 | `NodeSearch`、`focusNode` | [快速开始](/zh-cn/getting-started/) |
+
+## 结果
+
+现在搜索能找到标签和句子中任意位置的词。点击节点后，它的句子、原因和结果会保留在侧边面板中，再点击一个节点即可比较。对完整图的分析还带来了新发现：725 个节点中有 213 个组成一组反馈回路，所以这个网络并不是简单的因果链。
+
+样本沿用了为全部 725 个节点计算的位置，所以在其他节点原来所在的地方留下了空白。为当前 100 个节点计算一次力导向布局只需约 0.2 秒，所以应用提供了这种布局，另有按中心性排列的同心圆。使用计算出的布局时，只看反馈回路会单独为这些回路重新布局。缩放时节点会被拉开，而每个标记的大小保持不变；还可以用切换按钮和其他[缩放模式](/zh-cn/theming/)对比。
+
+## 论文
+
+这张图来自 [ACCESS: A Benchmark for Abstract Causal Event Discovery and Reasoning](https://arxiv.org/abs/2502.08148)（NAACL 2025），它基于 [GLUCOSE](https://arxiv.org/abs/2009.07758) 构建。GLUCOSE 的许可证规定这些数据仅限非商业用途。
+
+## 运行
+
+```sh
+npm install
+npm run dev:explorer
+```
+
+打开 `http://localhost:3101`。
+
+构建文档时设置 `NEXT_PUBLIC_PERSPECTIVA_URL` 和 `NEXT_PUBLIC_EXPLORER_URL`，**打开应用**按钮就会指向已部署的应用。不设置时按钮打开本地服务，所以要先启动应用。a:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$3","c",{"children":[["$","div",null,{"className":"x:mx-auto x:flex x:max-w-(--nextra-content-width)","children":["$","$Lf",null,{"value":[{"value":"需求","id":"需求","depth":2},{"value":"原有问题","id":"原有问题","depth":2},{"value":"迁移到 Cytoscape","id":"迁移到-cytoscape","depth":2},{"value":"框架如何解决","id":"框架如何解决","depth":2},{"value":"结果","id":"结果","depth":2},{"value":"论文","id":"论文","depth":2},{"value":"运行","id":"运行","depth":2}],"children":[["$","$L10",null,{}],["$","$L11",null,{"metadata":{"title":"案例：Causal Explorer","filePath":"src/content/zh-cn/case-explorer.mdx"},"sourceCode":"$12","children":[["$","div",null,{"id":"nextra-skip-nav"}],["$","main",null,{"data-pagefind-body":true,"children":[["$","h1",null,{"className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-bold x:mt-2 x:text-4xl","children":["案例：Causal Explorer","$undefined"]}],"\n",["$","a",null,{"href":"https://cytocausal-explorer.vercel.app","target":"_blank","rel":"noreferrer","style":{"display":"inline-flex","alignItems":"center","minHeight":36,"marginTop":"1rem","padding":"8px 15px","borderRadius":10,"background":"#fbbf24","color":"#000","fontSize":14,"fontWeight":500},"children":["打开应用"," ↗"]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Causal Explorer 展示 ACCESS 基准中的因果图，内容是日常生活中的抽象事件。GLUCOSE 数据集中的泛化事件描述被聚类为抽象事件，再由标注者判断它们之间的因果连接。研究问题是事件在大规模下如何相互连接。"}],"\n","$L13","\n","$L14","\n","$L15","\n","$L16","\n","$L17","\n","$L18","\n","$L19","\n","$L1a","\n","$L1b","\n","$L1c","\n","$L1d","\n","$L1e","\n","$L1f","\n","$L20","\n","$L21","\n","$L22","\n","$L23","\n","$L24","\n","$L25","\n","$L26","\n","$L27","\n","$L28"]}]]}]]}]}],null,"$L29"]}],"p":"$@2a","v":null,"s":"$9"}}]]
+2:[["children",{"s":{"n":"mdxPath","t":"oc","k":"case-explorer","s":[]},"h":65600,"d":{"r":["$","$3","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}]}]]}],"p":"$@7","v":"$8","s":"$9"},"c":"$Qa"}]]
+1:[["children",{"s":{"n":"lang","t":"d","k":"zh-cn","s":[]},"h":196656,"c":"$Q2"}]]
+0:{"t":{"t":{"s":"","h":131152,"c":"$Q1"},"h":{"r":["$","$3","h",{"children":[null,["$","$L2c",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L2e",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$2f",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"案例：Causal Explorer | cytocausal"}],["$","link","1",{"rel":"icon","href":"/cytocausal/icon.svg?icon.3c77pwa7_7hzo.svg","sizes":"any","type":"image/svg+xml"}],["$","$L30","2",{}]]}]}],null]}],null]}],"p":"$@31","v":null,"s":"$9"}},"a":"$@32","u":"$@33","b":"PNV-lKU2O2aN7EBl7fUyT"}
+34:I[5500,["$b","$c","$d","$e"],"Image"]
+35:I[63894,["$b","$c","$d","$e"],"HeadingAnchor"]
+36:I[22016,["$b","$c","$d","$e"],""]
+3b:"ToggleWordWrapButton"
+3c:I[83987,["$b","$c","$d","$e"],"$3b"]
+3d:I[40493,["$b","$c","$d","$e"],"CopyToClipboard"]
+3e:I[97367,["$4"],"OutletBoundary"]
+13:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["$","$L34",null,{"alt":"Causal Explorer 显示选中节点的原因和结果","placeholder":"blur","src":{"src":"/cytocausal/_next/static/media/explorer-selection.3sk9ql9umqicf.png","width":1440,"height":900,"blurWidth":8,"blurHeight":5,"blurDataURL":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAFCAIAAAD38zoCAAAAWUlEQVR42i2NVw7AMAhDe/+jtlUahRESAak7+GDoGXtz98yMCFEbY5gZEYnItlCZwI14zgnATOgvWAva/TjBoG2t9d5/ADccpRT4ADwf7oHxxWBR1VovZr4Bdzd0SOhfK0wAAAAASUVORK5CYII="},"unoptimized":true}]}]
+14:["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"style":{"textAlign":"left"},"children":"项目","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"style":{"textAlign":"left"},"children":"详情","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"数据","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"一个网络，一个快照","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"规模","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"725 个节点和 1,494 条边","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"连接","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"有向，不带极性","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"证据","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"4,708 条泛化事件描述","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"位置","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"为完整基准预先计算，另可在浏览器中计算力导向布局和中心性布局","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]]}]]}]
+15:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["上面的数据描述的是完整基准。公开演示只显示其中最核心的 100 个事件，完整基准可",["$","a",null,{"href":"https://github.com/isVy08/ACCESS","target":"_blank","rel":"noreferrer","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":["按需申请",[" ",["$","svg",null,{"fill":"none","stroke":"currentColor","strokeLinecap":"round","strokeLinejoin":"round","strokeWidth":1.7,"viewBox":"0 0 24 24","height":"1em","className":"x:inline x:align-baseline x:shrink-0","children":[["$","path",null,{"d":"M7 17L17 7"}],["$","path",null,{"d":"M7 7h10v10"}]]}]]]}],"。"]}]
+16:["$","h2",null,{"id":"需求","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["需求",["$","$L35",null,{"id":"需求"}]]}]
+17:["$","ul",null,{"className":"x:[:is(ol,ul)_&]:my-[.75em] x:not-first:mt-[1.25em] x:list-disc x:ms-[1.5em]","children":["\n",["$","li",null,{"className":"x:my-[.5em]","children":"按含义查找事件，而不只是按名称"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"阅读节点背后的句子"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"查看节点的原因和结果"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"让密集的图保持可读"}],"\n"]}]
+18:["$","h2",null,{"id":"原有问题","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["原有问题",["$","$L35",null,{"id":"原有问题"}]]}]
+19:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"原应用基于 Sigma，数据本身没有问题，问题出在探索方式上："}]
+1a:["$","ul",null,{"className":"x:[:is(ol,ul)_&]:my-[.75em] x:not-first:mt-[1.25em] x:list-disc x:ms-[1.5em]","children":["\n",["$","li",null,{"className":"x:my-[.5em]","children":["搜索只匹配标签开头，而 725 个标签中有 716 个以 “a person” 开头。搜索 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"sleep"}]," 没有结果。"]}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"句子显示在悬停卡片中，鼠标移开就消失。"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"高亮不区分原因和结果。"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"节点大小忽略了方向。"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"每个节点都是独立的聚类，所以筛选器变成了 1,450 个无法分组的复选框。"}],"\n"]}]
+1b:["$","h2",null,{"id":"迁移到-cytoscape","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["迁移到 Cytoscape",["$","$L35",null,{"id":"迁移到-cytoscape"}]]}]
+1c:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["迁移取决于一个问题：Cytoscape 能否绘制带标签的这张图？",["$","$L36",null,{"href":"/zh-cn/scale-performance/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"基准测试"}],"显示为 60 fps，所以两个演示可以共用一个引擎。"]}]
+1d:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"更难的问题是保持标签可读，这需要碰撞处理。"}]
+1e:["$","h2",null,{"id":"框架如何解决","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["框架如何解决",["$","$L35",null,{"id":"框架如何解决"}]]}]
+1f:["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"style":{"textAlign":"left"},"children":"需求","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"style":{"textAlign":"left"},"children":"机制","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"style":{"textAlign":"left"},"children":"指南","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"有向节点大小","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"analyzeSnapshot"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L36",null,{"href":"/zh-cn/causal-analysis/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"因果分析"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"反馈回路开关","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"feedbackGroups"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L36",null,{"href":"/zh-cn/causal-analysis/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"因果分析"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"经过节点的短回路","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"findFeedbackLoops"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L36",null,{"href":"/zh-cn/causal-analysis/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"因果分析"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"原因和结果","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"highlightCausalNeighbours"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L36",null,{"href":"/zh-cn/causal-analysis/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"因果分析"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],"$L37","$L38","$L39","$L3a"]}]]}]
+20:["$","h2",null,{"id":"结果","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["结果",["$","$L35",null,{"id":"结果"}]]}]
+21:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"现在搜索能找到标签和句子中任意位置的词。点击节点后，它的句子、原因和结果会保留在侧边面板中，再点击一个节点即可比较。对完整图的分析还带来了新发现：725 个节点中有 213 个组成一组反馈回路，所以这个网络并不是简单的因果链。"}]
+22:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["样本沿用了为全部 725 个节点计算的位置，所以在其他节点原来所在的地方留下了空白。为当前 100 个节点计算一次力导向布局只需约 0.2 秒，所以应用提供了这种布局，另有按中心性排列的同心圆。使用计算出的布局时，只看反馈回路会单独为这些回路重新布局。缩放时节点会被拉开，而每个标记的大小保持不变；还可以用切换按钮和其他",["$","$L36",null,{"href":"/zh-cn/theming/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"缩放模式"}],"对比。"]}]
+23:["$","h2",null,{"id":"论文","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["论文",["$","$L35",null,{"id":"论文"}]]}]
+24:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["这张图来自 ",["$","a",null,{"href":"https://arxiv.org/abs/2502.08148","target":"_blank","rel":"noreferrer","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":["ACCESS: A Benchmark for Abstract Causal Event Discovery and Reasoning",[" ",["$","svg",null,{"fill":"none","stroke":"currentColor","strokeLinecap":"round","strokeLinejoin":"round","strokeWidth":1.7,"viewBox":"0 0 24 24","height":"1em","className":"x:inline x:align-baseline x:shrink-0","children":[["$","path",null,{"d":"M7 17L17 7"}],["$","path",null,{"d":"M7 7h10v10"}]]}]]]}],"（NAACL 2025），它基于 ",["$","a",null,{"href":"https://arxiv.org/abs/2009.07758","target":"_blank","rel":"noreferrer","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":["GLUCOSE",[" ",["$","svg",null,{"fill":"none","stroke":"currentColor","strokeLinecap":"round","strokeLinejoin":"round","strokeWidth":1.7,"viewBox":"0 0 24 24","height":"1em","className":"x:inline x:align-baseline x:shrink-0","children":[["$","path",null,{"d":"M7 17L17 7"}],["$","path",null,{"d":"M7 7h10v10"}]]}]]]}]," 构建。GLUCOSE 的许可证规定这些数据仅限非商业用途。"]}]
+25:["$","h2",null,{"id":"运行","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["运行",["$","$L35",null,{"id":"运行"}]]}]
+26:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L3c",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L3d",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"npm"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" install"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"npm"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" run"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" dev:explorer"}]]}]]}]]}]]}]
+27:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["打开 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"http://localhost:3101"}],"。"]}]
+28:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["构建文档时设置 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"NEXT_PUBLIC_PERSPECTIVA_URL"}]," 和 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"NEXT_PUBLIC_EXPLORER_URL"}],"，",["$","strong",null,{"children":"打开应用"}],"按钮就会指向已部署的应用。不设置时按钮打开本地服务，所以要先启动应用。"]}]
+29:["$","$L3e",null,{"children":["$","$2f",null,{"name":"Next.MetadataOutlet","children":"$@3f"}]}]
+33:true
+9:300
+37:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"快速首次渲染","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"已保存的位置","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L36",null,{"href":"/zh-cn/scale-performance/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"规模与性能"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+38:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"可读的标签","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"readableLabels"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L36",null,{"href":"/zh-cn/scale-performance/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"规模与性能"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+39:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"选择和悬停","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"useCausalGraph"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L36",null,{"href":"/zh-cn/interactions/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"交互"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+3a:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"搜索标签和描述","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"NodeSearch"}],"、",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"focusNode"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L36",null,{"href":"/zh-cn/getting-started/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"快速开始"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+3f:null
+9:C
+32:0
+7:"$undefined"
+31:"$undefined"
+2a:"$undefined"

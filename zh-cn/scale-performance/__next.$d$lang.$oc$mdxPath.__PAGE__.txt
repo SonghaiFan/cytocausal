@@ -1,0 +1,110 @@
+3:"$Sreact.fragment"
+4:"/cytocausal/_next/static/chunks/3qfy96eoyh-ek.js"
+5:I[39756,["$4"],"default"]
+6:I[37457,["$4"],"default"]
+b:"/cytocausal/_next/static/chunks/0ukdujkmkvhm8.js"
+c:"/cytocausal/_next/static/chunks/0bau-wvwyshok.js"
+d:"/cytocausal/_next/static/chunks/093v92pv8bfl4.js"
+e:"/cytocausal/_next/static/chunks/0z-c01io_5ink.js"
+f:I[55169,["$b","$c","$d","$e"],"TOCProvider"]
+10:I[769,["$b","$c","$d","$e"],"Sidebar"]
+11:I[47486,["$b","$c","$d","$e"],"ClientWrapper"]
+29:"ViewportBoundary"
+2a:I[97367,["$4"],"$29"]
+2b:"MetadataBoundary"
+2c:I[97367,["$4"],"$2b"]
+2d:"$Sreact.suspense"
+2e:I[27201,["$4"],"IconMark"]
+8:X
+8:C
+9:X
+12:Td81,---
+title: "规模与性能"
+---
+
+# 规模与性能
+
+在决定只用一个渲染器之前，我们测试了 Cytoscape 能否处理 Causal Explorer 的图，它有 725 个节点和 1,494 条边。测量在 Apple M4 Mac 上进行，较旧的设备会慢一些。
+
+| 任务 | 结果 |
+| :--- | :--- |
+| 缩放和平移，canvas 渲染器 | 60 fps |
+| 缩放和平移，WebGL 渲染器 | 56 fps |
+| 显示全部 725 个标签时缩放和平移 | 60 fps |
+| 使用已保存位置首次渲染 | 118 毫秒 |
+| 高亮节点的邻居 | 52 毫秒 |
+| 查找强连通分量 | 322 毫秒 |
+| 有向介数中心性 | 58 毫秒 |
+| 完整 fcose 布局 | 1–4 秒，会阻塞页面 |
+
+因此在这个规模下，canvas 渲染器已经足够，WebGL 选项没有带来提升。请用自己的图测试，因为这些数字取决于所用的样式。
+
+## 不要在页面加载时运行慢布局
+
+完整 fcose 布局会阻塞页面数秒，所以应该计算一次并保存位置：
+
+```ts
+import type { LayoutOptions } from "cytoscape";
+
+export const savedLayout = { name: "preset", fit: true, padding: 30 } as LayoutOptions;
+```
+
+Explorer 的 `import-data` 脚本在分析时一并完成这一步。请选择在接近正常缩放时能放进屏幕的坐标比例。Explorer 最初的比例大了四倍，初始视图缩得太小，节点几乎看不见。
+
+## 标签需要碰撞处理
+
+Cytoscape 的 `min-zoomed-font-size` 看起来很适合隐藏标签，但密集的图需要更多处理。标签大小随缩放增长，大多数标签几乎同时超过阈值。在 Explorer 中，缩放一步就从少量标签变成全部标签，堆叠得无法阅读。
+
+`keepLabelsReadable` 采用与 Sigma 标签网格相同的思路。在 [`useCausalGraph`](/zh-cn/interactions/) 中启用 `readableLabels` 即可：
+
+1. 按读者正在看的内容给节点排序：先是选中的节点和键盘光标，然后是高亮的回路或路径，再是原因和结果，最后按中心性排序。
+2. 有高亮时，被调暗的节点不显示标签。它们只是背景，标签会挤掉真正重要的那些。
+3. 依次尝试把标签放在节点的上、下、右、左，取第一个既不遮挡其他标签、也不遮挡其他节点的位置。选中的节点即使没有空位也会保留标签。
+4. 文字、文字描边和标签与节点的间距都设为常量除以缩放比例，所以在任何缩放下看起来都一样。连线和箭头的大小同样保持不变，放大时不会变粗。无论线宽多少，Cytoscape 都给箭头设了最小尺寸，所以箭头需要单独缩放。详见[线条、箭头和文字的尺寸](/zh-cn/theming/)。
+5. 缩放结束后重新计算（因为每帧更新样式太慢），高亮变化时也会重新计算。
+
+标签用浏览器自己的文字度量来测量，并按 Cytoscape 的方式换行。换行仍可能差一个像素，所以选出的标签还会用 Cytoscape 实际绘制的边界再检查一遍，发生冲突时去掉不太重要的那个。
+
+以前高亮会强制给每个涉及的节点显示标签，完全绕过了上述过程。在 Explorer 中从一个核心事件向外走三步，大约 80 个标签会叠在一起。
+
+## 亲眼看结果
+
+标签问题通过了所有测试，包括性能测试。数字没有问题，屏幕却无法阅读。请在多个缩放级别检查截图，并把发现的问题写成测试：Explorer 现在会统计每个缩放级别和每个高亮深度下重叠的标签。a:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$3","c",{"children":[["$","div",null,{"className":"x:mx-auto x:flex x:max-w-(--nextra-content-width)","children":["$","$Lf",null,{"value":[{"value":"不要在页面加载时运行慢布局","id":"不要在页面加载时运行慢布局","depth":2},{"value":"标签需要碰撞处理","id":"标签需要碰撞处理","depth":2},{"value":"亲眼看结果","id":"亲眼看结果","depth":2}],"children":[["$","$L10",null,{}],["$","$L11",null,{"metadata":{"title":"规模与性能","filePath":"src/content/zh-cn/scale-performance.md"},"sourceCode":"$12","children":[["$","div",null,{"id":"nextra-skip-nav"}],["$","main",null,{"data-pagefind-body":true,"children":[["$","h1",null,{"className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-bold x:mt-2 x:text-4xl","children":["规模与性能","$undefined"]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"在决定只用一个渲染器之前，我们测试了 Cytoscape 能否处理 Causal Explorer 的图，它有 725 个节点和 1,494 条边。测量在 Apple M4 Mac 上进行，较旧的设备会慢一些。"}],"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"style":{"textAlign":"left"},"children":"任务","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"style":{"textAlign":"left"},"children":"结果","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"缩放和平移，canvas 渲染器","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"60 fps","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],"$L13","$L14","$L15","$L16","$L17","$L18","$L19"]}]]}],"\n","$L1a","\n","$L1b","\n","$L1c","\n","$L1d","\n","$L1e","\n","$L1f","\n","$L20","\n","$L21","\n","$L22","\n","$L23","\n","$L24","\n","$L25","\n","$L26"]}]]}]]}]}],null,"$L27"]}],"p":"$@28","v":null,"s":"$9"}}]]
+2:[["children",{"s":{"n":"mdxPath","t":"oc","k":"scale-performance","s":[]},"h":65600,"d":{"r":["$","$3","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}]}]]}],"p":"$@7","v":"$8","s":"$9"},"c":"$Qa"}]]
+1:[["children",{"s":{"n":"lang","t":"d","k":"zh-cn","s":[]},"h":196656,"c":"$Q2"}]]
+0:{"t":{"t":{"s":"","h":131152,"c":"$Q1"},"h":{"r":["$","$3","h",{"children":[null,["$","$L2a",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L2c",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$2d",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"规模与性能 | cytocausal"}],["$","link","1",{"rel":"icon","href":"/cytocausal/icon.svg?icon.3c77pwa7_7hzo.svg","sizes":"any","type":"image/svg+xml"}],["$","$L2e","2",{}]]}]}],null]}],null]}],"p":"$@2f","v":null,"s":"$9"}},"a":"$@30","u":"$@31","b":"PNV-lKU2O2aN7EBl7fUyT"}
+32:I[63894,["$b","$c","$d","$e"],"HeadingAnchor"]
+33:"ToggleWordWrapButton"
+34:I[83987,["$b","$c","$d","$e"],"$33"]
+35:I[40493,["$b","$c","$d","$e"],"CopyToClipboard"]
+36:I[22016,["$b","$c","$d","$e"],""]
+37:I[97367,["$4"],"OutletBoundary"]
+13:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"缩放和平移，WebGL 渲染器","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"56 fps","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+14:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"显示全部 725 个标签时缩放和平移","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"60 fps","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+15:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"使用已保存位置首次渲染","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"118 毫秒","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+16:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"高亮节点的邻居","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"52 毫秒","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+17:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"查找强连通分量","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"322 毫秒","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+18:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"有向介数中心性","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"58 毫秒","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+19:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"完整 fcose 布局","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"1–4 秒，会阻塞页面","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+1a:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"因此在这个规模下，canvas 渲染器已经足够，WebGL 选项没有带来提升。请用自己的图测试，因为这些数字取决于所用的样式。"}]
+1b:["$","h2",null,{"id":"不要在页面加载时运行慢布局","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["不要在页面加载时运行慢布局",["$","$L32",null,{"id":"不要在页面加载时运行慢布局"}]]}]
+1c:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"完整 fcose 布局会阻塞页面数秒，所以应该计算一次并保存位置："}]
+1d:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L34",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L35",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" type"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { LayoutOptions } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"cytoscape\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":" "}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"export"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" savedLayout"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { name: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"preset\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", fit: "}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"true"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", padding: "}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"30"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"as"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" LayoutOptions"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}]]}]]}]]}]
+1e:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Explorer 的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"import-data"}]," 脚本在分析时一并完成这一步。请选择在接近正常缩放时能放进屏幕的坐标比例。Explorer 最初的比例大了四倍，初始视图缩得太小，节点几乎看不见。"]}]
+1f:["$","h2",null,{"id":"标签需要碰撞处理","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["标签需要碰撞处理",["$","$L32",null,{"id":"标签需要碰撞处理"}]]}]
+20:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Cytoscape 的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"min-zoomed-font-size"}]," 看起来很适合隐藏标签，但密集的图需要更多处理。标签大小随缩放增长，大多数标签几乎同时超过阈值。在 Explorer 中，缩放一步就从少量标签变成全部标签，堆叠得无法阅读。"]}]
+21:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"keepLabelsReadable"}]," 采用与 Sigma 标签网格相同的思路。在 ",["$","$L36",null,{"href":"/zh-cn/interactions/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"useCausalGraph"}]}]," 中启用 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"readableLabels"}]," 即可："]}]
+22:["$","ol",null,{"className":"x:[:is(ol,ul)_&]:my-[.75em] x:not-first:mt-[1.25em] x:list-decimal x:ms-6","children":["\n",["$","li",null,{"className":"x:my-[.5em]","children":"按读者正在看的内容给节点排序：先是选中的节点和键盘光标，然后是高亮的回路或路径，再是原因和结果，最后按中心性排序。"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"有高亮时，被调暗的节点不显示标签。它们只是背景，标签会挤掉真正重要的那些。"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"依次尝试把标签放在节点的上、下、右、左，取第一个既不遮挡其他标签、也不遮挡其他节点的位置。选中的节点即使没有空位也会保留标签。"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":["文字、文字描边和标签与节点的间距都设为常量除以缩放比例，所以在任何缩放下看起来都一样。连线和箭头的大小同样保持不变，放大时不会变粗。无论线宽多少，Cytoscape 都给箭头设了最小尺寸，所以箭头需要单独缩放。详见",["$","$L36",null,{"href":"/zh-cn/theming/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"线条、箭头和文字的尺寸"}],"。"]}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"缩放结束后重新计算（因为每帧更新样式太慢），高亮变化时也会重新计算。"}],"\n"]}]
+23:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"标签用浏览器自己的文字度量来测量，并按 Cytoscape 的方式换行。换行仍可能差一个像素，所以选出的标签还会用 Cytoscape 实际绘制的边界再检查一遍，发生冲突时去掉不太重要的那个。"}]
+24:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"以前高亮会强制给每个涉及的节点显示标签，完全绕过了上述过程。在 Explorer 中从一个核心事件向外走三步，大约 80 个标签会叠在一起。"}]
+25:["$","h2",null,{"id":"亲眼看结果","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["亲眼看结果",["$","$L32",null,{"id":"亲眼看结果"}]]}]
+26:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"标签问题通过了所有测试，包括性能测试。数字没有问题，屏幕却无法阅读。请在多个缩放级别检查截图，并把发现的问题写成测试：Explorer 现在会统计每个缩放级别和每个高亮深度下重叠的标签。"}]
+27:["$","$L37",null,{"children":["$","$2d",null,{"name":"Next.MetadataOutlet","children":"$@38"}]}]
+31:true
+9:300
+38:null
+9:C
+30:0
+7:"$undefined"
+2f:"$undefined"
+28:"$undefined"

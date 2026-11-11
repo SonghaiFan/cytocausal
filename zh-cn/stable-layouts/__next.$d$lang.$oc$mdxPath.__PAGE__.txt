@@ -1,0 +1,235 @@
+3:"$Sreact.fragment"
+4:"/cytocausal/_next/static/chunks/3qfy96eoyh-ek.js"
+5:I[39756,["$4"],"default"]
+6:I[37457,["$4"],"default"]
+b:"/cytocausal/_next/static/chunks/0ukdujkmkvhm8.js"
+c:"/cytocausal/_next/static/chunks/0bau-wvwyshok.js"
+d:"/cytocausal/_next/static/chunks/093v92pv8bfl4.js"
+e:"/cytocausal/_next/static/chunks/0z-c01io_5ink.js"
+f:I[55169,["$b","$c","$d","$e"],"TOCProvider"]
+10:I[769,["$b","$c","$d","$e"],"Sidebar"]
+11:I[47486,["$b","$c","$d","$e"],"ClientWrapper"]
+17:"ViewportBoundary"
+18:I[97367,["$4"],"$17"]
+19:"MetadataBoundary"
+1a:I[97367,["$4"],"$19"]
+1b:"$Sreact.suspense"
+1c:I[27201,["$4"],"IconMark"]
+8:X
+8:C
+9:X
+12:T1f0e,---
+title: "稳定布局与锚定"
+---
+
+# 稳定布局与锚定
+
+要比较一张图的两个版本，读者需要看到相同的节点出现在相同的位置。力导向布局本身做不到这一点，因为它独立排列每张图。锚定的做法是固定一个版本的布局，再围绕它放置另一个版本。
+
+`CompareView` 完成了全部工作：
+
+```tsx
+"use client";
+import type { CausalDataset } from "@cytocausal/core";
+import { fcoseLayout, type Positions } from "@cytocausal/cytoscape";
+import { CompareView } from "@cytocausal/react";
+import type { Stylesheet } from "cytoscape";
+import { useRef } from "react";
+
+const stylesheet: Stylesheet[] = [{ selector: "node", style: { label: "data(label)" } }];
+
+export function Comparison({ dataset }: { dataset: CausalDataset }) {
+  const positionCache = useRef<Record<string, Positions>>({});
+  return (
+    <CompareView
+      dataset={dataset}
+      left="V1"
+      right="final"
+      layout={fcoseLayout}
+      stylesheet={stylesheet}
+      positionCache={positionCache}
+    />
+  );
+}
+```
+
+## 锚定的原理
+
+1. 左图运行布局。
+2. 它的位置经过数据集的对应关系，转换为以右图 ID 为键。
+3. 右图钉住这些节点，由 fcose 在周围放置其余节点。
+
+用底层函数表示同样的步骤：
+
+```ts
+import { alignPositions, getCounterparts, placeAround, type Positions } from "@cytocausal/cytoscape";
+import type { CausalDataset } from "@cytocausal/core";
+import type { Core } from "cytoscape";
+
+export function placeFinal(cy: Core, dataset: CausalDataset, v1Positions: Positions) {
+  const counterparts = getCounterparts(dataset, "V1", "final");
+  const anchors = alignPositions(v1Positions, counterparts);
+  placeAround(cy, anchors)?.run();
+}
+```
+
+`getCounterparts` 支持两个方向。`alignPositions` 把合并后的节点放在其来源节点的中心。
+
+## 钉住节点，而不是事后移动
+
+最初的做法是让右图运行完整布局，再把匹配的节点移过去。这样有两个问题：
+
+- 较慢的布局后完成，会覆盖移动过的节点。使用 cola 时，所有锚定节点都偏离了位置。
+- 新节点留在旧布局的位置上，和移过来的节点相撞。
+
+fcose 的 `fixedNodeConstraint` 同时解决了这两个问题，因为它一次就能围绕固定节点排列新节点。只有 fcose 支持这项功能，所以即使左图选择 cola，右图也使用 fcose。
+
+## 不要运行会被替换的布局
+
+右图先隐藏，并使用开销很小的 `grid` 布局，直到左图的位置到达。否则较慢的布局可能在锚定之后才结束。隐藏右图也让读者看不到占位状态。
+
+## 首次渲染跳过动画
+
+首次布局没有之前的状态可供过渡。节点从原点飞入，并不能说明数据的任何信息。`GraphView` 在首次渲染时设置 `animate: false`，把动画留给真实的变化。
+
+## 让位置和数据保持对应
+
+位置只对产生它们的数据集和布局有意义。`CompareView` 用这两者标记位置，并忽略不匹配的结果，所以上一个数据集迟到的结果不会影响右图。
+
+## 共享位置缓存
+
+`positionCache` 以数据集、布局和快照为键。所有视图都会写入，所以某个版本在 `1 Graph` 视图中的位置，与它在 `2 Graphs` 视图中完全一致。
+
+## 选择布局
+
+`@cytocausal/cytoscape` 导出的 `layouts` 包含 Cytoscape 自带的所有布局，以及本包注册的扩展布局，每个都针对因果图做了设置。传入一个作为 `layout`，或者传入多个作为 `layouts` 供用户选择。
+
+| 名称 | 作用 | 适合 |
+| :--- | :--- | :--- |
+| `fcose` | 力导向布局，速度快、分布均匀 | 大多数图，以及版本之间的锚定 |
+| `cola` | 力导向布局，带有逐渐稳定的动画 | 适合观察布局稳定过程的小型图 |
+| `dagre` | 按层次从左到右排列原因到结果，必要时打断回路 | 阅读因果顺序 |
+| `breadthfirst` | 从没有原因的节点开始向下生长成树 | 回路少、起始原因明确的图 |
+| `concentric` | 同心圆，最核心的节点在中间，依据 `score` 数据，没有时依据度数 | 找出枢纽节点 |
+| `cose` | Cytoscape 内置的力导向布局 | 无法使用 fcose 时。fcose 通常更好 |
+| `circle`、`grid` | 单个圆或网格，按节点的核心程度排序 | 比较节点，而不是结构 |
+| `random` | 随机位置 | 测试 |
+
+```tsx
+import { layouts } from "@cytocausal/cytoscape";
+import { CausalWorkspace } from "@cytocausal/react";
+
+// 只定义一次，这样每种选择都能保留自己的位置
+const choices = { force: layouts.fcose, flow: layouts.dagre, hubs: layouts.concentric };
+
+export const App = ({ dataset }) => <CausalWorkspace dataset={dataset} layouts={choices} />;
+```
+
+其他任何 Cytoscape 布局也都可以使用。先用 `cytoscape.use` 注册一次扩展，再传入它的选项。请让布局对象在多次渲染之间保持不变：位置按每个布局对象分别缓存，所以同一布局的两种设置（比如按中心性和按度数的 concentric）会各自保留自己的位置。
+
+### 自适应的间距
+
+固定的间距只适合一种节点大小。装着长标签的胶囊比圆点宽好几倍，如果连线长度固定，它们就会挤在一起。所以力导向布局会根据每个节点的大小来计算间距：连线的理想长度是刚好让两端节点分开，再加上一段间隙；节点越大，排斥力也越大。dagre 和环形布局本身已经考虑了节点大小。
+
+曲线连线的弯曲程度与长度成正比，由 `curveLinks` 计算。较长的连线（比如在流向布局里反向回去的那条）会弧形绕开原本会和它重叠的连线。两个节点之间方向相反的两条连线会弯向两侧。每当节点稳定下来或被拖动时，`GraphView` 都会更新弯曲程度。
+
+`layoutQuality(cy)` 按实际绘制的结果，统计让布局难以阅读的情况：节点重叠、连线穿过节点和连线交叉。可以用它来比较哪种布局最适合你的数据。环形布局无法让每条连线都避开环之间的节点，所以使用 `concentric` 时，会有少量连线穿过节点。
+
+## 在同一张图上切换布局
+
+给 `GraphView` 传入 `animateLayouts`，切换 `layout` 时节点会移动到新位置，而不是重建整张图。`CausalGraph` 已经替你打开了它，所以只要修改 `CausalProvider` 的 `layout` 就够了。每种布局的位置都会存进位置缓存，所以切换回去时，每个节点都会回到原来的位置。已保存的布局会让节点回到数据中的位置。
+
+每种布局都有自己的原点。concentric 以画布为中心，所以节点会先飞出屏幕，镜头才追上。因此布局会先算出来，再移到图当前所在位置的中心。节点沿直线移动，所以始终在同时包含起点和终点的范围之内：如果这个范围超出屏幕，镜头会先拉远把它框住，等节点到位后再推近。`measureLayout(cy, layout)` 可以单独给出这些位置。
+
+布局不会被缩放去适配之前的范围。只缩小位置而不缩小节点，节点就会挤在一起：早先的版本把一个横向很长的流向布局塞进了同心圆布局占据的方块里，结果有四对节点重叠。
+
+`relayout(cy, layout)` 能在任何图上做同样的事。它只对可见的节点布局，所以筛选器隐藏了一部分节点之后，可以单独为剩下的节点布局。被隐藏的节点保持原位，等筛选取消后再出现。
+
+Causal Explorer 提供了四种布局：原始位置、针对当前节点的力导向布局、按中心性排列的同心圆，以及从左到右的流向布局。
+
+## 局限
+
+锚定位置是精确的，但仍可能有少量重叠。如果标签在版本之间变长，节点会变宽，而它又不能离开原来的位置。两张图也各自适配边界，所以即使坐标相同，打开时的缩放比例也可能不同。a:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$3","c",{"children":[["$","div",null,{"className":"x:mx-auto x:flex x:max-w-(--nextra-content-width)","children":["$","$Lf",null,{"value":[{"value":"锚定的原理","id":"锚定的原理","depth":2},{"value":"钉住节点，而不是事后移动","id":"钉住节点而不是事后移动","depth":2},{"value":"不要运行会被替换的布局","id":"不要运行会被替换的布局","depth":2},{"value":"首次渲染跳过动画","id":"首次渲染跳过动画","depth":2},{"value":"让位置和数据保持对应","id":"让位置和数据保持对应","depth":2},{"value":"共享位置缓存","id":"共享位置缓存","depth":2},{"value":"选择布局","id":"选择布局","depth":2},{"value":"自适应的间距","id":"自适应的间距","depth":3},{"value":"在同一张图上切换布局","id":"在同一张图上切换布局","depth":2},{"value":"局限","id":"局限","depth":2}],"children":[["$","$L10",null,{}],["$","$L11",null,{"metadata":{"title":"稳定布局与锚定","filePath":"src/content/zh-cn/stable-layouts.md"},"sourceCode":"$12","children":["$L13","$L14"]}]]}]}],null,"$L15"]}],"p":"$@16","v":null,"s":"$9"}}]]
+2:[["children",{"s":{"n":"mdxPath","t":"oc","k":"stable-layouts","s":[]},"h":65600,"d":{"r":["$","$3","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}]}]]}],"p":"$@7","v":"$8","s":"$9"},"c":"$Qa"}]]
+1:[["children",{"s":{"n":"lang","t":"d","k":"zh-cn","s":[]},"h":196656,"c":"$Q2"}]]
+0:{"t":{"t":{"s":"","h":131152,"c":"$Q1"},"h":{"r":["$","$3","h",{"children":[null,["$","$L18",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L1a",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$1b",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"稳定布局与锚定 | cytocausal"}],["$","link","1",{"rel":"icon","href":"/cytocausal/icon.svg?icon.3c77pwa7_7hzo.svg","sizes":"any","type":"image/svg+xml"}],["$","$L1c","2",{}]]}]}],null]}],null]}],"p":"$@1d","v":null,"s":"$9"}},"a":"$@1e","u":"$@1f","b":"PNV-lKU2O2aN7EBl7fUyT"}
+20:"ToggleWordWrapButton"
+21:I[83987,["$b","$c","$d","$e"],"$20"]
+22:I[40493,["$b","$c","$d","$e"],"CopyToClipboard"]
+5a:I[97367,["$4"],"OutletBoundary"]
+13:["$","div",null,{"id":"nextra-skip-nav"}]
+14:["$","main",null,{"data-pagefind-body":true,"children":[["$","h1",null,{"className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-bold x:mt-2 x:text-4xl","children":["稳定布局与锚定","$undefined"]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"要比较一张图的两个版本，读者需要看到相同的节点出现在相同的位置。力导向布局本身做不到这一点，因为它独立排列每张图。锚定的做法是固定一个版本的布局，再围绕它放置另一个版本。"}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"CompareView"}]," 完成了全部工作："]}],"\n",["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L21",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L22",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"use client\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" type"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { CausalDataset } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/core\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { fcoseLayout, "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"type"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" Positions } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/cytoscape\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { CompareView } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/react\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" type"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { Stylesheet } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"cytoscape\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":["$L23","$L24","$L25","$L26","$L27"]}],"\n","$L28","\n","$L29","\n","$L2a","\n","$L2b","\n","$L2c","\n","$L2d","\n","$L2e","\n","$L2f","\n","$L30","\n","$L31","\n","$L32","\n","$L33","\n","$L34","\n","$L35","\n","$L36","\n","$L37"]}]]}]]}],"\n","$L38","\n","$L39","\n","$L3a","\n","$L3b","\n","$L3c","\n","$L3d","\n","$L3e","\n","$L3f","\n","$L40","\n","$L41","\n","$L42","\n","$L43","\n","$L44","\n","$L45","\n","$L46","\n","$L47","\n","$L48","\n","$L49","\n","$L4a","\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n","$L4b","\n","$L4c","\n","$L4d","\n","$L4e","\n","$L4f","\n","$L50","\n","$L51","\n","$L52","\n","$L53","\n","$L54","\n","$L55","\n","$L56","\n","$L57","\n","$L58","\n","$L59"]}]
+15:["$","$L5a",null,{"children":["$","$1b",null,{"name":"Next.MetadataOutlet","children":"$@5b"}]}]
+1f:true
+5c:I[63894,["$b","$c","$d","$e"],"HeadingAnchor"]
+9:300
+23:["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}]
+24:["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { useRef } "}]
+25:["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}]
+26:["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"react\""}]
+27:["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]
+28:["$","span",null,{"children":" "}]
+29:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" stylesheet"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":":"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" Stylesheet"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"[] "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" [{ selector: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"node\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", style: { label: "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"data(label)\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" } }];"}]]}]
+2a:["$","span",null,{"children":" "}]
+2b:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"export"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" function"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" Comparison"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"({ "}],["$","span",null,{"style":{"--shiki-light":"#E36209","--shiki-dark":"#FFAB70"},"children":"dataset"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" }"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":":"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { "}],["$","span",null,{"style":{"--shiki-light":"#E36209","--shiki-dark":"#FFAB70"},"children":"dataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":":"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" CausalDataset"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" }) {"}]]}]
+2c:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"  const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" positionCache"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" useRef"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"<"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"Record"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"<"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"string"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", "}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"Positions"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":">>({});"}]]}]
+2d:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"  return"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" ("}]]}]
+2e:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"    <"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"CompareView"}]]}]
+2f:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"      dataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{dataset}"}]]}]
+30:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"      left"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"V1\""}]]}]
+31:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"      right"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"final\""}]]}]
+32:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"      layout"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{fcoseLayout}"}]]}]
+33:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"      stylesheet"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{stylesheet}"}]]}]
+34:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"      positionCache"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{positionCache}"}]]}]
+35:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"    />"}]}]
+36:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"  );"}]}]
+37:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"}"}]}]
+38:["$","h2",null,{"id":"锚定的原理","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["锚定的原理",["$","$L5c",null,{"id":"锚定的原理"}]]}]
+39:["$","ol",null,{"className":"x:[:is(ol,ul)_&]:my-[.75em] x:not-first:mt-[1.25em] x:list-decimal x:ms-6","children":["\n",["$","li",null,{"className":"x:my-[.5em]","children":"左图运行布局。"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"它的位置经过数据集的对应关系，转换为以右图 ID 为键。"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"右图钉住这些节点，由 fcose 在周围放置其余节点。"}],"\n"]}]
+3a:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"用底层函数表示同样的步骤："}]
+3b:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L21",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L22",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { alignPositions, getCounterparts, placeAround, "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"type"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" Positions } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/cytoscape\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" type"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { CausalDataset } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/core\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" type"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { Core } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"cytoscape\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":" "}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"export"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" function"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" placeFinal"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"("}],["$","span",null,{"style":{"--shiki-light":"#E36209","--shiki-dark":"#FFAB70"},"children":"cy"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":":"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" Core"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", "}],["$","span",null,{"style":{"--shiki-light":"#E36209","--shiki-dark":"#FFAB70"},"children":"dataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":":"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" CausalDataset"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", "}],["$","span",null,{"style":{"--shiki-light":"#E36209","--shiki-dark":"#FFAB70"},"children":"v1Positions"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":":"}],"$L5d","$L5e"]}],"\n","$L5f","\n","$L60","\n","$L61","\n","$L62"]}]]}]]}]
+3c:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"getCounterparts"}]," 支持两个方向。",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"alignPositions"}]," 把合并后的节点放在其来源节点的中心。"]}]
+3d:["$","h2",null,{"id":"钉住节点而不是事后移动","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["钉住节点，而不是事后移动",["$","$L5c",null,{"id":"钉住节点而不是事后移动"}]]}]
+3e:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"最初的做法是让右图运行完整布局，再把匹配的节点移过去。这样有两个问题："}]
+3f:["$","ul",null,{"className":"x:[:is(ol,ul)_&]:my-[.75em] x:not-first:mt-[1.25em] x:list-disc x:ms-[1.5em]","children":["\n",["$","li",null,{"className":"x:my-[.5em]","children":"较慢的布局后完成，会覆盖移动过的节点。使用 cola 时，所有锚定节点都偏离了位置。"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"新节点留在旧布局的位置上，和移过来的节点相撞。"}],"\n"]}]
+40:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["fcose 的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"fixedNodeConstraint"}]," 同时解决了这两个问题，因为它一次就能围绕固定节点排列新节点。只有 fcose 支持这项功能，所以即使左图选择 cola，右图也使用 fcose。"]}]
+41:["$","h2",null,{"id":"不要运行会被替换的布局","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["不要运行会被替换的布局",["$","$L5c",null,{"id":"不要运行会被替换的布局"}]]}]
+42:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["右图先隐藏，并使用开销很小的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"grid"}]," 布局，直到左图的位置到达。否则较慢的布局可能在锚定之后才结束。隐藏右图也让读者看不到占位状态。"]}]
+43:["$","h2",null,{"id":"首次渲染跳过动画","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["首次渲染跳过动画",["$","$L5c",null,{"id":"首次渲染跳过动画"}]]}]
+44:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["首次布局没有之前的状态可供过渡。节点从原点飞入，并不能说明数据的任何信息。",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"GraphView"}]," 在首次渲染时设置 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"animate: false"}],"，把动画留给真实的变化。"]}]
+45:["$","h2",null,{"id":"让位置和数据保持对应","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["让位置和数据保持对应",["$","$L5c",null,{"id":"让位置和数据保持对应"}]]}]
+46:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["位置只对产生它们的数据集和布局有意义。",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"CompareView"}]," 用这两者标记位置，并忽略不匹配的结果，所以上一个数据集迟到的结果不会影响右图。"]}]
+47:["$","h2",null,{"id":"共享位置缓存","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["共享位置缓存",["$","$L5c",null,{"id":"共享位置缓存"}]]}]
+48:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"positionCache"}]," 以数据集、布局和快照为键。所有视图都会写入，所以某个版本在 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"1 Graph"}]," 视图中的位置，与它在 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"2 Graphs"}]," 视图中完全一致。"]}]
+49:["$","h2",null,{"id":"选择布局","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["选择布局",["$","$L5c",null,{"id":"选择布局"}]]}]
+4a:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"@cytocausal/cytoscape"}]," 导出的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"layouts"}]," 包含 Cytoscape 自带的所有布局，以及本包注册的扩展布局，每个都针对因果图做了设置。传入一个作为 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"layout"}],"，或者传入多个作为 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"layouts"}]," 供用户选择。"]}]
+4b:["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"style":{"textAlign":"left"},"children":"名称","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"style":{"textAlign":"left"},"children":"作用","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"style":{"textAlign":"left"},"children":"适合","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"fcose"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"力导向布局，速度快、分布均匀","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"大多数图，以及版本之间的锚定","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"cola"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"力导向布局，带有逐渐稳定的动画","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"适合观察布局稳定过程的小型图","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"dagre"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"按层次从左到右排列原因到结果，必要时打断回路","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"阅读因果顺序","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"breadthfirst"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"从没有原因的节点开始向下生长成树","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"回路少、起始原因明确的图","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"concentric"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["同心圆，最核心的节点在中间，依据 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"score"}]," 数据，没有时依据度数"],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"找出枢纽节点","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],"$L63","$L64","$L65"]}]]}]
+4c:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L21",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L22",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { layouts } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/cytoscape\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { CausalWorkspace } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/react\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":" "}],"\n",["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#6A737D","--shiki-dark":"#6A737D"},"children":"// 只定义一次，这样每种选择都能保留自己的位置"}]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" choices"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { force: layouts.fcose, flow: layouts.dagre, hubs: layouts.concentric };"}]]}],"\n",["$","span",null,{"children":" "}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"export"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" const"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" App"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" ({ "}],["$","span",null,{"style":{"--shiki-light":"#E36209","--shiki-dark":"#FFAB70"},"children":"dataset"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" }) "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"=>"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" <"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"CausalWorkspace"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" dataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{dataset} "}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"layouts"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{choices} />;"}]]}]]}]]}]]}]
+4d:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["其他任何 Cytoscape 布局也都可以使用。先用 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"cytoscape.use"}]," 注册一次扩展，再传入它的选项。请让布局对象在多次渲染之间保持不变：位置按每个布局对象分别缓存，所以同一布局的两种设置（比如按中心性和按度数的 concentric）会各自保留自己的位置。"]}]
+4e:["$","h3",null,{"id":"自适应的间距","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-8 x:text-2xl","children":["自适应的间距",["$","$L5c",null,{"id":"自适应的间距"}]]}]
+4f:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"固定的间距只适合一种节点大小。装着长标签的胶囊比圆点宽好几倍，如果连线长度固定，它们就会挤在一起。所以力导向布局会根据每个节点的大小来计算间距：连线的理想长度是刚好让两端节点分开，再加上一段间隙；节点越大，排斥力也越大。dagre 和环形布局本身已经考虑了节点大小。"}]
+50:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["曲线连线的弯曲程度与长度成正比，由 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"curveLinks"}]," 计算。较长的连线（比如在流向布局里反向回去的那条）会弧形绕开原本会和它重叠的连线。两个节点之间方向相反的两条连线会弯向两侧。每当节点稳定下来或被拖动时，",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"GraphView"}]," 都会更新弯曲程度。"]}]
+51:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"layoutQuality(cy)"}]," 按实际绘制的结果，统计让布局难以阅读的情况：节点重叠、连线穿过节点和连线交叉。可以用它来比较哪种布局最适合你的数据。环形布局无法让每条连线都避开环之间的节点，所以使用 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"concentric"}]," 时，会有少量连线穿过节点。"]}]
+52:["$","h2",null,{"id":"在同一张图上切换布局","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["在同一张图上切换布局",["$","$L5c",null,{"id":"在同一张图上切换布局"}]]}]
+53:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["给 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"GraphView"}]," 传入 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"animateLayouts"}],"，切换 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"layout"}]," 时节点会移动到新位置，而不是重建整张图。",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"CausalGraph"}]," 已经替你打开了它，所以只要修改 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"CausalProvider"}]," 的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"layout"}]," 就够了。每种布局的位置都会存进位置缓存，所以切换回去时，每个节点都会回到原来的位置。已保存的布局会让节点回到数据中的位置。"]}]
+54:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["每种布局都有自己的原点。concentric 以画布为中心，所以节点会先飞出屏幕，镜头才追上。因此布局会先算出来，再移到图当前所在位置的中心。节点沿直线移动，所以始终在同时包含起点和终点的范围之内：如果这个范围超出屏幕，镜头会先拉远把它框住，等节点到位后再推近。",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"measureLayout(cy, layout)"}]," 可以单独给出这些位置。"]}]
+55:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"布局不会被缩放去适配之前的范围。只缩小位置而不缩小节点，节点就会挤在一起：早先的版本把一个横向很长的流向布局塞进了同心圆布局占据的方块里，结果有四对节点重叠。"}]
+56:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"relayout(cy, layout)"}]," 能在任何图上做同样的事。它只对可见的节点布局，所以筛选器隐藏了一部分节点之后，可以单独为剩下的节点布局。被隐藏的节点保持原位，等筛选取消后再出现。"]}]
+57:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Causal Explorer 提供了四种布局：原始位置、针对当前节点的力导向布局、按中心性排列的同心圆，以及从左到右的流向布局。"}]
+58:["$","h2",null,{"id":"局限","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["局限",["$","$L5c",null,{"id":"局限"}]]}]
+59:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"锚定位置是精确的，但仍可能有少量重叠。如果标签在版本之间变长，节点会变宽，而它又不能离开原来的位置。两张图也各自适配边界，所以即使坐标相同，打开时的缩放比例也可能不同。"}]
+5b:null
+9:C
+5d:["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" Positions"}]
+5e:["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":") {"}]
+5f:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"  const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" counterparts"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" getCounterparts"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"(dataset, "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"V1\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"final\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":");"}]]}]
+60:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"  const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" anchors"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" alignPositions"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"(v1Positions, counterparts);"}]]}]
+61:["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"  placeAround"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"(cy, anchors)?."}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"run"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"();"}]]}]
+62:["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"}"}]}]
+63:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"cose"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"Cytoscape 内置的力导向布局","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"无法使用 fcose 时。fcose 通常更好","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+64:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"circle"}],"、",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"grid"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"单个圆或网格，按节点的核心程度排序","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"比较节点，而不是结构","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+65:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"random"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"随机位置","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"测试","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+1e:0
+7:"$undefined"
+1d:"$undefined"
+16:"$undefined"

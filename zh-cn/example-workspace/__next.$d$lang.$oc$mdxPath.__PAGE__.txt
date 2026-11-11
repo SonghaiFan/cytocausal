@@ -1,0 +1,108 @@
+3:"$Sreact.fragment"
+4:"/cytocausal/_next/static/chunks/3qfy96eoyh-ek.js"
+5:I[39756,["$4"],"default"]
+6:I[37457,["$4"],"default"]
+b:"/cytocausal/_next/static/chunks/0ukdujkmkvhm8.js"
+c:"/cytocausal/_next/static/chunks/0bau-wvwyshok.js"
+d:"/cytocausal/_next/static/chunks/093v92pv8bfl4.js"
+e:"/cytocausal/_next/static/chunks/0z-c01io_5ink.js"
+f:I[55169,["$b","$c","$d","$e"],"TOCProvider"]
+10:I[769,["$b","$c","$d","$e"],"Sidebar"]
+11:I[47486,["$b","$c","$d","$e"],"ClientWrapper"]
+12:I[98928,["$b","$c","$d","$e"],"LibraryExample"]
+13:I[63894,["$b","$c","$d","$e"],"HeadingAnchor"]
+1c:"ViewportBoundary"
+1d:I[97367,["$4"],"$1c"]
+1e:"MetadataBoundary"
+1f:I[97367,["$4"],"$1e"]
+20:"$Sreact.suspense"
+21:I[27201,["$4"],"IconMark"]
+8:X
+8:C
+9:X
+14:Tb65,import { validateDataset, type CausalDataset, type CausalEdge } from "@cytocausal/core";
+import raw from "./garden.json" with { type: "json" };
+
+function record(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Expected an object");
+  }
+  return value as Record<string, unknown>;
+}
+function text(value: unknown, field: string): string {
+  if (typeof value !== "string" || !value.trim()) throw new Error(`Invalid ${field}`);
+  return value.trim();
+}
+
+/** Parse the external format before asking the library to validate graph structure. */
+export function importGarden(input: unknown): CausalDataset {
+  const source = record(input);
+  if (!Array.isArray(source.variables) || !Array.isArray(source.relationships)) {
+    throw new Error("Expected variables and relationships arrays");
+  }
+  const nodes = source.variables.map((value) => {
+    const row = record(value);
+    return { id: `node:${text(row.id, "variable id")}`, label: text(row.label, "label") };
+  });
+  if (!nodes.length) throw new Error("Add at least one variable to this example");
+  const edges: CausalEdge[] = source.relationships.map((value) => {
+    const row = record(value);
+    if (row.sign != null && row.sign !== "+" && row.sign !== "-") {
+      throw new Error("sign must be +, -, or null/omitted when unknown");
+    }
+    return {
+      id: `edge:${text(row.id, "relationship id")}`,
+      source: `node:${text(row.from, "from")}`,
+      target: `node:${text(row.to, "to")}`,
+      polarity: row.sign === "+" ? "positive" : row.sign === "-" ? "negative" : undefined,
+      evidence: row.statement != null || row.person != null ? [{
+        text: row.statement == null ? undefined : text(row.statement, "statement"),
+        contributor: row.person == null ? undefined : text(row.person, "person"),
+      }] : undefined,
+    };
+  });
+  const dataset: CausalDataset = { id: "garden", snapshots: [{ id: "draft", nodes, edges }] };
+  const issues = validateDataset(dataset);
+  if (issues.length) throw new Error(issues.join("\n"));
+  return dataset;
+}
+
+export const dataset = importGarden(raw);
+
+// A review renames one concept and gives it a new source-system id.
+const draft = dataset.snapshots[0];
+const renamed = (id: string) => id === "node:growth" ? "node:plant-growth" : id;
+export const versionedDataset: CausalDataset = {
+  ...dataset,
+  snapshots: [draft, {
+    id: "reviewed",
+    nodes: draft.nodes.map((node) => node.id === "node:growth"
+      ? { ...node, id: renamed(node.id), label: "Rate of plant growth" } : node),
+    edges: draft.edges.map((edge) => ({ ...edge, source: renamed(edge.source), target: renamed(edge.target) })),
+  }],
+  correspondences: [{
+    from: "draft", to: "reviewed",
+    // When an explicit map exists, include unchanged nodes too.
+    nodes: Object.fromEntries(draft.nodes.map(({ id }) => [id, renamed(id)])),
+  }],
+};
+a:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$3","c",{"children":[["$","div",null,{"className":"x:mx-auto x:flex x:max-w-(--nextra-content-width)","children":["$","$Lf",null,{"value":[{"value":"完整源码","id":"完整源码","depth":2},{"value":"在自己的项目中运行","id":"在自己的项目中运行","depth":2}],"children":[["$","$L10",null,{}],["$","$L11",null,{"metadata":{"title":"完整工作区","filePath":"src/content/zh-cn/example-workspace.mdx","timestamp":1793942055000},"sourceCode":"---\ntitle: \"完整工作区\"\n---\n\n# 完整工作区\n\nimport { LibraryExample } from \"../../components/examples/index.tsx\";\nimport { ExampleSource } from \"../../components/examples/ExampleSource.tsx\";\n\n点击节点，再点击连线查看证据。示例包含三个节点和一个平衡反馈回路。\n\n<LibraryExample name=\"workspace\" />\n\n## 完整源码\n\n展开并复制以下三个文件，放在同一目录。组件文件默认导出示例。\n\n<ExampleSource name=\"WorkspaceExample.tsx\" />\n<ExampleSource name=\"data.ts\" />\n<ExampleSource name=\"garden.json\" />\n\n## 在自己的项目中运行\n\n在仓库 starter 的 `src/examples/` 中放入这些文件，在 `src/components/App.tsx` 中导入组件并返回 `<Example />`。保留 starter 的客户端加载边界。为图容器设置高度，例如 `height: 560px`；在窄屏下让图和侧栏纵向排列。\n\n这些示例是图的浏览与分析，不提供节点编辑、保存或多人同步。\n\n[数据接入教程](/zh-cn/import-data/) · [API](/zh-cn/api-react/) · [全部示例](/zh-cn/examples/)","children":[["$","div",null,{"id":"nextra-skip-nav"}],["$","main",null,{"data-pagefind-body":true,"children":[["$","h1",null,{"className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-bold x:mt-2 x:text-4xl","children":["完整工作区","$undefined"]}],"\n","\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"点击节点，再点击连线查看证据。示例包含三个节点和一个平衡反馈回路。"}],"\n",["$","$L12",null,{"name":"workspace"}],"\n",["$","h2",null,{"id":"完整源码","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["完整源码",["$","$L13",null,{"id":"完整源码"}]]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"展开并复制以下三个文件，放在同一目录。组件文件默认导出示例。"}],"\n",["$","details",null,{"className":"example-source","children":[["$","summary",null,{"children":"WorkspaceExample.tsx"}],["$","pre",null,{"children":["$","code",null,{"children":"\"use client\";\nimport { CausalWorkspace } from \"@cytocausal/react\";\nimport \"@cytocausal/react/styles.css\";\nimport { dataset } from \"./data.ts\";\n\nexport default function WorkspaceExample() {\n  return <CausalWorkspace dataset={dataset} title=\"Garden model\" shareInUrl={false} />;\n}\n"}]}]]}],"\n",["$","details",null,{"className":"example-source","children":[["$","summary",null,{"children":"data.ts"}],["$","pre",null,{"children":["$","code",null,{"children":"$14"}]}]]}],"\n","$L15","\n","$L16","\n","$L17","\n","$L18","\n","$L19"]}]]}]]}]}],null,"$L1a"]}],"p":"$@1b","v":null,"s":"$9"}}]]
+2:[["children",{"s":{"n":"mdxPath","t":"oc","k":"example-workspace","s":[]},"h":65600,"d":{"r":["$","$3","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}]}]]}],"p":"$@7","v":"$8","s":"$9"},"c":"$Qa"}]]
+1:[["children",{"s":{"n":"lang","t":"d","k":"zh-cn","s":[]},"h":196656,"c":"$Q2"}]]
+0:{"t":{"t":{"s":"","h":131152,"c":"$Q1"},"h":{"r":["$","$3","h",{"children":[null,["$","$L1d",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L1f",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$20",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"完整工作区 | cytocausal"}],["$","link","1",{"rel":"icon","href":"/cytocausal/icon.svg?icon.3c77pwa7_7hzo.svg","sizes":"any","type":"image/svg+xml"}],["$","$L21","2",{}]]}]}],null]}],null]}],"p":"$@22","v":null,"s":"$9"}},"a":"$@23","u":"$@24","b":"PNV-lKU2O2aN7EBl7fUyT"}
+25:I[22016,["$b","$c","$d","$e"],""]
+26:I[97367,["$4"],"OutletBoundary"]
+15:["$","details",null,{"className":"example-source","children":[["$","summary",null,{"children":"garden.json"}],["$","pre",null,{"children":["$","code",null,{"children":"{\n  \"variables\": [\n    {\n      \"id\": \"moisture\",\n      \"label\": \"Soil moisture\"\n    },\n    {\n      \"id\": \"growth\",\n      \"label\": \"Plant growth\"\n    },\n    {\n      \"id\": \"use\",\n      \"label\": \"Water use\"\n    }\n  ],\n  \"relationships\": [\n    {\n      \"id\": \"moisture-growth\",\n      \"from\": \"moisture\",\n      \"to\": \"growth\",\n      \"sign\": \"+\",\n      \"statement\": \"In this fictional model, moist soil supports growth.\",\n      \"person\": \"gardener\"\n    },\n    {\n      \"id\": \"growth-use\",\n      \"from\": \"growth\",\n      \"to\": \"use\",\n      \"sign\": \"+\",\n      \"statement\": \"Larger plants use more water.\",\n      \"person\": \"gardener\"\n    },\n    {\n      \"id\": \"use-moisture\",\n      \"from\": \"use\",\n      \"to\": \"moisture\",\n      \"sign\": \"-\",\n      \"statement\": \"Water use reduces soil moisture.\",\n      \"person\": \"reviewer\"\n    }\n  ]\n}\n"}]}]]}]
+16:["$","h2",null,{"id":"在自己的项目中运行","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["在自己的项目中运行",["$","$L13",null,{"id":"在自己的项目中运行"}]]}]
+17:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["在仓库 starter 的 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"src/examples/"}]," 中放入这些文件，在 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"src/components/App.tsx"}]," 中导入组件并返回 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"<Example />"}],"。保留 starter 的客户端加载边界。为图容器设置高度，例如 ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"height: 560px"}],"；在窄屏下让图和侧栏纵向排列。"]}]
+18:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"这些示例是图的浏览与分析，不提供节点编辑、保存或多人同步。"}]
+19:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","$L25",null,{"href":"/zh-cn/import-data/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"数据接入教程"}]," · ",["$","$L25",null,{"href":"/zh-cn/api-react/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"API"}]," · ",["$","$L25",null,{"href":"/zh-cn/examples/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"全部示例"}]]}]
+1a:["$","$L26",null,{"children":["$","$20",null,{"name":"Next.MetadataOutlet","children":"$@27"}]}]
+24:true
+9:300
+27:null
+9:C
+23:0
+7:"$undefined"
+22:"$undefined"
+1b:"$undefined"

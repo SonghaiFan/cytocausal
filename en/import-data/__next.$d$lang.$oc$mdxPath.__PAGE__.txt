@@ -1,0 +1,239 @@
+3:"$Sreact.fragment"
+4:"/cytocausal/_next/static/chunks/3qfy96eoyh-ek.js"
+5:I[39756,["$4"],"default"]
+6:I[37457,["$4"],"default"]
+b:"/cytocausal/_next/static/chunks/0ukdujkmkvhm8.js"
+c:"/cytocausal/_next/static/chunks/0bau-wvwyshok.js"
+d:"/cytocausal/_next/static/chunks/093v92pv8bfl4.js"
+e:"/cytocausal/_next/static/chunks/0z-c01io_5ink.js"
+f:I[55169,["$b","$c","$d","$e"],"TOCProvider"]
+10:I[769,["$b","$c","$d","$e"],"Sidebar"]
+11:I[47486,["$b","$c","$d","$e"],"ClientWrapper"]
+17:"ViewportBoundary"
+18:I[97367,["$4"],"$17"]
+19:"MetadataBoundary"
+1a:I[97367,["$4"],"$19"]
+1b:"$Sreact.suspense"
+1c:I[27201,["$4"],"IconMark"]
+8:X
+8:C
+9:X
+12:T1917,---
+title: "Bring your own data"
+---
+
+# Bring your own data
+
+import { ExampleSource } from "../../components/examples/ExampleSource.tsx";
+
+This walkthrough turns an external JSON table into a validated causal graph, displays it, adds evidence and compares a reviewed version. The complete runnable source is shared with the [workspace example](/en/example-workspace/).
+
+## 1. Start from a running app
+
+Follow [Getting started](/en/getting-started/) and run `npm run dev`. The current integration path is the repository's React / Next.js starter, not an npm install. Put `garden.json` and `data.ts` below in `apps/starter/src/`, replacing the starter data module. Its existing `App.tsx` imports the exported `dataset`.
+
+## 2. Describe variables and relationships
+
+Use stable source ids; labels are for display and may change. Keep relationships in a separate table with their own ids. This fictional dataset has three variables and a balancing feedback loop.
+
+<ExampleSource name="garden.json" />
+
+| External field | Library field | Rule |
+| --- | --- | --- |
+| `variables[].id` | Node `id` | Stable identity, not a label or array index |
+| `variables[].label` | Node `label` | Human-readable variable or event |
+| `relationships[].id` | Edge `id` | Unique per relationship |
+| `from`, `to` | `source`, `target` | Direction runs from cause to effect |
+| `sign` | `polarity` | `+` → `positive`; `-` → `negative`; null/omitted → unknown |
+| `statement`, `person` | `evidence[].text`, `.contributor` | Preserve the claim and its source |
+
+Positive and negative describe the direction of influence, not good/bad or statistical certainty. Unknown polarity must stay unknown. CSV rows can use the same mapping after parsing with your chosen CSV parser; splitting strings on commas is not sufficient for quoted fields.
+
+## 3. Parse, convert, then validate
+
+<ExampleSource name="data.ts" />
+
+`importGarden(input: unknown)` checks external field types first, converts the tables, then runs `validateDataset`. Do not cast arbitrary JSON to `CausalDataset`: TypeScript does not validate network responses at runtime.
+
+The `node:` and `edge:` prefixes keep ids distinct across both element kinds. Cytoscape shares one id namespace. The current validator checks duplicate nodes and duplicate edges separately, so it does not detect a node and edge sharing an id.
+
+`validateDataset` checks references and identity consistency in an already-shaped dataset. It is not a JSON schema validator, and does not enforce that `snapshots` contains an entry. The React workspace needs at least one snapshot. This importer also requires at least one variable to keep the example meaningful.
+
+For a fetched response, pass the parsed JSON through the same importer:
+
+```ts
+const response = await fetch("/garden.json");
+if (!response.ok) throw new Error(`Data request failed: ${response.status}`);
+const dataset = importGarden(await response.json());
+```
+
+Present loading and error states before mounting the graph. Report validation errors to the person supplying the data; do not silently drop broken edges.
+
+## 4. Display the graph
+
+The starter already handles browser-only loading and imports the component styles. The minimal component is:
+
+```tsx
+"use client";
+import { CausalWorkspace } from "@cytocausal/react";
+import { dataset } from "../data.ts";
+
+export function App() {
+  return <CausalWorkspace dataset={dataset} title="Garden model" />;
+}
+```
+
+Import `@cytocausal/react/styles.css` once at your app boundary. Outside the starter, give the graph an explicit height and load it in the browser; `"use client"` alone does not disable server prerendering in Next.js. See [React lifecycle](/en/react-lifecycle/). When replacing an entire dataset at runtime, remount the workspace with a `key` that identifies that load so initial version/selection state resets.
+
+## 5. Follow the evidence
+
+Click a node, then a link in its details. The link's statement and contributor come from the imported `evidence`. A contributor may exist without a quote; a quote may exist without a known contributor. Avoid inventing either to fill a blank field.
+
+For a two-contributor graph, `ContributorFilter` can expose each person's part. An unattributed link is excluded when filtering for a named contributor. Support counts unique contributors, not confidence or the number of evidence records. See [Evidence and contributors](/en/provenance/).
+
+## 6. Add a reviewed version
+
+The same `data.ts` exports `versionedDataset`. It keeps the draft, creates a reviewed snapshot and records the renamed id in `correspondences`. Replace `dataset={dataset}` with `dataset={versionedDataset}` to enable version switching, or use the [comparison example](/en/example-versions/).
+
+Array order is version order. Keep ids unchanged when identity is unchanged. If an explicit correspondence exists for a pair, it replaces matching by id for that pair: include unchanged nodes too. Multiple source nodes may map to one target for a merge; reading the correspondence in reverse exposes the split. Do not guess identity from similar labels.
+
+## 7. Check the result
+
+```ts
+import { findFeedbackLoops, getSnapshot, validateDataset } from "@cytocausal/core";
+const issues = validateDataset(versionedDataset); // []
+const result = findFeedbackLoops(getSnapshot(versionedDataset, "draft"), {
+  maxLength: 4, limit: 20,
+});
+// One balancing loop. result.complete is true for this small graph.
+```
+
+Check that every edge points in the intended direction, quotes remain attached to their claims and renamed nodes stay matched across versions. For large graphs, set search bounds and surface `complete: false`; analysis may otherwise become expensive.
+
+## Common import problems
+
+| Symptom | Check |
+| --- | --- |
+| Missing or disappearing elements | Duplicate ids, including collisions between node and edge ids |
+| Missing-node validation errors | Whitespace, inconsistent prefixes, an edge whose endpoint was omitted |
+| Every node appears new after a review | Changed ids without a complete correspondence |
+| Loop type is `unknown` | At least one edge has no polarity |
+| Blank or collapsed graph | Container height, browser-only loading and stylesheet import |
+| Empty contributor view | Evidence must attribute the links, not only their endpoints |
+
+Next: [compose your interface](/en/example-compose/), [inspect the core API](/en/api-core/), or [choose styles](/en/theming/).a:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$3","c",{"children":[["$","div",null,{"className":"x:mx-auto x:flex x:max-w-(--nextra-content-width)","children":["$","$Lf",null,{"value":[{"value":"1. Start from a running app","id":"1-start-from-a-running-app","depth":2},{"value":"2. Describe variables and relationships","id":"2-describe-variables-and-relationships","depth":2},{"value":"3. Parse, convert, then validate","id":"3-parse-convert-then-validate","depth":2},{"value":"4. Display the graph","id":"4-display-the-graph","depth":2},{"value":"5. Follow the evidence","id":"5-follow-the-evidence","depth":2},{"value":"6. Add a reviewed version","id":"6-add-a-reviewed-version","depth":2},{"value":"7. Check the result","id":"7-check-the-result","depth":2},{"value":"Common import problems","id":"common-import-problems","depth":2}],"children":[["$","$L10",null,{}],["$","$L11",null,{"metadata":{"title":"Bring your own data","filePath":"src/content/en/import-data.mdx"},"sourceCode":"$12","children":["$L13","$L14"]}]]}]}],null,"$L15"]}],"p":"$@16","v":null,"s":"$9"}}]]
+2:[["children",{"s":{"n":"mdxPath","t":"oc","k":"import-data","s":[]},"h":65600,"d":{"r":["$","$3","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}]}]]}],"p":"$@7","v":"$8","s":"$9"},"c":"$Qa"}]]
+1:[["children",{"s":{"n":"lang","t":"d","k":"en","s":[]},"h":196656,"c":"$Q2"}]]
+0:{"t":{"t":{"s":"","h":131152,"c":"$Q1"},"h":{"r":["$","$3","h",{"children":[null,["$","$L18",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L1a",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$1b",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Bring your own data | cytocausal"}],["$","link","1",{"rel":"icon","href":"/cytocausal/icon.svg?icon.3c77pwa7_7hzo.svg","sizes":"any","type":"image/svg+xml"}],["$","$L1c","2",{}]]}]}],null]}],null]}],"p":"$@1d","v":null,"s":"$9"}},"a":"$@1e","u":"$@1f","b":"PNV-lKU2O2aN7EBl7fUyT"}
+20:I[22016,["$b","$c","$d","$e"],""]
+21:I[63894,["$b","$c","$d","$e"],"HeadingAnchor"]
+3d:I[97367,["$4"],"OutletBoundary"]
+13:["$","div",null,{"id":"nextra-skip-nav"}]
+14:["$","main",null,{"data-pagefind-body":true,"children":[["$","h1",null,{"className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-bold x:mt-2 x:text-4xl","children":["Bring your own data","$undefined"]}],"\n","\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["This walkthrough turns an external JSON table into a validated causal graph, displays it, adds evidence and compares a reviewed version. The complete runnable source is shared with the ",["$","$L20",null,{"href":"/en/example-workspace/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"workspace example"}],"."]}],"\n",["$","h2",null,{"id":"1-start-from-a-running-app","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["1. Start from a running app",["$","$L21",null,{"id":"1-start-from-a-running-app"}]]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Follow ",["$","$L20",null,{"href":"/en/getting-started/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Getting started"}]," and run ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"npm run dev"}],". The current integration path is the repository’s React / Next.js starter, not an npm install. Put ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"garden.json"}]," and ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"data.ts"}]," below in ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"apps/starter/src/"}],", replacing the starter data module. Its existing ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"App.tsx"}]," imports the exported ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"dataset"}],"."]}],"\n",["$","h2",null,{"id":"2-describe-variables-and-relationships","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["2. Describe variables and relationships",["$","$L21",null,{"id":"2-describe-variables-and-relationships"}]]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Use stable source ids; labels are for display and may change. Keep relationships in a separate table with their own ids. This fictional dataset has three variables and a balancing feedback loop."}],"\n",["$","details",null,{"className":"example-source","children":[["$","summary",null,{"children":"garden.json"}],["$","pre",null,{"children":["$","code",null,{"children":"{\n  \"variables\": [\n    {\n      \"id\": \"moisture\",\n      \"label\": \"Soil moisture\"\n    },\n    {\n      \"id\": \"growth\",\n      \"label\": \"Plant growth\"\n    },\n    {\n      \"id\": \"use\",\n      \"label\": \"Water use\"\n    }\n  ],\n  \"relationships\": [\n    {\n      \"id\": \"moisture-growth\",\n      \"from\": \"moisture\",\n      \"to\": \"growth\",\n      \"sign\": \"+\",\n      \"statement\": \"In this fictional model, moist soil supports growth.\",\n      \"person\": \"gardener\"\n    },\n    {\n      \"id\": \"growth-use\",\n      \"from\": \"growth\",\n      \"to\": \"use\",\n      \"sign\": \"+\",\n      \"statement\": \"Larger plants use more water.\",\n      \"person\": \"gardener\"\n    },\n    {\n      \"id\": \"use-moisture\",\n      \"from\": \"use\",\n      \"to\": \"moisture\",\n      \"sign\": \"-\",\n      \"statement\": \"Water use reduces soil moisture.\",\n      \"person\": \"reviewer\"\n    }\n  ]\n}\n"}]}]]}],"\n",["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":["$L22","$L23"]}],"\n","$L24","\n","$L25","\n","$L26","\n","$L27","\n","$L28","\n","$L29","\n","$L2a","\n","$L2b","\n","$L2c","\n","$L2d","\n","$L2e","\n","$L2f","\n","$L30","\n","$L31","\n","$L32","\n","$L33","\n","$L34","\n","$L35","\n","$L36","\n","$L37","\n","$L38","\n","$L39","\n","$L3a","\n","$L3b","\n","$L3c"]}]
+15:["$","$L3d",null,{"children":["$","$1b",null,{"name":"Next.MetadataOutlet","children":"$@3e"}]}]
+1f:true
+42:"ToggleWordWrapButton"
+43:I[83987,["$b","$c","$d","$e"],"$42"]
+44:I[40493,["$b","$c","$d","$e"],"CopyToClipboard"]
+9:300
+22:["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"children":"External field","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"children":"Library field","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"children":"Rule","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}]
+23:["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"variables[].id"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":["Node ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"id"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"Stable identity, not a label or array index","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"variables[].label"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":["Node ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"label"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"Human-readable variable or event","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"relationships[].id"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":["Edge ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"id"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"Unique per relationship","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"from"}],", ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"to"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"source"}],", ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"target"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"Direction runs from cause to effect","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"sign"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"polarity"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"+"}]," → ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"positive"}],"; ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"-"}]," → ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"negative"}],"; null/omitted → unknown"],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"statement"}],", ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"person"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],"$L3f","$L40"],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]]}]
+24:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Positive and negative describe the direction of influence, not good/bad or statistical certainty. Unknown polarity must stay unknown. CSV rows can use the same mapping after parsing with your chosen CSV parser; splitting strings on commas is not sufficient for quoted fields."}]
+25:["$","h2",null,{"id":"3-parse-convert-then-validate","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["3. Parse, convert, then validate",["$","$L21",null,{"id":"3-parse-convert-then-validate"}]]}]
+41:Tb65,import { validateDataset, type CausalDataset, type CausalEdge } from "@cytocausal/core";
+import raw from "./garden.json" with { type: "json" };
+
+function record(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Expected an object");
+  }
+  return value as Record<string, unknown>;
+}
+function text(value: unknown, field: string): string {
+  if (typeof value !== "string" || !value.trim()) throw new Error(`Invalid ${field}`);
+  return value.trim();
+}
+
+/** Parse the external format before asking the library to validate graph structure. */
+export function importGarden(input: unknown): CausalDataset {
+  const source = record(input);
+  if (!Array.isArray(source.variables) || !Array.isArray(source.relationships)) {
+    throw new Error("Expected variables and relationships arrays");
+  }
+  const nodes = source.variables.map((value) => {
+    const row = record(value);
+    return { id: `node:${text(row.id, "variable id")}`, label: text(row.label, "label") };
+  });
+  if (!nodes.length) throw new Error("Add at least one variable to this example");
+  const edges: CausalEdge[] = source.relationships.map((value) => {
+    const row = record(value);
+    if (row.sign != null && row.sign !== "+" && row.sign !== "-") {
+      throw new Error("sign must be +, -, or null/omitted when unknown");
+    }
+    return {
+      id: `edge:${text(row.id, "relationship id")}`,
+      source: `node:${text(row.from, "from")}`,
+      target: `node:${text(row.to, "to")}`,
+      polarity: row.sign === "+" ? "positive" : row.sign === "-" ? "negative" : undefined,
+      evidence: row.statement != null || row.person != null ? [{
+        text: row.statement == null ? undefined : text(row.statement, "statement"),
+        contributor: row.person == null ? undefined : text(row.person, "person"),
+      }] : undefined,
+    };
+  });
+  const dataset: CausalDataset = { id: "garden", snapshots: [{ id: "draft", nodes, edges }] };
+  const issues = validateDataset(dataset);
+  if (issues.length) throw new Error(issues.join("\n"));
+  return dataset;
+}
+
+export const dataset = importGarden(raw);
+
+// A review renames one concept and gives it a new source-system id.
+const draft = dataset.snapshots[0];
+const renamed = (id: string) => id === "node:growth" ? "node:plant-growth" : id;
+export const versionedDataset: CausalDataset = {
+  ...dataset,
+  snapshots: [draft, {
+    id: "reviewed",
+    nodes: draft.nodes.map((node) => node.id === "node:growth"
+      ? { ...node, id: renamed(node.id), label: "Rate of plant growth" } : node),
+    edges: draft.edges.map((edge) => ({ ...edge, source: renamed(edge.source), target: renamed(edge.target) })),
+  }],
+  correspondences: [{
+    from: "draft", to: "reviewed",
+    // When an explicit map exists, include unchanged nodes too.
+    nodes: Object.fromEntries(draft.nodes.map(({ id }) => [id, renamed(id)])),
+  }],
+};
+26:["$","details",null,{"className":"example-source","children":[["$","summary",null,{"children":"data.ts"}],["$","pre",null,{"children":["$","code",null,{"children":"$41"}]}]]}]
+27:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"importGarden(input: unknown)"}]," checks external field types first, converts the tables, then runs ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"validateDataset"}],". Do not cast arbitrary JSON to ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"CausalDataset"}],": TypeScript does not validate network responses at runtime."]}]
+28:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["The ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"node:"}]," and ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"edge:"}]," prefixes keep ids distinct across both element kinds. Cytoscape shares one id namespace. The current validator checks duplicate nodes and duplicate edges separately, so it does not detect a node and edge sharing an id."]}]
+29:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"validateDataset"}]," checks references and identity consistency in an already-shaped dataset. It is not a JSON schema validator, and does not enforce that ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"snapshots"}]," contains an entry. The React workspace needs at least one snapshot. This importer also requires at least one variable to keep the example meaningful."]}]
+2a:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"For a fetched response, pass the parsed JSON through the same importer:"}]
+2b:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L43",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L44",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" response"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" await"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" fetch"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"("}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"/garden.json\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":");"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"if"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" ("}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"!"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"response.ok) "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"throw"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" new"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" Error"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"("}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"`Data request failed: ${"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"response"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"."}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"status"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"}`"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":");"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" dataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" importGarden"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"("}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"await"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" response."}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"json"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"());"}]]}]]}]]}]]}]
+2c:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Present loading and error states before mounting the graph. Report validation errors to the person supplying the data; do not silently drop broken edges."}]
+2d:["$","h2",null,{"id":"4-display-the-graph","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["4. Display the graph",["$","$L21",null,{"id":"4-display-the-graph"}]]}]
+2e:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"The starter already handles browser-only loading and imports the component styles. The minimal component is:"}]
+2f:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L43",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L44",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"use client\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { CausalWorkspace } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/react\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { dataset } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"../data.ts\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":" "}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"export"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" function"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" App"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"() {"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"  return"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" <"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"CausalWorkspace"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" dataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{dataset} "}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"title"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"Garden model\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" />;"}]]}],"\n",["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"}"}]}]]}]]}]]}]
+30:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Import ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"@cytocausal/react/styles.css"}]," once at your app boundary. Outside the starter, give the graph an explicit height and load it in the browser; ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"\"use client\""}]," alone does not disable server prerendering in Next.js. See ",["$","$L20",null,{"href":"/en/react-lifecycle/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"React lifecycle"}],". When replacing an entire dataset at runtime, remount the workspace with a ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"key"}]," that identifies that load so initial version/selection state resets."]}]
+31:["$","h2",null,{"id":"5-follow-the-evidence","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["5. Follow the evidence",["$","$L21",null,{"id":"5-follow-the-evidence"}]]}]
+32:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Click a node, then a link in its details. The link’s statement and contributor come from the imported ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"evidence"}],". A contributor may exist without a quote; a quote may exist without a known contributor. Avoid inventing either to fill a blank field."]}]
+33:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["For a two-contributor graph, ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"ContributorFilter"}]," can expose each person’s part. An unattributed link is excluded when filtering for a named contributor. Support counts unique contributors, not confidence or the number of evidence records. See ",["$","$L20",null,{"href":"/en/provenance/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Evidence and contributors"}],"."]}]
+34:["$","h2",null,{"id":"6-add-a-reviewed-version","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["6. Add a reviewed version",["$","$L21",null,{"id":"6-add-a-reviewed-version"}]]}]
+35:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["The same ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"data.ts"}]," exports ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"versionedDataset"}],". It keeps the draft, creates a reviewed snapshot and records the renamed id in ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"correspondences"}],". Replace ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"dataset={dataset}"}]," with ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"dataset={versionedDataset}"}]," to enable version switching, or use the ",["$","$L20",null,{"href":"/en/example-versions/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"comparison example"}],"."]}]
+36:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Array order is version order. Keep ids unchanged when identity is unchanged. If an explicit correspondence exists for a pair, it replaces matching by id for that pair: include unchanged nodes too. Multiple source nodes may map to one target for a merge; reading the correspondence in reverse exposes the split. Do not guess identity from similar labels."}]
+37:["$","h2",null,{"id":"7-check-the-result","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["7. Check the result",["$","$L21",null,{"id":"7-check-the-result"}]]}]
+38:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L43",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L44",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"import"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" { findFeedbackLoops, getSnapshot, validateDataset } "}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"from"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" \"@cytocausal/core\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":";"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" issues"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" validateDataset"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"(versionedDataset); "}],["$","span",null,{"style":{"--shiki-light":"#6A737D","--shiki-dark":"#6A737D"},"children":"// []"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"const"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":" result"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":" ="}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" findFeedbackLoops"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"("}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"getSnapshot"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"(versionedDataset, "}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":"\"draft\""}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"), {"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"  maxLength: "}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"4"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":", limit: "}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"20"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":","}]]}],"\n",["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"});"}]}],"\n",["$","span",null,{"children":["$","span",null,{"style":{"--shiki-light":"#6A737D","--shiki-dark":"#6A737D"},"children":"// One balancing loop. result.complete is true for this small graph."}]}]]}]]}]]}]
+39:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Check that every edge points in the intended direction, quotes remain attached to their claims and renamed nodes stay matched across versions. For large graphs, set search bounds and surface ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"complete: false"}],"; analysis may otherwise become expensive."]}]
+3a:["$","h2",null,{"id":"common-import-problems","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["Common import problems",["$","$L21",null,{"id":"common-import-problems"}]]}]
+3b:["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"children":"Symptom","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"children":"Check","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"children":"Missing or disappearing elements","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"Duplicate ids, including collisions between node and edge ids","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":"Missing-node validation errors","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"Whitespace, inconsistent prefixes, an edge whose endpoint was omitted","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":"Every node appears new after a review","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"Changed ids without a complete correspondence","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":["Loop type is ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"unknown"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"At least one edge has no polarity","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":"Blank or collapsed graph","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"Container height, browser-only loading and stylesheet import","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"children":"Empty contributor view","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"children":"Evidence must attribute the links, not only their endpoints","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]]}]]}]
+3c:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Next: ",["$","$L20",null,{"href":"/en/example-compose/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"compose your interface"}],", ",["$","$L20",null,{"href":"/en/api-core/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"inspect the core API"}],", or ",["$","$L20",null,{"href":"/en/theming/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"choose styles"}],"."]}]
+3e:null
+9:C
+3f:["$","td",null,{"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"evidence[].text"}],", ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":".contributor"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]
+40:["$","td",null,{"children":"Preserve the claim and its source","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]
+1e:0
+7:"$undefined"
+1d:"$undefined"
+16:"$undefined"

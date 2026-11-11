@@ -1,0 +1,142 @@
+3:"$Sreact.fragment"
+4:"/cytocausal/_next/static/chunks/3qfy96eoyh-ek.js"
+5:I[39756,["$4"],"default"]
+6:I[37457,["$4"],"default"]
+b:"/cytocausal/_next/static/chunks/0ukdujkmkvhm8.js"
+c:"/cytocausal/_next/static/chunks/0bau-wvwyshok.js"
+d:"/cytocausal/_next/static/chunks/093v92pv8bfl4.js"
+e:"/cytocausal/_next/static/chunks/0z-c01io_5ink.js"
+f:I[55169,["$b","$c","$d","$e"],"TOCProvider"]
+10:I[769,["$b","$c","$d","$e"],"Sidebar"]
+11:I[47486,["$b","$c","$d","$e"],"ClientWrapper"]
+17:"ViewportBoundary"
+18:I[97367,["$4"],"$17"]
+19:"MetadataBoundary"
+1a:I[97367,["$4"],"$19"]
+1b:"$Sreact.suspense"
+1c:I[27201,["$4"],"IconMark"]
+8:X
+8:C
+9:X
+12:T1125,---
+title: "Case study: Perspectiva"
+---
+
+import { OpenApp } from "../../components/OpenApp.tsx";
+
+# Case study: Perspectiva
+
+<OpenApp app="perspectiva">Open the app</OpenApp>
+
+Perspectiva compares versions of causal loop diagrams from participatory workshops. Each participant drew a first diagram, and the researchers produced a final version with standardised terms. The research question is what changed.
+
+![Perspectiva comparing the first and final versions of a diagram](/images/perspectiva-compare.png)
+
+| Item | Details |
+| :--- | :--- |
+| Data | 8 participants, each with V1 and final snapshots, and the whole workshop combined |
+| Size | Up to 32 nodes per diagram |
+| Links | Directed, with polarity |
+| Evidence | Each participant's original terms |
+| Correspondences | 129 V1 nodes linked to final nodes |
+
+## What it needed
+
+- Two versions side by side, with matching nodes in the same place
+- Movement between versions on one graph
+- A way to see where each term came from
+
+## The alignment problem
+
+The original app matched nodes by id, on the assumption that a node keeps its id across versions. It doesn't:
+
+- V1 ids came from a master id column, while final ids came from a mapping index.
+- When several V1 nodes merged into one, only the last row's index was kept.
+
+Only 44 of 126 mapped pairs shared an id, and three datasets shared none, so the view looked aligned but wasn't.
+
+Rewriting the ids wasn't an option, because merged nodes would collide. The mapping table was already the source of truth, so it became a [correspondence](/en/data-model/), which left the data untouched.
+
+## How the framework solved it
+
+| Need | Mechanism | Guide |
+| :--- | :--- | :--- |
+| Matching nodes across versions | `Correspondence` | [Data model](/en/data-model/) |
+| Side-by-side comparison | `CompareView`, with any version on either side | [Stable layouts](/en/stable-layouts/) |
+| Changes in either order | `diffSnapshots`, `followNodes` | [Causal analysis](/en/causal-analysis/) |
+| Moving between versions | `animateSnapshots` | [Version transitions](/en/version-transitions/) |
+| Original terms in the sidebar | `Evidence`, `SelectionPanel` | [React lifecycle](/en/react-lifecycle/) |
+| Reinforcing and balancing loops | `findFeedbackLoops` | [Causal analysis](/en/causal-analysis/) |
+
+## Result
+
+Alignment offsets are now 0 for every anchored node in all 8 datasets with fcose, and on `expert_9` with cola. Switching versions keeps one graph, and positions match between the two views. Playwright tests check this for every dataset, including rapid switching.
+
+The app also lists each diagram's feedback loops, 89 in total, and highlights the one you choose. Two participants' diagrams have no loops in either version.
+
+Validation also found a duplicate link in one diagram. It was harmless, and the importer now merges exact repeats.
+
+## The whole workshop
+
+Each participant's diagram stands alone, but the research is about the workshop. Choose **Whole workshop** in the menu to see all 8 diagrams combined with `combineDatasets`. Node ids differ between participants, so terms are matched by their shared key instead. The final version has 107 terms and 206 links. 24 links were drawn by more than one participant, and one by four, so the line width shows where people agree. On 4 links, participants disagree on the polarity, and both versions are shown. The contributor filter shows one participant's part of the combined map without moving it. See [Provenance and agreement](/en/provenance/).
+
+## Publication
+
+Perspectiva was published as *Out of the Loop: Enhancing Documentation and Transparency in Causal Loop Diagrams to Capture Multiple Perspectives* (IEEE VIS 2025, Best Short Paper), by Jessica Bou Nassar, Yu Xuan Yio, Nethara Athukorala, Simran, Songhai Fan, Cynthia Huang, Lyn Bartram, Tim Dwyer and Sarah Goodwin. In its user studies, domain and visualisation experts reported better navigation, comparison and provenance tracking than with static diagrams.
+
+## Run it
+
+```sh
+npm install
+npm run dev:perspectiva
+```
+
+Open `http://localhost:3100`. Add `?dataset=expert_9` to choose a dataset, and `?debug=1` to show the dataset selector.
+
+Set `NEXT_PUBLIC_PERSPECTIVA_URL` and `NEXT_PUBLIC_EXPLORER_URL` when building the docs to point the **Open the app** buttons at deployed apps. Without them, the buttons open the local servers, so start the app first.a:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$3","c",{"children":[["$","div",null,{"className":"x:mx-auto x:flex x:max-w-(--nextra-content-width)","children":["$","$Lf",null,{"value":[{"value":"What it needed","id":"what-it-needed","depth":2},{"value":"The alignment problem","id":"the-alignment-problem","depth":2},{"value":"How the framework solved it","id":"how-the-framework-solved-it","depth":2},{"value":"Result","id":"result","depth":2},{"value":"The whole workshop","id":"the-whole-workshop","depth":2},{"value":"Publication","id":"publication","depth":2},{"value":"Run it","id":"run-it","depth":2}],"children":[["$","$L10",null,{}],["$","$L11",null,{"metadata":{"title":"Case study: Perspectiva","filePath":"src/content/en/case-perspectiva.mdx"},"sourceCode":"$12","children":["$L13","$L14"]}]]}]}],null,"$L15"]}],"p":"$@16","v":null,"s":"$9"}}]]
+2:[["children",{"s":{"n":"mdxPath","t":"oc","k":"case-perspectiva","s":[]},"h":65600,"d":{"r":["$","$3","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}]}]]}],"p":"$@7","v":"$8","s":"$9"},"c":"$Qa"}]]
+1:[["children",{"s":{"n":"lang","t":"d","k":"en","s":[]},"h":196656,"c":"$Q2"}]]
+0:{"t":{"t":{"s":"","h":131152,"c":"$Q1"},"h":{"r":["$","$3","h",{"children":[null,["$","$L18",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L1a",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$1b",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Case study: Perspectiva | cytocausal"}],["$","link","1",{"rel":"icon","href":"/cytocausal/icon.svg?icon.3c77pwa7_7hzo.svg","sizes":"any","type":"image/svg+xml"}],["$","$L1c","2",{}]]}]}],null]}],null]}],"p":"$@1d","v":null,"s":"$9"}},"a":"$@1e","u":"$@1f","b":"PNV-lKU2O2aN7EBl7fUyT"}
+20:I[5500,["$b","$c","$d","$e"],"Image"]
+37:I[97367,["$4"],"OutletBoundary"]
+13:["$","div",null,{"id":"nextra-skip-nav"}]
+14:["$","main",null,{"data-pagefind-body":true,"children":[["$","h1",null,{"className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-bold x:mt-2 x:text-4xl","children":["Case study: Perspectiva","$undefined"]}],"\n",["$","a",null,{"href":"https://cytocausal-perspectiva.vercel.app","target":"_blank","rel":"noreferrer","style":{"display":"inline-flex","alignItems":"center","minHeight":36,"marginTop":"1rem","padding":"8px 15px","borderRadius":10,"background":"#fbbf24","color":"#000","fontSize":14,"fontWeight":500},"children":["Open the app"," ↗"]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Perspectiva compares versions of causal loop diagrams from participatory workshops. Each participant drew a first diagram, and the researchers produced a final version with standardised terms. The research question is what changed."}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["$","$L20",null,{"alt":"Perspectiva comparing the first and final versions of a diagram","placeholder":"blur","src":{"src":"/cytocausal/_next/static/media/perspectiva-compare.2fxq4w0xc45uu.png","width":1440,"height":900,"blurWidth":8,"blurHeight":5,"blurDataURL":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAFCAIAAAD38zoCAAAAaklEQVR42h3NQQ6DMAxEUd//YpW66Am6KXQBAWKEiYmD7RDlrUfzgYhq9dqZKXciAppDSX9XNs1Cw3URM4lkUNlSeMnxpXTO45uWD67DviO4SUljOX+c2+6wmxCx/YM1qnfXMu4+hS3G+AATq3K2wcDBLwAAAABJRU5ErkJggg=="},"unoptimized":true}]}],"\n",["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"style":{"textAlign":"left"},"children":"Item","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"style":{"textAlign":"left"},"children":"Details","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Data","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"8 participants, each with V1 and final snapshots, and the whole workshop combined","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Size","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"Up to 32 nodes per diagram","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Links","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"Directed, with polarity","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Evidence","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"Each participant’s original terms","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],"$L21"]}]]}],"\n","$L22","\n","$L23","\n","$L24","\n","$L25","\n","$L26","\n","$L27","\n","$L28","\n","$L29","\n","$L2a","\n","$L2b","\n","$L2c","\n","$L2d","\n","$L2e","\n","$L2f","\n","$L30","\n","$L31","\n","$L32","\n","$L33","\n","$L34","\n","$L35","\n","$L36"]}]
+15:["$","$L37",null,{"children":["$","$1b",null,{"name":"Next.MetadataOutlet","children":"$@38"}]}]
+1f:true
+39:I[63894,["$b","$c","$d","$e"],"HeadingAnchor"]
+3a:I[22016,["$b","$c","$d","$e"],""]
+3e:"ToggleWordWrapButton"
+3f:I[83987,["$b","$c","$d","$e"],"$3e"]
+40:I[40493,["$b","$c","$d","$e"],"CopyToClipboard"]
+9:300
+21:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Correspondences","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":"129 V1 nodes linked to final nodes","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+22:["$","h2",null,{"id":"what-it-needed","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["What it needed",["$","$L39",null,{"id":"what-it-needed"}]]}]
+23:["$","ul",null,{"className":"x:[:is(ol,ul)_&]:my-[.75em] x:not-first:mt-[1.25em] x:list-disc x:ms-[1.5em]","children":["\n",["$","li",null,{"className":"x:my-[.5em]","children":"Two versions side by side, with matching nodes in the same place"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"Movement between versions on one graph"}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"A way to see where each term came from"}],"\n"]}]
+24:["$","h2",null,{"id":"the-alignment-problem","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["The alignment problem",["$","$L39",null,{"id":"the-alignment-problem"}]]}]
+25:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"The original app matched nodes by id, on the assumption that a node keeps its id across versions. It doesn’t:"}]
+26:["$","ul",null,{"className":"x:[:is(ol,ul)_&]:my-[.75em] x:not-first:mt-[1.25em] x:list-disc x:ms-[1.5em]","children":["\n",["$","li",null,{"className":"x:my-[.5em]","children":"V1 ids came from a master id column, while final ids came from a mapping index."}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"When several V1 nodes merged into one, only the last row’s index was kept."}],"\n"]}]
+27:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Only 44 of 126 mapped pairs shared an id, and three datasets shared none, so the view looked aligned but wasn’t."}]
+28:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Rewriting the ids wasn’t an option, because merged nodes would collide. The mapping table was already the source of truth, so it became a ",["$","$L3a",null,{"href":"/en/data-model/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"correspondence"}],", which left the data untouched."]}]
+29:["$","h2",null,{"id":"how-the-framework-solved-it","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["How the framework solved it",["$","$L39",null,{"id":"how-the-framework-solved-it"}]]}]
+2a:["$","table",null,{"className":"x:block x:overflow-x-auto nextra-scrollbar x:not-first:mt-[1.25em] x:p-0","children":[["$","thead",null,{"children":["$","tr",null,{"children":[["$","th",null,{"style":{"textAlign":"left"},"children":"Need","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"style":{"textAlign":"left"},"children":"Mechanism","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}],["$","th",null,{"style":{"textAlign":"left"},"children":"Guide","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:font-semibold x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]}],["$","tbody",null,{"children":[["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Matching nodes across versions","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"Correspondence"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L3a",null,{"href":"/en/data-model/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Data model"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Side-by-side comparison","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"CompareView"}],", with any version on either side"],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L3a",null,{"href":"/en/stable-layouts/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Stable layouts"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Changes in either order","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"diffSnapshots"}],", ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"followNodes"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L3a",null,{"href":"/en/causal-analysis/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Causal analysis"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Moving between versions","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"animateSnapshots"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],"$L3b"],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}],"$L3c","$L3d"]}]]}]
+2b:["$","h2",null,{"id":"result","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["Result",["$","$L39",null,{"id":"result"}]]}]
+2c:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Alignment offsets are now 0 for every anchored node in all 8 datasets with fcose, and on ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"expert_9"}]," with cola. Switching versions keeps one graph, and positions match between the two views. Playwright tests check this for every dataset, including rapid switching."]}]
+2d:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"The app also lists each diagram’s feedback loops, 89 in total, and highlights the one you choose. Two participants’ diagrams have no loops in either version."}]
+2e:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Validation also found a duplicate link in one diagram. It was harmless, and the importer now merges exact repeats."}]
+2f:["$","h2",null,{"id":"the-whole-workshop","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["The whole workshop",["$","$L39",null,{"id":"the-whole-workshop"}]]}]
+30:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Each participant’s diagram stands alone, but the research is about the workshop. Choose ",["$","strong",null,{"children":"Whole workshop"}]," in the menu to see all 8 diagrams combined with ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"combineDatasets"}],". Node ids differ between participants, so terms are matched by their shared key instead. The final version has 107 terms and 206 links. 24 links were drawn by more than one participant, and one by four, so the line width shows where people agree. On 4 links, participants disagree on the polarity, and both versions are shown. The contributor filter shows one participant’s part of the combined map without moving it. See ",["$","$L3a",null,{"href":"/en/provenance/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Provenance and agreement"}],"."]}]
+31:["$","h2",null,{"id":"publication","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["Publication",["$","$L39",null,{"id":"publication"}]]}]
+32:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Perspectiva was published as ",["$","em",null,{"children":"Out of the Loop: Enhancing Documentation and Transparency in Causal Loop Diagrams to Capture Multiple Perspectives"}]," (IEEE VIS 2025, Best Short Paper), by Jessica Bou Nassar, Yu Xuan Yio, Nethara Athukorala, Simran, Songhai Fan, Cynthia Huang, Lyn Bartram, Tim Dwyer and Sarah Goodwin. In its user studies, domain and visualisation experts reported better navigation, comparison and provenance tracking than with static diagrams."]}]
+33:["$","h2",null,{"id":"run-it","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["Run it",["$","$L39",null,{"id":"run-it"}]]}]
+34:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L3f",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L40",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"npm"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" install"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":"npm"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" run"}],["$","span",null,{"style":{"--shiki-light":"#032F62","--shiki-dark":"#9ECBFF"},"children":" dev:perspectiva"}]]}]]}]]}]]}]
+35:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Open ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"http://localhost:3100"}],". Add ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"?dataset=expert_9"}]," to choose a dataset, and ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"?debug=1"}]," to show the dataset selector."]}]
+36:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Set ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"NEXT_PUBLIC_PERSPECTIVA_URL"}]," and ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"NEXT_PUBLIC_EXPLORER_URL"}]," when building the docs to point the ",["$","strong",null,{"children":"Open the app"}]," buttons at deployed apps. Without them, the buttons open the local servers, so start the app first."]}]
+38:null
+9:C
+3b:["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L3a",null,{"href":"/en/version-transitions/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Version transitions"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]
+3c:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Original terms in the sidebar","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"Evidence"}],", ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"SelectionPanel"}]],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L3a",null,{"href":"/en/react-lifecycle/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"React lifecycle"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+3d:["$","tr",null,{"children":[["$","td",null,{"style":{"textAlign":"left"},"children":"Reinforcing and balancing loops","className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","code",null,{"className":"nextra-code","dir":"ltr","children":"findFeedbackLoops"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}],["$","td",null,{"style":{"textAlign":"left"},"children":["$","$L3a",null,{"href":"/en/causal-analysis/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Causal analysis"}],"className":"x:m-0 x:border x:border-gray-300 x:px-4 x:py-2 x:dark:border-gray-600"}]],"className":"x:m-0 x:border-t x:border-gray-300 x:p-0 x:dark:border-gray-600 x:even:bg-gray-100 x:even:dark:bg-gray-600/20"}]
+1e:0
+7:"$undefined"
+1d:"$undefined"
+16:"$undefined"

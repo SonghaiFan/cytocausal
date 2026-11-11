@@ -1,0 +1,101 @@
+3:"$Sreact.fragment"
+4:"/cytocausal/_next/static/chunks/3qfy96eoyh-ek.js"
+5:I[39756,["$4"],"default"]
+6:I[37457,["$4"],"default"]
+b:"/cytocausal/_next/static/chunks/0ukdujkmkvhm8.js"
+c:"/cytocausal/_next/static/chunks/0bau-wvwyshok.js"
+d:"/cytocausal/_next/static/chunks/093v92pv8bfl4.js"
+e:"/cytocausal/_next/static/chunks/0z-c01io_5ink.js"
+f:I[55169,["$b","$c","$d","$e"],"TOCProvider"]
+10:I[769,["$b","$c","$d","$e"],"Sidebar"]
+11:I[47486,["$b","$c","$d","$e"],"ClientWrapper"]
+13:I[63894,["$b","$c","$d","$e"],"HeadingAnchor"]
+14:I[18789,["$b","$c","$d","$e"],"WorkspaceDemo"]
+15:I[22016,["$b","$c","$d","$e"],""]
+22:"ViewportBoundary"
+23:I[97367,["$4"],"$22"]
+24:"MetadataBoundary"
+25:I[97367,["$4"],"$24"]
+26:"$Sreact.suspense"
+27:I[27201,["$4"],"IconMark"]
+8:X
+8:C
+9:X
+12:T478,---
+title: Showcase
+---
+
+import { CompareDemo, GalleryDemo, StyleDemo, WorkspaceDemo } from "../../components/showcase/index.tsx";
+
+# Showcase
+
+Everything on this page is live. It all runs on a small made-up model of a coffee shop.
+
+## The whole interface
+
+This is what `<CausalWorkspace dataset={dataset} />` gives you. Try these:
+
+- Click a node, then a second one, to see the paths between them.
+- Switch from **V1** to **final** to watch the graph change.
+- Click the graph, then use the arrow keys and Enter.
+
+<WorkspaceDemo />
+
+See [Components](/en/components/) for its props.
+
+## Styles
+
+The same graph with different options. See [Themes and styles](/en/theming/).
+
+<StyleDemo />
+
+## Comparing versions
+
+`CompareView` keeps matching nodes in the same arrangement, so you can see what's new.
+
+<CompareDemo />
+
+## Every panel
+
+Use the panels on their own to build your own layout. Inside a `CausalProvider`, each panel connects itself, so none of these has any props:
+
+```tsx
+<CausalProvider dataset={dataset}>
+  <CausalGraph />
+  <NodeSearch />
+  <SelectionPanel />
+  <LoopList />
+  <VersionDiff />
+</CausalProvider>
+```
+
+<GalleryDemo />a:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$3","c",{"children":[["$","div",null,{"className":"x:mx-auto x:flex x:max-w-(--nextra-content-width)","children":["$","$Lf",null,{"value":[{"value":"The whole interface","id":"the-whole-interface","depth":2},{"value":"Styles","id":"styles","depth":2},{"value":"Comparing versions","id":"comparing-versions","depth":2},{"value":"Every panel","id":"every-panel","depth":2}],"children":[["$","$L10",null,{}],["$","$L11",null,{"metadata":{"title":"Showcase","filePath":"src/content/en/showcase.mdx","timestamp":1793942055000},"sourceCode":"$12","children":[["$","div",null,{"id":"nextra-skip-nav"}],["$","main",null,{"data-pagefind-body":true,"children":[["$","h1",null,{"className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-bold x:mt-2 x:text-4xl","children":["Showcase","$undefined"]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":"Everything on this page is live. It all runs on a small made-up model of a coffee shop."}],"\n",["$","h2",null,{"id":"the-whole-interface","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["The whole interface",["$","$L13",null,{"id":"the-whole-interface"}]]}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["This is what ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"<CausalWorkspace dataset={dataset} />"}]," gives you. Try these:"]}],"\n",["$","ul",null,{"className":"x:[:is(ol,ul)_&]:my-[.75em] x:not-first:mt-[1.25em] x:list-disc x:ms-[1.5em]","children":["\n",["$","li",null,{"className":"x:my-[.5em]","children":"Click a node, then a second one, to see the paths between them."}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":["Switch from ",["$","strong",null,{"children":"V1"}]," to ",["$","strong",null,{"children":"final"}]," to watch the graph change."]}],"\n",["$","li",null,{"className":"x:my-[.5em]","children":"Click the graph, then use the arrow keys and Enter."}],"\n"]}],"\n",["$","$L14",null,{}],"\n",["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["See ",["$","$L15",null,{"href":"/en/components/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Components"}]," for its props."]}],"\n",["$","h2",null,{"id":"styles","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["Styles","$L16"]}],"\n","$L17","\n","$L18","\n","$L19","\n","$L1a","\n","$L1b","\n","$L1c","\n","$L1d","\n","$L1e","\n","$L1f"]}]]}]]}]}],null,"$L20"]}],"p":"$@21","v":null,"s":"$9"}}]]
+2:[["children",{"s":{"n":"mdxPath","t":"oc","k":"showcase","s":[]},"h":65600,"d":{"r":["$","$3","c",{"children":[null,["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}]}]]}],"p":"$@7","v":"$8","s":"$9"},"c":"$Qa"}]]
+1:[["children",{"s":{"n":"lang","t":"d","k":"en","s":[]},"h":196656,"c":"$Q2"}]]
+0:{"t":{"t":{"s":"","h":131152,"c":"$Q1"},"h":{"r":["$","$3","h",{"children":[null,["$","$L23",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L25",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$26",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Showcase | cytocausal"}],["$","link","1",{"rel":"icon","href":"/cytocausal/icon.svg?icon.3c77pwa7_7hzo.svg","sizes":"any","type":"image/svg+xml"}],["$","$L27","2",{}]]}]}],null]}],null]}],"p":"$@28","v":null,"s":"$9"}},"a":"$@29","u":"$@2a","b":"PNV-lKU2O2aN7EBl7fUyT"}
+2b:I[18789,["$b","$c","$d","$e"],"StyleDemo"]
+2c:I[18789,["$b","$c","$d","$e"],"CompareDemo"]
+2d:"ToggleWordWrapButton"
+2e:I[83987,["$b","$c","$d","$e"],"$2d"]
+2f:I[40493,["$b","$c","$d","$e"],"CopyToClipboard"]
+30:I[18789,["$b","$c","$d","$e"],"GalleryDemo"]
+31:I[97367,["$4"],"OutletBoundary"]
+16:["$","$L13",null,{"id":"styles"}]
+17:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["The same graph with different options. See ",["$","$L15",null,{"href":"/en/theming/","className":"x:focus-visible:nextra-focus x:text-primary-600 x:underline x:hover:no-underline x:decoration-from-font x:[text-underline-position:from-font]","children":"Themes and styles"}],"."]}]
+18:["$","$L2b",null,{}]
+19:["$","h2",null,{"id":"comparing-versions","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["Comparing versions",["$","$L13",null,{"id":"comparing-versions"}]]}]
+1a:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":[["$","code",null,{"className":"nextra-code","dir":"ltr","children":"CompareView"}]," keeps matching nodes in the same arrangement, so you can see what’s new."]}]
+1b:["$","$L2c",null,{}]
+1c:["$","h2",null,{"id":"every-panel","className":"x:tracking-tight x:text-slate-900 x:dark:text-slate-100 x:font-semibold x:target:animate-[fade-in_1.5s] x:mt-10 x:border-b x:pb-1 x:text-3xl nextra-border","children":["Every panel",["$","$L13",null,{"id":"every-panel"}]]}]
+1d:["$","p",null,{"className":"x:not-first:mt-[1.25em] x:leading-7","children":["Use the panels on their own to build your own layout. Inside a ",["$","code",null,{"className":"nextra-code","dir":"ltr","children":"CausalProvider"}],", each panel connects itself, so none of these has any props:"]}]
+1e:["$","div",null,{"data-pagefind-ignore":"all","className":"nextra-code x:relative x:not-first:mt-[1.25em]","children":["$undefined",["$","pre",null,{"className":"x:group x:focus-visible:nextra-focus x:overflow-x-auto x:subpixel-antialiased x:text-[.9em] x:bg-white x:dark:bg-black x:py-4 x:ring-1 x:ring-inset x:ring-gray-300 x:dark:ring-neutral-700 x:contrast-more:ring-gray-900 x:contrast-more:dark:ring-gray-50 x:contrast-more:contrast-150 x:rounded-md not-prose","tabIndex":"0","children":[["$","div",null,{"className":"x:group-hover:opacity-100 x:group-focus:opacity-100 x:opacity-0 x:transition x:focus-within:opacity-100 x:flex x:gap-1 x:absolute x:right-4 x:top-2","children":[["$","$L2e",null,{"children":["$","svg",null,{"viewBox":"0 0 24 24","fill":"currentColor","height":"1em","children":["$","path",null,{"d":"M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3l3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"}]}]}],["$","$L2f",null,{"className":""}]]}],["$","code",null,{"className":"nextra-code","dir":"ltr","children":[["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"<"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"CausalProvider"}],["$","span",null,{"style":{"--shiki-light":"#6F42C1","--shiki-dark":"#B392F0"},"children":" dataset"}],["$","span",null,{"style":{"--shiki-light":"#D73A49","--shiki-dark":"#F97583"},"children":"="}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"{dataset}>"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"  <"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"CausalGraph"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" />"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"  <"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"NodeSearch"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" />"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"  <"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"SelectionPanel"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" />"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"  <"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"LoopList"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" />"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"  <"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"VersionDiff"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":" />"}]]}],"\n",["$","span",null,{"children":[["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":"</"}],["$","span",null,{"style":{"--shiki-light":"#005CC5","--shiki-dark":"#79B8FF"},"children":"CausalProvider"}],["$","span",null,{"style":{"--shiki-light":"#24292E","--shiki-dark":"#E1E4E8"},"children":">"}]]}]]}]]}]]}]
+1f:["$","$L30",null,{}]
+20:["$","$L31",null,{"children":["$","$26",null,{"name":"Next.MetadataOutlet","children":"$@32"}]}]
+2a:true
+9:300
+32:null
+9:C
+29:0
+7:"$undefined"
+28:"$undefined"
+21:"$undefined"
