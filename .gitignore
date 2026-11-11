@@ -16,3 +16,7 @@ playwright-report/
 
 # The full ACCESS graph is available on request, not published here
 apps/explorer/public/dataset.full.json
+
+# Deployment output and local project links
+out/
+.vercel/

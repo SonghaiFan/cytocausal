@@ -1,0 +1,31 @@
+{
+  "name": "@cytocausal/studio",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3103",
+    "build": "next build",
+    "start": "next start -p 3103",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test": "node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@cytocausal/core": "*",
+    "@cytocausal/cytoscape": "*",
+    "@cytocausal/react": "*",
+    "cytoscape": "3.31.0",
+    "next": "^16.4.5",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/cytoscape": "^3.21.8",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
+}

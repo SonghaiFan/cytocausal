@@ -1,0 +1,30 @@
+import { test, expect } from "@playwright/test";
+test("create, connect, edit, save, export, delete and undo", async ({page}) => {
+  const errors: string[]=[]; page.on("pageerror",e=>errors.push(e.message));
+  await page.goto("/");
+  await page.getByLabel("Name",{exact:true}).fill("Demand"); await page.getByRole("button",{name:"Add node",exact:true}).click();
+  await page.getByLabel("Name",{exact:true}).fill("Supply"); await page.getByRole("button",{name:"Add node",exact:true}).click();
+  await page.getByRole("combobox",{name:"Cause",exact:true}).selectOption({label:"Demand"}); await page.getByRole("combobox",{name:"Effect",exact:true}).selectOption({label:"Supply"});
+  await page.getByRole("combobox",{name:"Polarity",exact:true}).selectOption("positive"); await page.getByRole("button",{name:"Add link",exact:true}).click();
+  await expect(page.getByText("2 nodes · 1 links")).toBeVisible();
+  await expect(page.locator(".save-status")).toHaveText("Saved in this browser.");
+  await page.reload(); await expect(page.getByText("2 nodes · 1 links")).toBeVisible();
+  await page.getByText("Nodes and links",{exact:true}).click();
+  await page.getByRole("button",{name:"Demand",exact:true}).click();
+  await page.getByLabel("Node label").fill("Customer demand"); await page.getByRole("button",{name:"Save label"}).click();
+  await page.getByRole("button",{name:"Customer demand → Supply",exact:true}).click();
+  await page.getByRole("combobox",{name:"Link polarity",exact:true}).selectOption("negative"); await page.getByRole("button",{name:"Save polarity"}).click();
+  const downloaded=page.waitForEvent("download"); await page.getByRole("button",{name:"Export JSON"}).click(); const download=await downloaded;
+  expect(download.suggestedFilename()).toMatch(/\.json$/);
+  await page.getByRole("button",{name:"Customer demand",exact:true}).click();
+  await page.getByRole("button",{name:"Delete node and its links"}).click(); await expect(page.getByText("1 nodes · 0 links")).toBeVisible();
+  await page.getByRole("button",{name:"Undo",exact:true}).click(); await expect(page.getByText("2 nodes · 1 links")).toBeVisible();
+  await page.getByRole("button",{name:"Explore graph"}).click(); await expect(page.getByRole("button",{name:"Back to editing"})).toBeVisible();
+  expect(errors).toEqual([]);
+});
+test("invalid import leaves the existing graph intact", async ({page}) => {
+  await page.goto("/"); await page.getByLabel("Name",{exact:true}).fill("Keep me"); await page.getByRole("button",{name:"Add node",exact:true}).click();
+  await page.locator('input[type=file]').setInputFiles({name:"invalid.json",mimeType:"application/json",buffer:Buffer.from('{"snapshots":[]}')});
+  await expect(page.locator(".studio-error")).toContainText("dataset needs"); await expect(page.getByText("1 nodes · 0 links")).toBeVisible();
+  await page.setViewportSize({width:390,height:844}); await expect.poll(() => page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
+});

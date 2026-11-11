@@ -1,0 +1,8 @@
+.git
+**/node_modules
+**/.next
+**/out
+**/test-results
+**/playwright-report
+**/.env*
+apps/explorer/public/dataset.full.json

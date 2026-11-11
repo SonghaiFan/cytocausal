@@ -1,0 +1,50 @@
+:root { color-scheme: light; --yellow: #fbc92b; --ink: #20201b; --line: #deded6; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: #fafaf7; }
+button, input, select { font: inherit; }
+button, .file-button { display: inline-flex; justify-content: center; align-items: center; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); cursor: pointer; }
+button:hover, .file-button:hover { background: #f1f0e8; }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid #947000; outline-offset: 3px; }
+button.primary { background: var(--yellow); border-color: #d9b429; color: var(--ink); font-weight: 600; }
+a { color: inherit; text-underline-offset: 3px; }
+.studio { display: flex; flex-direction: column; height: 100dvh; }
+.studio-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+.studio-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 17px; }
+.studio-brand span { font-size: 13px; color: #6c6c60; border-left: 1px solid var(--line); padding-left: 10px; }
+.studio-tools, .studio-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.file-button { position: relative; overflow: hidden; }
+.file-button input { position: absolute; opacity: 0; width: 100%; height: 100%; inset: 0; cursor: pointer; }
+.file-button:focus-within { outline: 2px solid #947000; outline-offset: 3px; }
+.studio-bar { padding: 10px 20px; border-bottom: 1px solid var(--line); }
+.graph-title { display: flex; align-items: center; gap: 10px; }
+.graph-title input { width: 210px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; background: #fff; }
+.save-status { flex: 1; color: #6b6b5e; font-size: 12px; }
+.studio-main { display: grid; grid-template-columns: minmax(0, 1fr) 310px; flex: 1; min-height: 0; }
+.studio-canvas { position: relative; min-width: 0; min-height: 0; background: #fff; }
+.studio-canvas > .cc-graph-view { height: 100%; }
+.canvas-controls { position: absolute; bottom: 14px; left: 16px; right: 16px; display: flex; align-items: center; gap: 10px; pointer-events: none; }
+.canvas-controls > * { pointer-events: auto; }
+.canvas-controls > span { padding: 6px 10px; background: #fff; border: 1px solid var(--line); border-radius: 4px; font-size: 12px; }
+.empty-canvas { position: absolute; top: 34%; left: 20px; right: 20px; text-align: center; pointer-events: none; }
+.empty-canvas h1 { font-size: clamp(24px, 3vw, 40px); margin: 16px 0 10px; letter-spacing: -.03em; }
+.empty-canvas p { color: #6b6b5e; }
+.studio-inspector { border-left: 1px solid var(--line); padding: 22px; overflow-y: auto; }
+.studio-inspector h2 { font-size: 14px; margin: 0 0 14px; }
+.studio-inspector > form, .studio-inspector > section { margin-bottom: 26px; }
+.studio-inspector label { display: block; font-size: 12px; color: #5b5b4f; margin: 10px 0; }
+.studio-inspector input, .studio-inspector select { display: block; width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--ink); margin-top: 5px; }
+.studio-inspector button { margin-right: 6px; margin-bottom: 7px; }
+.hint { font-size: 12px; color: #68685d; line-height: 1.65; }
+.privacy { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 16px; }
+.danger { color: #a32d1d; }
+.element-list { list-style: none; padding: 0; }
+.element-list button { max-width: 100%; text-align: left; overflow-wrap: anywhere; }
+.studio-error { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 10px 20px; background: #fff1e9; color: #8a2d15; white-space: pre-wrap; }
+.studio-explore { flex: 1; min-height: 0; position: relative; }
+.studio-explore > .cc-workspace { height: 100%; min-height: 0; }
+.explore-note { position: absolute; left: 16px; bottom: 0; font-size: 11px; background: white; padding: 3px 6px; pointer-events: none; }
+.loading { padding: 40px; }
+@media (max-width: 800px) { .studio { height: auto; min-height: 100dvh; } .studio-header { flex-wrap: wrap; padding: 12px; } .studio-bar { padding: 12px; } .studio-main { grid-template-columns: minmax(0, 1fr); } .studio-canvas { height: 52dvh; min-height: 340px; } .studio-inspector { border-left: 0; border-top: 1px solid var(--line); overflow: visible; } .save-status { flex-basis: 100%; } .studio-explore > .cc-workspace { min-height: 700px; } .studio-explore .cc-graph { height: 400px; } }
+.studio-canvas { overflow: hidden; }
+.canvas-controls { flex-wrap: wrap; }
