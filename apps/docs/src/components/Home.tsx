@@ -11,7 +11,7 @@ export function Home({ lang }: { lang: "en" | "zh-cn" }) {
   return (
     <div className="cc-home">
       <header className="cc-home-hero">
-        <p className="cc-home-eyebrow"><img src={assetPath("/brand/mark.svg")}  width="48" height="48" alt="" /><img className="cc-wordmark-light" src={assetPath("/brand/wordmark.svg")} width="208" height="40" alt="cytocausal" /><img className="cc-wordmark-dark" src={assetPath("/brand/wordmark-dark.svg")} width="208" height="40" alt="cytocausal" /><span>causal graph library</span></p>
+        <p className="cc-home-eyebrow"><img src={assetPath("/brand/mark.svg")}  width="48" height="48" alt="" /><img className="cc-wordmark-light" src={assetPath("/brand/wordmark.svg")} width="184" height="40" alt="cytocausal" /><img className="cc-wordmark-dark" src={assetPath("/brand/wordmark-dark.svg")} width="184" height="40" alt="cytocausal" /><span>causal graph library</span></p>
         <h1>{zh ? "让因果图成为可以探索的界面。" : "Make causal graphs something you can explore."}</h1>
         <p className="cc-home-lead">{zh
           ? "基于 Cytoscape.js，为因果图提供专门的交互、可组合的 React 组件与分析 API。从证据到反馈回路，从一个版本到另一个版本。"

@@ -1,4 +1,4 @@
-<p><img src="apps/docs/public/brand/mark.svg" width="72" height="72" alt="Causal sunburst icon" /> <picture><source media="(prefers-color-scheme: dark)" srcset="apps/docs/public/brand/wordmark-dark.svg" /><img src="apps/docs/public/brand/wordmark.svg" width="312" height="60" alt="cytocausal" /></picture></p>
+<p><img src="apps/docs/public/brand/mark.svg" width="72" height="72" alt="Causal sunburst icon" /> <picture><source media="(prefers-color-scheme: dark)" srcset="apps/docs/public/brand/wordmark-dark.svg" /><img src="apps/docs/public/brand/wordmark.svg" width="276" height="60" alt="cytocausal" /></picture></p>
 
 # cytocausal
 

@@ -251,6 +251,10 @@
 @media (prefers-reduced-motion: reduce) { .cc-marking-halo { transition: none; } }
 
 .cc-marking-halo[data-active="true"] { fill-opacity: .3; }
+/* The open menu's sectors, one toward each linked node: neutral, ink where pointed at */
+.cc-radial-sector { fill: var(--cc-ink); fill-opacity: .14; stroke: none; pointer-events: none; transition: fill-opacity 150ms ease-out; }
+.cc-radial-sector[data-active="true"] { fill-opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .cc-radial-sector { transition: none; } }
 
 .cc-layout-status { position: absolute; z-index: 45; top: 64px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: var(--cc-background); color: var(--cc-text); box-shadow: 0 1px 8px #0002; font-size: 12px; }
 .cc-layout-spinner { width: 12px; height: 12px; border: 2px solid var(--cc-border); border-top-color: var(--cc-ink); border-radius: 50%; animation: cc-layout-spin .8s linear infinite; }

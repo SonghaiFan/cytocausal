@@ -81,7 +81,7 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `VersionSwitcher` | 切换快照的按钮。超过四个版本时显示为 `VersionTimeline` |
 | `VersionTimeline` | 用于较长历史的可滚动时间轴：有“更早”和“更晚”按钮，支持方向键、Home 和 End，每个版本下方的标记表示从上一版到它变化了多少 |
 | `LayoutSwitcher` | 在 provider 的 `layouts` 之间选择，最多四个时显示为按钮，更多时显示为菜单 |
-| `RadialMenu` | 选中节点周围的环形菜单，用来走到相连的节点、设置步数。除非传入 `radialMenu={false}`，否则 `CausalGraph` 会显示它 |
+| `RadialMenu` | 选中节点周围的环形菜单，用来走到相连的节点、设置步数。除非传入 `radialMenu={false}`，否则 `CausalGraph` 会显示它。`sectors` 在打开时就画出指向每个相连节点的扇区；用 `DepthControl` 设置步数时，`depthRings={false}` 去掉步数环；`aroundLabel` 让菜单绕开圆点旁的标签 |
 | `SelectionPanel` | 先显示提示，选中后显示节点详情和节点间的路径；有多个版本时还会显示各自的历史 |
 | `NodeDetails` | 单个节点的原因、结果和证据，每条连线旁边有打开它的按钮 |
 | `LinkDetails` | 连线的提出者和他们的证据，以及在极性上与它有分歧的连线 |

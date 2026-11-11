@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "studio",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "-w", "@cytocausal/studio"],
+      "port": 3103
+    },
+    {
       "name": "starter",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start", "-w", "@cytocausal/starter"],

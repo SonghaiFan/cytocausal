@@ -24,7 +24,7 @@ export async function DocsShell({ lang, children }: { lang: Language; children: 
       <body>
         <Layout
           navbar={
-            <Navbar logoLink={`/${lang}/`} logo={<span className="cc-brand"><img src={assetPath("/brand/mark.svg")} width="30" height="30" alt="" /><img className="cc-wordmark-light" src={assetPath("/brand/wordmark.svg")} width="156" height="30" alt="cytocausal" /><img className="cc-wordmark-dark" src={assetPath("/brand/wordmark-dark.svg")} width="156" height="30" alt="cytocausal" /></span>} projectLink="https://github.com/SonghaiFan/cytocausal">
+            <Navbar logoLink={`/${lang}/`} logo={<span className="cc-brand"><img src={assetPath("/brand/mark.svg")} width="30" height="30" alt="" /><img className="cc-wordmark-light" src={assetPath("/brand/wordmark.svg")} width="138" height="30" alt="cytocausal" /><img className="cc-wordmark-dark" src={assetPath("/brand/wordmark-dark.svg")} width="138" height="30" alt="cytocausal" /></span>} projectLink="https://github.com/SonghaiFan/cytocausal">
               <Link className="cc-nav-link" href={`/${lang}/getting-started/`}>{chinese ? "文档" : "Docs"}</Link>
               <Link className="cc-nav-link" href={`/${lang}/showcase/`}>Showcase</Link>
               <Link className="cc-nav-link" href={`/${lang}/examples/`}>

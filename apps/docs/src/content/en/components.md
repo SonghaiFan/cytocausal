@@ -81,7 +81,7 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | `VersionSwitcher` | Buttons for moving between snapshots. With more than four, a `VersionTimeline` |
 | `VersionTimeline` | A scrolling timeline for a long history: earlier and later buttons, the arrow keys, Home and End, and a mark under each version for how much changed on the way in |
 | `LayoutSwitcher` | A choice of the provider's `layouts`, as buttons, or a menu for more than four |
-| `RadialMenu` | A ring menu around the selected node, for walking to linked nodes, setting the steps and choosing loops. `CausalGraph` shows it unless `radialMenu={false}` |
+| `RadialMenu` | A ring menu around the selected node, for walking to linked nodes, setting the steps and choosing loops. `CausalGraph` shows it unless `radialMenu={false}`. `sectors` draws a sector toward each linked node as soon as it opens; `depthRings={false}` leaves out the step rings when a `DepthControl` sets the steps instead; `aroundLabel` fits it around a label beside a dot |
 | `SelectionPanel` | A prompt, then the selected nodes and the paths between them, each with its history when there are several versions |
 | `NodeDetails` | One node's causes, effects and evidence, with a button to open each link |
 | `LinkDetails` | Who stated a link and their evidence, with any link that disagrees on its polarity |

@@ -127,7 +127,7 @@ interface Geometry {
 }
 
 /** Where the node is on screen, and which way each neighbour lies, updated as the view moves. */
-function useGeometry(cy: Core | null, id: string | null, neighbours: Neighbour[]) {
+function useGeometry(cy: Core | null, id: string | null, neighbours: Neighbour[], aroundLabel = false) {
   const [geometry, setGeometry] = useState<Geometry | null>(null);
   useEffect(() => {
     if (!cy || !id) {
@@ -151,10 +151,16 @@ function useGeometry(cy: Core | null, id: string | null, neighbours: Neighbour[]
         bearings[other] = Math.atan2(point.y - y, point.x - x);
         distances[other] = Math.hypot(point.x - x, point.y - y);
       }
+      // A name beside a dot can count as part of the node, so the rings go around both
+      let radius = Math.max(node.renderedOuterWidth(), node.renderedOuterHeight()) / 2;
+      if (aroundLabel) {
+        const b = node.renderedBoundingBox({ includeLabels: true, includeOverlays: false });
+        radius = Math.max(radius, x - b.x1, b.x2 - x, y - b.y1, b.y2 - y);
+      }
       setGeometry({
         x: box.left + x,
         y: box.top + y,
-        radius: Math.max(node.renderedOuterWidth(), node.renderedOuterHeight()) / 2,
+        radius,
         bearings,
         distances,
       });
@@ -172,7 +178,7 @@ function useGeometry(cy: Core | null, id: string | null, neighbours: Neighbour[]
       window.removeEventListener("resize", schedule);
       window.removeEventListener("scroll", schedule, true);
     };
-  }, [cy, id, neighbours]);
+  }, [cy, id, neighbours, aroundLabel]);
   return geometry;
 }
 
@@ -211,6 +217,9 @@ export function RadialMenu({
   snapshot: chosen,
   renderInfo,
   showDirections = false,
+  sectors = false,
+  depthRings = true,
+  aroundLabel = false,
   className = "",
 }: {
   graph?: Graph;
@@ -227,6 +236,22 @@ export function RadialMenu({
    * the node's edge to its reach, with a line along the linked node's true bearing.
    */
   showDirections?: boolean;
+  /**
+   * Draw a sector toward each linked node as soon as the menu opens, not only while it is held:
+   * the node stays the hub, and the sector pointed at darkens. Off by default, so a dense graph
+   * keeps a quiet menu.
+   */
+  sectors?: boolean;
+  /**
+   * The thin rings that set how many steps the highlight reaches, for this selection. Leave them
+   * out when a `DepthControl` sets it instead, so a ring around the node only ever means a direction.
+   */
+  depthRings?: boolean;
+  /**
+   * Fit the menu around the node's label as well as the node, for labels beside a dot. Off by
+   * default: in a dense network that would make every menu as wide as its longest name.
+   */
+  aroundLabel?: boolean;
   className?: string;
 }) {
   const labels = useCausalLabels();
@@ -246,11 +271,11 @@ export function RadialMenu({
       : null;
   const neighbours = useMemo(() => (id ? neighboursOf(snapshot, id) : []), [snapshot, id]);
   // A ring for each step past the first, up to the graph's limit
-  const steps = Array.from({ length: Math.max(0, graph.maxDepth - 1) }, (_, index) => index + 2);
+  const steps = depthRings ? Array.from({ length: Math.max(0, graph.maxDepth - 1) }, (_, index) => index + 2) : [];
   const rings = steps.length;
   // The instance count changes when the graph is rebuilt, so the menu follows the new one
   const cy = useMemo(() => graph.cy.current, [graph.cy, graph.instanceCount]); // eslint-disable-line react-hooks/exhaustive-deps
-  const geometry = useGeometry(cy, id, neighbours);
+  const geometry = useGeometry(cy, id, neighbours, aroundLabel);
 
   // The space around the node is split among linked nodes by direction: each gets the angles
   // nearest the way it lies
@@ -711,6 +736,26 @@ export function RadialMenu({
           );
         })}
 
+        {sectors && !markingFeedback && !graph.tracing && (
+          <g className="cc-radial-sectors" aria-hidden="true">
+            {ordered.map((neighbour, index) => {
+              const { from, to } = hitCells[index];
+              const gap = Math.min(0.04, (to - from) / 8);
+              // Just past the step rings, so both stay readable
+              const inner = size - SPACE;
+              return (
+                <path
+                  key={neighbour.id}
+                  className="cc-radial-sector"
+                  data-target={neighbour.id}
+                  data-direction={neighbour.direction}
+                  data-active={aimed === neighbour.id}
+                  d={sector(from + gap, to - gap, inner, inner + 17)}
+                />
+              );
+            })}
+          </g>
+        )}
       </svg>
       {shownCaption && (
         <p className="cc-radial-caption cc-tooltip" role="status" style={{ top: size * 2 + 4 }}>
