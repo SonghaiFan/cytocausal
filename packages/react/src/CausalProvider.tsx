@@ -70,6 +70,8 @@ export interface CausalProviderProps {
   initialLink?: string;
   /** The snapshot to start on. Defaults to the first. */
   initialVersion?: string;
+  /** What changes are measured against, to start with. Defaults to the version before. */
+  initialBaseline?: Baseline;
   /** Extra options for `useCausalGraph`, such as for large graphs. */
   graphOptions?: Pick<CausalGraphOptions, "readableLabels" | "focusZoom" | "maxDepth">;
   /** Keep the version and selection in the page address, so a link reopens the same view. */
@@ -85,6 +87,27 @@ export interface CausalProviderProps {
 
 const defaultThemes = { light: lightTheme, dark: darkTheme };
 
+/**
+ * What changes are measured against: the version before the shown one, the first version, or
+ * a version by its id.
+ */
+export type Baseline = "previous" | "first" | (string & {});
+
+/**
+ * The two versions to compare, earlier first, for a shown version and a baseline. The first
+ * version has nothing before it, so it's compared with the next, which shows what goes next.
+ * Null when there's only one version.
+ */
+export function resolveComparison(dataset: CausalDataset, version: string, baseline: Baseline) {
+  const ids = dataset.snapshots.map(({ id }) => id);
+  const at = ids.indexOf(version);
+  const neighbour = ids[at - 1] ?? ids[at + 1];
+  const chosen = baseline === "previous" ? neighbour : baseline === "first" ? ids[0] : baseline;
+  const other = chosen && chosen !== version && ids.includes(chosen) ? chosen : neighbour;
+  if (!other) return null;
+  return ids.indexOf(other) < at ? { from: other, to: version } : { from: version, to: other };
+}
+
 function useCausalState({
   dataset,
   themes = defaultThemes,
@@ -97,6 +120,7 @@ function useCausalState({
   initialSelected = [],
   initialLink,
   initialVersion,
+  initialBaseline = "previous",
   graphOptions,
   shareInUrl = false,
   loopOptions,
@@ -155,14 +179,45 @@ function useCausalState({
     if (cy.current && !cy.current.destroyed()) applyFilter(cy.current);
   }, [cy, snapshot, contributors, applyFilter]);
 
-  /** Moves to another snapshot. Its nodes differ, so the selection is cleared. */
+  /**
+   * Moves to another snapshot. Its nodes differ, so the selection is cleared, unless `focus`
+   * names a node or link of the new snapshot to select once it's shown, such as the same node
+   * under its name there.
+   */
+  const pendingFocus = useRef<{ node?: string; link?: string } | null>(null);
   const setVersion = useCallback(
-    (id: string) => {
+    (id: string, options: { focus?: { node?: string; link?: string } } = {}) => {
       clear();
+      pendingFocus.current = options.focus ?? null;
       setShownVersion(id);
     },
     [clear],
   );
+  // The graph moves to a new version over a moment, so the focus waits until every node of it is
+  // there and the move has settled, then selects as a click would
+  const latestGraph = useRef(graph);
+  latestGraph.current = graph;
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (!target) return;
+    const started = performance.now();
+    let frame = 0;
+    const check = () => {
+      const instance = cy.current;
+      const arrived =
+        instance &&
+        !instance.destroyed() &&
+        !isTransitioning(instance) &&
+        snapshot.nodes.every(({ id }) => instance.getElementById(id).length > 0);
+      if (arrived) {
+        pendingFocus.current = null;
+        if (target.link) latestGraph.current.toggleLink(target.link);
+        else if (target.node) latestGraph.current.focus(target.node);
+      } else if (performance.now() - started < 5000) frame = requestAnimationFrame(check);
+    };
+    frame = requestAnimationFrame(check);
+    return () => cancelAnimationFrame(frame);
+  }, [cy, snapshot]);
 
   const issues = useMemo(() => validateDataset(dataset), [dataset]);
   const loopSearch = useLoopSearch(snapshot, loopOptions);
@@ -171,8 +226,8 @@ function useCausalState({
   const positionCache = useRef<Record<string, Positions>>({});
   const hasPositions = snapshot.nodes.every(({ position }) => position);
 
-  const first = dataset.snapshots[0].id;
-  const last = dataset.snapshots[dataset.snapshots.length - 1].id;
+  const [baseline, setBaseline] = useState<Baseline>(() => shared.get("since") ?? initialBaseline);
+  const comparison = useMemo(() => resolveComparison(dataset, version, baseline), [dataset, version, baseline]);
   const [showChanges, setShowChanges] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -186,21 +241,34 @@ function useCausalState({
     else url.searchParams.delete("link");
     if (layoutName && layoutName !== layoutNames[0]) url.searchParams.set("layout", layoutName);
     else url.searchParams.delete("layout");
+    if (baseline !== "previous") url.searchParams.set("since", baseline);
+    else url.searchParams.delete("since");
     history.replaceState(null, "", url);
     setCopied(false);
-  }, [shareInUrl, version, selected, selectedLink, layoutName, layoutNames]);
+  }, [shareInUrl, version, selected, selectedLink, layoutName, layoutNames, baseline]);
 
   useEffect(() => {
     const instance = cy.current;
-    if (!instance || first === last) return;
-    const diff = diffSnapshots(dataset, first, last);
-    // The earlier version shows what went, the later what came, and both what changed
-    const side = version === last ? "to" : version === first ? "from" : null;
-    const change = () =>
-      highlightChanges(instance, showChanges && side ? changeMarks(diff, side) : {});
+    if (!instance || !comparison) return;
+    const diff = diffSnapshots(dataset, comparison.from, comparison.to);
+    // Compared with an earlier version, the shown one marks what came; with a later one, what goes.
+    // Both mark what changed
+    const side = version === comparison.to ? "to" : "from";
+    const change = () => highlightChanges(instance, showChanges ? changeMarks(diff, side) : {});
     if (isTransitioning(instance)) change();
     else easeStyles(instance, change, resolveMotion(theme.motion).highlight);
-  }, [cy, dataset, first, last, showChanges, version, theme]);
+    // A new version's elements can arrive after this runs, as the graph moves to it, so the
+    // marks follow them, once a frame at most
+    let frame = 0;
+    const again = () => {
+      if (!frame) frame = requestAnimationFrame(() => (frame = 0, !instance.destroyed() && change()));
+    };
+    instance.on("add", again);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (!instance.destroyed()) instance.removeListener("add", again);
+    };
+  }, [cy, dataset, comparison, showChanges, version, theme]);
 
   return {
     dataset,
@@ -235,9 +303,11 @@ function useCausalState({
     loopsComplete: complete,
     loopSearch,
     issues,
-    /** The snapshots that changes are measured between. */
-    firstVersion: first,
-    lastVersion: last,
+    /** What changes are measured against: "previous", "first" or a version's id. */
+    baseline,
+    setBaseline,
+    /** The two versions changes are measured between, earlier first, or null with one version. */
+    comparison,
     showChanges,
     setShowChanges,
     exportImage: () => {

@@ -78,16 +78,18 @@ export function MyApp({ dataset }: { dataset: CausalDataset }) {
 | :--- | :--- |
 | `CausalGraph` | The graph, with zoom buttons. Children sit on top of it |
 | `NodeSearch` | Search box and results |
-| `VersionSwitcher` | Buttons for moving between snapshots |
+| `VersionSwitcher` | Buttons for moving between snapshots. With more than four, a `VersionTimeline` |
+| `VersionTimeline` | A scrolling timeline for a long history: earlier and later buttons, the arrow keys, Home and End, and a mark under each version for how much changed on the way in |
 | `LayoutSwitcher` | A choice of the provider's `layouts`, as buttons, or a menu for more than four |
 | `RadialMenu` | A ring menu around the selected node, for walking to linked nodes, setting the steps and choosing loops. `CausalGraph` shows it unless `radialMenu={false}` |
-| `SelectionPanel` | A prompt, then the selected nodes and the paths between them |
+| `SelectionPanel` | A prompt, then the selected nodes and the paths between them, each with its history when there are several versions |
 | `NodeDetails` | One node's causes, effects and evidence, with a button to open each link |
 | `LinkDetails` | Who stated a link and their evidence, with any link that disagrees on its polarity |
+| `NodeHistory`, `LinkHistory` | A node's or link's history across versions: only the versions where something happened, and the one shown. Choosing a version moves there with the same node or link selected, as it is in that version. `setVersion(id, { focus })` does the same from code |
 | `ContributorFilter` | Whose nodes and links are shown. It appears once a snapshot has two contributors |
 | `PathList` | The paths between two nodes, in both directions |
 | `LoopList` | Feedback loops, marked reinforcing or balancing |
-| `VersionDiff` | What changed between two snapshots |
+| `VersionDiff` | What changed between the shown version and the provider's `baseline`: the version before by default, or the first. With more than two versions it offers the choice, and the address keeps it as `since` |
 | `DepthControl` | How far a highlight reaches |
 | `Legend` | A key to what the graph draws: swatches, outlines or glyphs |
 | `ZoomControls` | Zoom and fit buttons |

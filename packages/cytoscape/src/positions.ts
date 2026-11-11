@@ -15,7 +15,7 @@ export const centre = (points: Position[]): Position => ({
 });
 
 // Moved to core, which diffs snapshots with it. Kept here so existing imports still work
-export { getCounterparts } from "@cytocausal/core";
+export { followNodes, getCounterparts } from "@cytocausal/core";
 
 /**
  * Converts positions keyed by node id in one snapshot to ids in another. Without
@@ -79,6 +79,13 @@ export interface RelayoutOptions {
 
 const RELAYOUT_KEY = "cytocausal-relayout";
 
+/** Stop an obsolete layout without publishing its completion or fitting its viewport. */
+export function cancelRelayout(cy: Core) {
+  const previous = cy.scratch(RELAYOUT_KEY) as Layouts | undefined;
+  cy.removeScratch(RELAYOUT_KEY);
+  previous?.stop();
+}
+
 /**
  * Works out where a layout would put the visible nodes, then puts them back. The result is moved
  * to the centre of the space the nodes fill now, because layouts each pick their own origin:
@@ -122,7 +129,7 @@ export function measureLayout(cy: Core, layout: LayoutOptions): Positions | null
  * view fits the result once nodes arrive. A new call stops one in progress.
  */
 export function relayout(cy: Core, layout: LayoutOptions, { positions, motion, onSettled }: RelayoutOptions = {}) {
-  (cy.scratch(RELAYOUT_KEY) as Layouts | undefined)?.stop();
+  cancelRelayout(cy);
   const duration = resolveMotion(motion).move;
   const destination = positions ?? measureLayout(cy, layout);
   // A layout that runs over time, such as cola, animates itself instead

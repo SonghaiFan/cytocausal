@@ -1,4 +1,4 @@
-import { getCounterparts, getSnapshot, hasCorrespondence } from "./snapshots.ts";
+import { followNodes, getSnapshot } from "./snapshots.ts";
 import type { CausalDataset, CausalEdge, CausalNode, Polarity, Snapshot } from "./types.ts";
 
 /** The polarity of the links between two nodes. "mixed" when parallel links disagree. */
@@ -38,15 +38,13 @@ function unionFind() {
 }
 
 /**
- * Groups the nodes of two snapshots that correspond, through the dataset's correspondences or by
- * matching ids without one. A group with nodes on one side only was added or removed.
+ * Groups the nodes of two snapshots that correspond, following them through the versions in
+ * between: see `followNodes`. A group with nodes on one side only was added or removed.
  */
 function groupNodes(dataset: CausalDataset, from: Snapshot, to: Snapshot) {
   const { find, union } = unionFind();
   const toIds = new Set(to.nodes.map(({ id }) => id));
-  const counterparts = hasCorrespondence(dataset, from.id, to.id)
-    ? getCounterparts(dataset, from.id, to.id)
-    : Object.fromEntries(from.nodes.map(({ id }) => [id, [id]]));
+  const counterparts = followNodes(dataset, from.id, to.id);
 
   for (const { id } of from.nodes) {
     for (const target of counterparts[id] ?? []) {

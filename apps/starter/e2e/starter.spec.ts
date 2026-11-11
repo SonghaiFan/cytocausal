@@ -270,7 +270,7 @@ const choose = async (page: Page, query: string, name: RegExp) => {
 
 /** Traces the paths from the selected node to another, with the menu's ⤳ button. */
 const chooseAlso = async (page: Page, query: string, name: RegExp) => {
-  await page.getByRole("menuitemcheckbox", { name: "Trace paths to another node" }).click();
+  await page.getByRole("button", { name: "Trace paths to another node" }).click();
   await page.getByLabel("Search nodes").fill(query);
   await page.locator(".cc-search").getByRole("button", { name }).click();
 };
@@ -289,22 +289,15 @@ test("two selected nodes list the paths between them, and a path can be highligh
   await chooseAlso(page, "queue", /^Queue length/);
 
   const paths = page.getByLabel("Paths");
-  await expect(paths.getByText("Paths from Customers to Queue length (2)")).toBeVisible();
-  await expect(paths.getByText("Paths from Queue length to Customers (1)")).toBeVisible();
-
-  const longest = paths.getByRole("button", { name: /Revenue/ });
-  await longest.click();
-  await expect(longest).toHaveAttribute("aria-pressed", "true");
-  await expect
-    .poll(() => nodesWith(page, ".route-node"))
-    .toEqual(["customers", "queue", "revenue", "staff"]);
-
-  // Letting go of one path goes back to every path between the two
-  await longest.click();
-  await expect(longest).toHaveAttribute("aria-pressed", "false");
-  await expect
-    .poll(() => nodesWith(page, ".route-node"))
-    .toEqual(["customer-satisfaction", "customers", "queue", "revenue", "staff"]);
+  await expect(paths.getByText("Paths from Customers to Queue length (1)")).toBeVisible();
+  await expect(paths.getByRole("button")).toHaveCount(1);
+  const shortest = paths.getByRole("button");
+  await shortest.click();
+  await expect(shortest).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "queue"]);
+  await shortest.click();
+  await expect(shortest).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "queue"]);
   await expect.poll(() => nodesWith(page, ".focus")).toEqual(["customers", "queue"]);
 });
 
@@ -319,29 +312,96 @@ test("the highlight reaches further upstream and downstream on request", async (
   await expect.poll(() => nodesWith(page, ".effect")).toEqual(["queue", "staff"]);
 });
 
-test("changes between versions are listed and marked on the graph", async ({ page }) => {
+/** The ids of links with a class, sorted. */
+const linksWith = (page: Page, selector: string) =>
+  page.evaluate((selector) => {
+    const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    return div._cyreg.cy.edges(selector).map((edge: any) => edge.id()).sort();
+  }, selector);
+
+test("changes are measured against the version before, or the first", async ({ page }) => {
   await page.goto("/");
   await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
   const changes = page.getByLabel("Changes");
-  await expect(changes.getByText("Added (2)")).toBeVisible();
-  await expect(changes.getByText("Renamed (1)")).toBeVisible();
 
+  // The first version has nothing before it, so it's compared with the next
+  await expect(changes.getByRole("heading")).toHaveText("Changes: V1 → V2");
+  await expect(changes.getByText("Renamed (1)")).toBeVisible();
   await changes.getByRole("button", { name: "Show on graph" }).click();
+  // The renamed node is in both, so it's marked as changed, under its old name here
+  await expect.poll(() => nodesWith(page, ".diff-changed")).toEqual(["satisfaction"]);
+
+  // Each later version is compared with the one before: final flipped one link
   await page.getByRole("button", { name: "final", exact: true }).click();
   await expect.poll(async () => (await graph(page))?.animating).toBe(0);
-  await expect.poll(() => nodesWith(page, ".diff-added")).toEqual(["revenue", "staff"]);
-  // The renamed node is still there, so it's marked as changed rather than added
-  await expect.poll(() => nodesWith(page, ".diff-changed")).toEqual(["customer-satisfaction"]);
-  await expect(changes.getByText("Changed", { exact: true })).toBeVisible();
+  await expect(changes.getByRole("heading")).toHaveText("Changes: V4 → final");
+  await expect(changes.getByText("Polarity changed (1)")).toBeVisible();
+  await expect.poll(() => linksWith(page, ".diff-flipped")).toEqual(["staff-queue"]);
+  await expect.poll(() => nodesWith(page, ".diff-added")).toEqual([]);
 
-  // The first version shows the same node, under its old name, as changed
-  await page.getByRole("button", { name: "V1", exact: true }).click();
-  await expect.poll(async () => (await graph(page))?.animating).toBe(0);
-  await expect.poll(() => nodesWith(page, ".diff-changed")).toEqual(["satisfaction"]);
+  // Compared with the first, everything since shows, and the choice is in the address
+  await changes.getByRole("group", { name: "Compare with" }).getByRole("button", { name: "First" }).click();
+  await expect(changes.getByRole("heading")).toHaveText("Changes: V1 → final");
+  await expect(changes.getByText("Added (2)")).toBeVisible();
+  await expect(changes.getByText("Renamed (1)")).toBeVisible();
+  await expect.poll(() => nodesWith(page, ".diff-added")).toEqual(["revenue", "staff"]);
+  await expect.poll(() => nodesWith(page, ".diff-changed")).toEqual(["customer-satisfaction"]);
+  await expect(page).toHaveURL(/since=first/);
 
   await changes.getByRole("button", { name: "Show on graph" }).click();
   await expect.poll(() => nodesWith(page, ".diff-added")).toEqual([]);
   await expect.poll(() => nodesWith(page, ".diff-changed")).toEqual([]);
+});
+
+test("a long history is a timeline, stepped through with the keys", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(3);
+  const timeline = page.getByRole("navigation", { name: "Version" });
+  await expect(timeline.getByRole("button")).toHaveCount(7);
+  await expect(timeline.getByRole("button", { name: "Earlier version" })).toBeDisabled();
+
+  // Each version says how much changed on the way in; the first has nothing before it
+  await expect(timeline.getByRole("button", { name: "V4", exact: true })).toHaveAttribute("title", "3 changes");
+  await expect(timeline.getByRole("button", { name: "V1", exact: true })).not.toHaveAttribute("title");
+
+  await timeline.getByRole("button", { name: "V1", exact: true }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(timeline.getByRole("button", { name: "V2", exact: true })).toHaveAttribute("aria-current", "true");
+  await expect(page).toHaveURL(/version=V2/);
+  await page.keyboard.press("End");
+  await expect(timeline.getByRole("button", { name: "final", exact: true })).toHaveAttribute("aria-current", "true");
+  await expect(timeline.getByRole("button", { name: "Later version" })).toBeDisabled();
+  await expect.poll(async () => (await graph(page))?.nodes).toBe(5);
+  await page.keyboard.press("Home");
+  await expect(timeline.getByRole("button", { name: "V1", exact: true })).toHaveAttribute("aria-current", "true");
+});
+
+test("a node's and a link's history list what happened, and lead to each version", async ({ page }) => {
+  await openFinal(page);
+  await choose(page, "satisfaction", /^Customer satisfaction/);
+  const history = page.getByRole("region", { name: "History of customer-satisfaction" });
+  // Only the versions where something happened, and the one shown
+  await expect(history.getByRole("listitem")).toHaveCount(3);
+  await expect(history.getByRole("listitem").nth(0)).toHaveText("V1In the first version");
+  await expect(history.getByRole("listitem").nth(1)).toHaveText("V2Renamed from Satisfaction");
+  await expect(history.getByRole("listitem").nth(2)).toHaveText("finalUnchanged");
+
+  // Going back selects the same node, under its name there
+  await history.getByRole("button", { name: "Go to V1" }).click();
+  await expect(page).toHaveURL(/version=V1/);
+  await expect(page.getByLabel("Node satisfaction")).toBeVisible();
+  await expect(page.getByRole("region", { name: "History of satisfaction" }).getByRole("listitem").nth(1)).toHaveText(
+    "V2Renamed from Satisfaction",
+  );
+
+  // A link's history follows its polarity, and leads to the link in each version
+  await page.goto("/?version=final&link=staff-queue");
+  const links = page.getByRole("region", { name: "History of staff-queue" });
+  await expect(links.getByRole("listitem").nth(0)).toHaveText("V4Added, positive");
+  await expect(links.getByRole("listitem").nth(1)).toHaveText("finalFlipped to negative");
+  await links.getByRole("button", { name: "Go to V4" }).click();
+  await expect(page).toHaveURL(/version=V4/);
+  await expect(page.getByLabel("Link staff-queue")).toBeVisible();
 });
 
 test("the graph can be used from the keyboard", async ({ page }) => {
@@ -503,10 +563,14 @@ test("a fade cut off by a version change leaves nothing behind, and fades carry 
   expect(part.filter((value) => value > 0.2 && value < 0.95).length, part.join()).toBeGreaterThan(0);
 });
 
-/** What the graph shows of each link: whether it's hidden, highlighted, and how wide. */
+/**
+ * What the graph shows of each link: whether it's hidden, highlighted, and how wide. Nothing
+ * yet while the graph is still being made, so a poll waits for it.
+ */
 const linkState = (page: Page) =>
   page.evaluate(() => {
     const div = [...document.querySelectorAll<any>("div")].find((d) => d._cyreg?.cy);
+    if (!div) return {} as Record<string, any>;
     return Object.fromEntries(
       div._cyreg.cy.edges().map((edge: any) => [
         edge.id(),
@@ -539,13 +603,13 @@ test("clicking a link shows who stated it, and a shared address reopens it", asy
   await expect(details.getByText("Stated by 2 people")).toBeVisible();
   await expect(details.getByText("barista")).toBeVisible();
   await expect(details.getByText("A second person on the till halves the wait")).toBeVisible();
-  await expect.poll(async () => (await linkState(page))["staff-queue"].route).toBe(true);
+  await expect.poll(async () => (await linkState(page))["staff-queue"]?.route).toBe(true);
   await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["queue", "staff"]);
   await expect(page).toHaveURL(/link=staff-queue/);
 
   await page.reload();
   await expect(page.getByLabel("Link staff-queue")).toBeVisible();
-  await expect.poll(async () => (await linkState(page))["staff-queue"].route).toBe(true);
+  await expect.poll(async () => (await linkState(page))["staff-queue"]?.route).toBe(true);
 
   // Either end leads to its node, which takes the link's place
   await page.getByLabel("Link staff-queue").getByRole("button", { name: "Staff on shift" }).click();
@@ -684,10 +748,10 @@ test("no layout packs nodes into each other, however they're switched", async ({
 });
 
 
-test("the radial menu walks to linked nodes, sets the steps and picks loops", async ({ page }) => {
+test("the radial menu walks to linked nodes and cycles are selected from the sidebar", async ({ page }) => {
   await openFinal(page);
   await choose(page, "customers", /^Customers/);
-  const menu = page.getByRole("menu", { name: "Linked nodes and loops: Customers" });
+  const menu = page.getByRole("menu", { name: "Linked nodes: Customers" });
   await expect(menu).toBeVisible();
   // No visible target for each link: the space around the node is split by direction instead
   await expect(menu.getByRole("menuitem")).toHaveCount(0);
@@ -698,7 +762,7 @@ test("the radial menu walks to linked nodes, sets the steps and picks loops", as
   await page.mouse.click(toward.x, toward.y);
   await expect(page.getByLabel("Node queue")).toBeVisible();
   await expect(page.getByLabel("Node customers")).toHaveCount(0);
-  const next = page.getByRole("menu", { name: "Linked nodes and loops: Queue length" });
+  const next = page.getByRole("menu", { name: "Linked nodes: Queue length" });
   await expect(next).toBeVisible();
 
   // The rings set how far the highlight reaches
@@ -717,7 +781,7 @@ test("the radial menu walks to linked nodes, sets the steps and picks loops", as
   await expect.poll(highlighted).toBeGreaterThan(one);
 
   // A loop arc highlights the loop, and the loop list shows it chosen
-  await next.getByRole("menuitemcheckbox", { name: /^Balancing/ }).dispatchEvent("click");
+  await page.getByRole("button", { name: /^B Balancing/ }).click();
   await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customer-satisfaction", "customers", "queue"]);
   await expect(page.getByRole("button", { name: /^B Balancing/ })).toHaveAttribute("aria-pressed", "true");
 });
@@ -725,7 +789,7 @@ test("the radial menu walks to linked nodes, sets the steps and picks loops", as
 test("the radial menu works from the keyboard", async ({ page }) => {
   await openFinal(page);
   await choose(page, "revenue", /^Revenue/);
-  const menu = page.getByRole("menu", { name: "Linked nodes and loops: Revenue" });
+  const menu = page.getByRole("menu", { name: "Linked nodes: Revenue" });
   const two = menu.getByRole("menuitemradio", { name: /^2 steps/ });
   await two.focus();
   await expect(page.locator(".cc-radial-caption")).toHaveText(/^2 steps/);
@@ -741,6 +805,10 @@ test("the space around a node is split by direction, so pointing anywhere picks 
   await openFinal(page);
   await choose(page, "customers", /^Customers/);
   await expect(page.getByRole("menu", { name: /Customers$/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
+    return Number(div._cyreg.cy.getElementById("customers").style("overlay-opacity"));
+  })).toBe(0);
   await stillOnScreen(page, "customers");
 
   const { samples, bearings } = await page.evaluate(() => {
@@ -864,6 +932,10 @@ test("the linked node, and the link to it, lead there too", async ({ page }) => 
   await openFinal(page);
   await choose(page, "customers", /^Customers/);
   await expect(page.getByRole("menu", { name: /Customers$/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
+    return Number(div._cyreg.cy.getElementById("customers").style("overlay-opacity"));
+  })).toBe(0);
   const at = await stillOnScreen(page, "customers");
   const caption = page.locator(".cc-radial-caption");
 
@@ -962,16 +1034,18 @@ test("while the menu is open, faded nodes are backdrop, as behind a modal", asyn
   await expect(page.getByLabel("Node customer-satisfaction")).toBeVisible();
 });
 
-test("the radial menu shows loops within reach", async ({ page }) => {
+test("cycles are configured and selected in one sidebar panel, never in the radial menu", async ({ page }) => {
   await openFinal(page);
   await choose(page, "staff", /^Staff on shift/);
-  const menu = page.getByRole("menu", { name: "Linked nodes and loops: Staff on shift" });
-  await expect(menu).toBeVisible();
-
-  // At one step only the loop through the node shows; at two, the balancing loop it feeds too
-  await expect(menu.locator(".cc-radial-loop")).toHaveCount(1);
-  await page.getByRole("button", { name: "2", exact: true }).click();
-  await expect(menu.getByRole("menuitemcheckbox", { name: /^Within 2 steps · Balancing/ })).toHaveCount(1);
+  await expect(page.locator(".cc-radial-loop, [data-mark-route], .cc-radial-trace")).toHaveCount(0);
+  const panel = page.locator(".cc-loop-settings");
+  await expect(panel.getByLabel("Maximum cycle length")).toBeVisible();
+  await expect(panel.getByLabel("Cycles through")).toHaveValue("staff");
+  const loop = panel.getByRole("button", { name: /Reinforcing/ }).first();
+  await expect(loop).toBeVisible();
+  await loop.click();
+  await expect(loop).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => nodesWith(page, ".route-node")).not.toEqual([]);
 });
 
 /** Waits for a node to stop moving on screen, as the view settles after choosing it. */
@@ -1082,18 +1156,7 @@ test("selecting a node opens its menu, and its details are only in the sidebar",
   await expect(page.locator(".cc-radial-caption")).toHaveText("Leads to: Customers");
   await expect(tooltip(page)).toHaveCount(0);
 
-  // A long loop's caption wraps inside its box rather than running past it
-  const caption = page.locator(".cc-radial-caption");
-  const loops = page.locator(".cc-radial-loop");
-  expect(await loops.count()).toBeGreaterThan(0);
-  for (let index = 0; index < (await loops.count()); index++) {
-    await loops.nth(index).focus();
-    await expect(caption).toContainText("→");
-    const fits = await caption.evaluate((element) => element.scrollWidth <= element.clientWidth);
-    expect(fits).toBe(true);
-  }
-
-  await loops.first().press("Escape");
+  await page.getByRole("menu").getByRole("menuitemradio").first().press("Escape");
   await expect(menu).toHaveCount(0);
 });
 
@@ -1135,22 +1198,22 @@ test("a plain click replaces selection and tracing explicitly chooses an endpoin
   await expect.poll(() => nodesWith(page, ".focus")).toEqual(["customers"]);
   await page.getByLabel(/^Causal graph/).focus();
   await page.keyboard.press("Shift+F10");
-  const trace = page.getByRole("menuitemcheckbox", { name: "Trace paths to another node" });
+  const trace = page.getByRole("button", { name: "Trace paths to another node" });
   await trace.click();
-  await expect(trace).toHaveAttribute("aria-checked", "true");
+  await expect(trace).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".cc-radial-caption")).toHaveText("Choose a node to trace paths to. Escape cancels");
   await click("queue");
   await expect.poll(() => nodesWith(page, ".focus")).toEqual(["customers", "queue"]);
-  await expect(page.getByText("Paths from Customers to Queue length (2)")).toBeVisible();
+  await expect(page.getByText("Paths from Customers to Queue length (1)")).toBeVisible();
   await expect(page.getByRole("menu")).toHaveCount(0);
 
   // Escape while tracing cancels only the tracing
   await click("revenue");
   await page.getByLabel(/^Causal graph/).focus();
   await page.keyboard.press("Shift+F10");
-  await page.getByRole("menuitemcheckbox", { name: "Trace paths to another node" }).click();
-  await page.getByRole("menuitemcheckbox", { name: "Trace paths to another node" }).press("Escape");
-  await expect(page.getByRole("menuitemcheckbox", { name: "Trace paths to another node" })).toHaveAttribute("aria-checked", "false");
+  await page.getByRole("button", { name: "Trace paths to another node" }).click();
+  await page.getByRole("button", { name: "Trace paths to another node" }).press("Escape");
+  await expect(page.getByRole("button", { name: "Trace paths to another node" })).toHaveAttribute("aria-pressed", "false");
   await expect.poll(() => nodesWith(page, ".focus")).toEqual(["revenue"]);
 });
 
@@ -1158,10 +1221,10 @@ test("two selected nodes show the paths between them, not their own neighbours",
   await openFinal(page);
   await choose(page, "revenue", /^Revenue/);
   await chooseAlso(page, "staff", /^Staff on shift/);
-  // Revenue leads to staff directly, and staff back to revenue round the loop through every node
+  // Keep the direct path; do not also highlight the longer return route.
   await expect
     .poll(() => nodesWith(page, ".route-node"))
-    .toEqual(["customer-satisfaction", "customers", "queue", "revenue", "staff"]);
+    .toEqual(["revenue", "staff"]);
   await expect.poll(() => nodesWith(page, ".cause, .effect")).toEqual([]);
 });
 
@@ -1180,16 +1243,20 @@ test("rapid camera choices replace the old destination and settle on the latest 
     return !cy.animated() && Math.hypot(point.x - cy.width() / 2, point.y - cy.height() / 2) < 1;
   }), { timeout: 1000, intervals: [50] }).toBe(true);
   await expect(page.getByRole("menu", { name: /Customers$/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
+    return Number(div._cyreg.cy.getElementById("customers").style("overlay-opacity"));
+  })).toBe(0);
 });
 
 
 test("tracing cancels back to its origin from backdrop, source, or Escape", async ({ page }) => {
   await openFinal(page);
   await choose(page, "customers", /^Customers/);
-  const trace = page.getByRole("menuitemcheckbox", { name: "Trace paths to another node" });
+  const trace = page.getByRole("button", { name: "Trace paths to another node" });
   for (const cancel of ["backdrop", "source", "escape"]) {
     await trace.click();
-    await expect(trace).toHaveAttribute("aria-checked", "true");
+    await expect(trace).toHaveAttribute("aria-pressed", "true");
     if (cancel === "escape") await page.getByLabel("Search nodes").press("Escape");
     else if (cancel === "source") {
       const p = await stillOnScreen(page, "customers");
@@ -1200,9 +1267,13 @@ test("tracing cancels back to its origin from backdrop, source, or Escape", asyn
         div._cyreg.cy.emit("tap");
       });
     }
-    await expect(trace).toHaveAttribute("aria-checked", "false");
+    await expect(trace).toHaveAttribute("aria-pressed", "false");
     await expect.poll(() => nodesWith(page, ":selected")).toEqual(["customers"]);
     await expect(page.getByRole("menu", { name: /Customers$/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
+    return Number(div._cyreg.cy.getElementById("customers").style("overlay-opacity"));
+  })).toBe(0);
     await expect(page.getByLabel("Node customers")).toBeVisible();
   }
   // Once back at the menu, Escape closes the whole node selection.
@@ -1215,12 +1286,12 @@ test("tracing cancels back to its origin from backdrop, source, or Escape", asyn
 test("Escape removes a pinned loop first, then closes the node menu without leftover previews", async ({ page }) => {
   await openFinal(page);
   await choose(page, "staff", /^Staff on shift/);
-  const loop = page.getByRole("menu").locator(".cc-radial-loop").first();
+  const loop = page.locator(".cc-loop-settings").getByRole("button", { name: /Reinforcing/ }).first();
   await loop.focus();
   await loop.press("Enter");
-  await expect(loop).toHaveAttribute("aria-checked", "true");
+  await expect(loop).toHaveAttribute("aria-pressed", "true");
   await page.getByLabel("Search nodes").press("Escape");
-  await expect(loop).toHaveAttribute("aria-checked", "false");
+  await expect(loop).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByRole("menu", { name: /Staff on shift$/ })).toBeVisible();
   await expect.poll(() => nodesWith(page, ".route-node")).toEqual([]);
   await page.getByLabel("Search nodes").press("Escape");
@@ -1289,7 +1360,7 @@ test("Shift-click toggles multi-selection and the keyboard command opens the mod
   await expect(page.getByLabel("Node customers")).toBeVisible();
   await click("queue");
   await expect(page.getByLabel("Node queue")).toBeVisible();
-  await expect(page.getByText("Paths from Customers to Queue length (2)")).toBeVisible();
+  await expect(page.getByText("Paths from Customers to Queue length (1)")).toBeVisible();
   await expect.poll(() => nodesWith(page, ":selected")).toEqual(["customers", "queue"]);
   await click("queue");
   await expect(page.getByLabel("Node queue")).toHaveCount(0);
@@ -1299,6 +1370,10 @@ test("Shift-click toggles multi-selection and the keyboard command opens the mod
   await page.getByLabel(/^Causal graph/).focus();
   await page.keyboard.press("Shift+F10");
   await expect(page.getByRole("menu", { name: /Customers$/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
+    return Number(div._cyreg.cy.getElementById("customers").style("overlay-opacity"));
+  })).toBe(0);
   // Shift cannot turn a modal navigation click into an additive selection.
   await stillOnScreen(page, "customers");
   await click("revenue");
@@ -1330,11 +1405,11 @@ test("Shift box selection updates native selection, details and paths", async ({
   await expect.poll(() => nodesWith(page, ":selected")).toEqual(["customers", "queue"]);
   await expect(page.getByLabel("Node customers")).toBeVisible();
   await expect(page.getByLabel("Node queue")).toBeVisible();
-  await expect(page.getByText("Paths from Customers to Queue length (2)")).toBeVisible();
+  await expect(page.getByText("Paths from Customers to Queue length (1)")).toBeVisible();
   await expect(page.getByRole("menu")).toHaveCount(0);
 });
 
-test("three Shift-selected nodes retain every detail and every pair of paths", async ({ page }) => {
+test("three Shift-selected nodes retain every detail with a sparse shortest connection", async ({ page }) => {
   await openFinal(page);
   for (const id of ["customers", "queue", "staff"]) {
     const p = await pagePoint(page, id);
@@ -1345,7 +1420,7 @@ test("three Shift-selected nodes retain every detail and every pair of paths", a
   await page.mouse.move(5, 5);
   await expect.poll(() => nodesWith(page, ":selected")).toEqual(["customers", "queue", "staff"]);
   await expect(page.getByLabel(/^Node /)).toHaveCount(3);
-  await expect(page.getByRole("region", { name: "Paths", exact: true }).getByRole("heading")).toHaveCount(6);
+  await expect(page.getByRole("region", { name: "Paths", exact: true }).getByRole("heading")).toHaveCount(2);
   await expect(page.getByRole("heading", { name: /^Paths from Staff on shift to Queue length/ })).toBeVisible();
   await expect(page.getByRole("menu")).toHaveCount(0);
   const p = await pagePoint(page, "queue");
@@ -1353,11 +1428,11 @@ test("three Shift-selected nodes retain every detail and every pair of paths", a
   await page.mouse.click(p.x, p.y);
   await page.keyboard.up("Shift");
   await expect(page.getByLabel(/^Node /)).toHaveCount(2);
-  await expect(page.getByRole("region", { name: "Paths", exact: true }).getByRole("heading")).toHaveCount(2);
+  await expect(page.getByRole("region", { name: "Paths", exact: true }).getByRole("heading")).toHaveCount(1);
   await expect.poll(() => nodesWith(page, ":selected")).toEqual(["customers", "staff"]);
 });
 
-test("Shift box selection keeps all five nodes and all twenty directed pairs", async ({ page }) => {
+test("Shift box selection connects five nodes with only four edges", async ({ page }) => {
   await openFinal(page);
   const origin = await page.evaluate(() => {
     const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
@@ -1376,82 +1451,80 @@ test("Shift box selection keeps all five nodes and all twenty directed pairs", a
   await page.keyboard.up("Shift");
   await expect(page.getByLabel(/^Node /)).toHaveCount(5);
   await expect.poll(async () => (await nodesWith(page, ":selected")).length).toBe(5);
-  await expect(page.getByRole("region", { name: "Paths", exact: true }).getByRole("heading")).toHaveCount(20);
+  await expect(page.getByRole("region", { name: "Paths", exact: true }).getByRole("heading")).toHaveCount(4);
   await expect.poll(async () => (await nodesWith(page, ".focus")).length).toBe(5);
+  await expect.poll(() => page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
+    return div._cyreg.cy.edges(".route-link").length;
+  })).toBe(4);
   await page.getByRole("button", { name: "Clear selection" }).click();
   await expect(page.getByLabel(/^Node /)).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Paths", exact: true })).toHaveCount(0);
 });
 
-test("hold a node, drag to a fan, release commits the route without leaving the menu open", async ({ page }) => {
+/** Where to point, in the open menu, to go toward a linked node: the middle of its direction. */
+const towardIn = (page: Page, node: string) =>
+  page.evaluate((node) => {
+    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
+    const area = div._cyreg.cy.scratch("cytocausal-radial-area");
+    const sector = area.sectors.find((s: any) => s.node === node);
+    const angle = (sector.from + sector.to) / 2;
+    const r = (area.radius + sector.reach) / 2;
+    return { x: area.x + r * Math.cos(angle), y: area.y + r * Math.sin(angle) };
+  }, node);
+
+test("a long press locks the menu: moving steers, a click commits, and a click outside the canvas leaves", async ({ page }) => {
   await openFinal(page);
   const p = await pagePoint(page, "customers");
   await page.mouse.click(p.x, p.y);
   await expect(page.getByRole("menu")).toHaveCount(0);
   await page.mouse.down();
   await expect(page.getByRole("menu", { name: /Customers$/ })).toBeVisible();
-  const destination = await page.evaluate(() => {
-    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
-    const cy = div._cyreg.cy;
-    const area = cy.scratch("cytocausal-radial-area");
-    const sector = area.sectors.find((s: any) => s.node === "revenue");
-    const angle = (sector.from + sector.to) / 2;
-    const r = (area.radius + sector.reach) / 2;
-    return { x: area.x + r * Math.cos(angle), y: area.y + r * Math.sin(angle) };
-  });
-  await page.mouse.move(destination.x, destination.y, { steps: 8 });
+  // The held node is bordered, so it reads as chosen
+  await expect.poll(() => nodesWith(page, ".menu-held")).toEqual(["customers"]);
+
+  // Dragging to a direction and letting go commits it, and the menu stays, on that node
+  const revenue = await towardIn(page, "revenue");
+  await page.mouse.move(revenue.x, revenue.y, { steps: 8 });
   await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "revenue"]);
   await page.mouse.up();
-  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.getByRole("menu", { name: /Revenue$/ })).toBeVisible();
   await expect(page.getByLabel("Node revenue")).toBeVisible();
-  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "revenue"]);
-  // The next canvas click clears the committed state normally.
-  await page.evaluate(() => {
-    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
-    div._cyreg.cy.panBy({ x: 3000, y: 0 });
-    return new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-  });
-  await page.mouse.click(300, 450);
-  await expect(page.getByLabel(/^Node /)).toHaveCount(0);
-  await expect.poll(() => nodesWith(page, ".route-node, .focus")).toEqual([]);
+  await expect.poll(() => nodesWith(page, ".menu-held")).toEqual(["revenue"]);
+
+  // With no button held, moving steers and a click commits
+  await page.waitForTimeout(400);
+  const staff = await towardIn(page, "staff");
+  await page.mouse.move(staff.x, staff.y, { steps: 8 });
+  await expect.poll(() => nodesWith(page, ".route-node")).toContain("staff");
+  await page.mouse.click(staff.x, staff.y);
+  await expect(page.getByRole("menu", { name: /Staff on shift$/ })).toBeVisible();
+  await expect(page.getByLabel("Node staff")).toBeVisible();
+  await expect.poll(() => nodesWith(page, ".menu-held")).toEqual(["staff"]);
+
+  // A click outside the canvas leaves: the menu closes and the node stays selected
+  await page.getByText("cytocausal starter").click();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.getByLabel("Node staff")).toBeVisible();
+  await expect.poll(() => nodesWith(page, ".menu-held")).toEqual([]);
 });
 
-test("hold-release preserves the node, and Escape cancels the held preview", async ({ page }) => {
-  await openFinal(page);
-  const p = await pagePoint(page, "staff");
-  for (const escape of [false, true]) {
-    await page.mouse.move(p.x, p.y);
-    await page.mouse.down();
-    await expect(page.getByRole("menu", { name: /Staff on shift$/ })).toBeVisible();
-    if (escape) await page.keyboard.press("Escape");
-    await page.mouse.up();
-    await expect(page.getByRole("menu")).toHaveCount(0);
-    await expect(page.getByLabel("Node staff")).toBeVisible();
-    await expect.poll(() => nodesWith(page, ":selected")).toEqual(["staff"]);
-  }
-});
-
-test("dragging over a loop while held pins it on release", async ({ page }) => {
+test("a hold and release keeps the menu locked, and Escape leaves it", async ({ page }) => {
   await openFinal(page);
   const p = await pagePoint(page, "staff");
   await page.mouse.move(p.x, p.y);
   await page.mouse.down();
-  const arc = page.locator("[data-mark-route]").first();
-  await expect(arc).toBeVisible();
-  const spot = await arc.evaluate((element) => {
-    const box = element.getBoundingClientRect();
-    for (let x = Math.ceil(box.left) + 2; x < box.right - 2; x += 2) for (let y = Math.ceil(box.top) + 2; y < box.bottom - 2; y += 2) {
-      if ([[0,0], [1,0], [-1,0], [0,1], [0,-1]].every(([dx,dy]) => document.elementFromPoint(x + dx, y + dy)?.closest("[data-mark-route]") === element)) return { x, y };
-    }
-    throw new Error("No loop hit point");
-  });
-  const route = JSON.parse((await arc.getAttribute("data-mark-route"))!);
-  await page.mouse.move(spot.x, spot.y, { steps: 5 });
-  await expect.poll(() => nodesWith(page, ".route-node")).toEqual([...route.nodes].sort());
+  await expect(page.getByRole("menu", { name: /Staff on shift$/ })).toBeVisible();
   await page.mouse.up();
+  await page.waitForTimeout(300);
+  await expect(page.getByRole("menu", { name: /Staff on shift$/ })).toBeVisible();
+  await expect.poll(() => nodesWith(page, ".menu-held")).toEqual(["staff"]);
+
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
-  await expect.poll(() => nodesWith(page, ".route-node")).toEqual([...route.nodes].sort());
   await expect(page.getByLabel("Node staff")).toBeVisible();
+  await expect.poll(() => nodesWith(page, ":selected")).toEqual(["staff"]);
+  await expect.poll(() => nodesWith(page, ".menu-held")).toEqual([]);
 });
 
 
@@ -1469,55 +1542,62 @@ test("moving before the hold threshold drags the node without opening its menu",
   await expect(page.getByRole("menu")).toHaveCount(0);
 });
 
-test("held angle keeps its edge while distance changes steps and rings provide feedback", async ({ page }) => {
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+test(`step two creates new fans and transitions between centres (${reducedMotion})`, async ({ page }) => {
+  await page.emulateMedia({ reducedMotion });
   await openFinal(page);
-  const p = await pagePoint(page, "customers");
-  await page.mouse.click(p.x, p.y);
-  await expect(page.getByRole("menu")).toHaveCount(0);
-  await page.mouse.down();
-  await expect(page.getByRole("menu", { name: /Customers$/ })).toBeVisible();
-  const destination = await page.evaluate(() => {
+  await page.evaluate(() => {
     const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
     const cy = div._cyreg.cy;
-    const area = cy.scratch("cytocausal-radial-area");
-    const sector = area.sectors.find((s: any) => s.node === "revenue");
-    const angle = (sector.from + sector.to) / 2;
-    const r = (area.radius + sector.reach) / 2;
-    return { x: area.x + r * Math.cos(angle), y: area.y + r * Math.sin(angle) };
+    cy.stop(true, false);
+    cy.nodes().forEach((n: any, i: number) => n.position({ x: -200, y: -200 - i * 30 }));
+    cy.getElementById("customers").position({ x: 0, y: 0 });
+    cy.getElementById("revenue").position({ x: 180, y: 0 });
+    cy.getElementById("staff").position({ x: 180, y: 180 });
+    cy.zoom(1); cy.pan({ x: 350, y: 250 });
   });
-  await page.mouse.move(destination.x, destination.y, { steps: 8 });
-  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "revenue"]);
+  const p = await pagePoint(page, "customers");
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.down();
+  await expect(page.getByRole("menu", { name: /Customers$/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
+    return Number(div._cyreg.cy.getElementById("customers").style("overlay-opacity"));
+  })).toBe(0);
   const far = await page.evaluate(() => {
     const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
     const area = div._cyreg.cy.scratch("cytocausal-radial-area");
-    const sector = area.sectors.find((s: any) => s.node === "revenue");
-    const angle = (sector.from + sector.to) / 2;
-    const r = sector.reach + 20;
-    return { x: area.x + r * Math.cos(angle), y: area.y + r * Math.sin(angle) };
+    const fan = area.sectors.find((s: any) => s.node === "revenue");
+    return { x: area.x + fan.reach + 20, y: area.y };
   });
+  await page.mouse.move(far.x, far.y, { steps: 5 });
   const feedback = page.locator(".cc-marking-feedback");
-  await expect(feedback).toHaveAttribute("data-step", "1");
-  await page.mouse.move(far.x, far.y, { steps: 5 });
   await expect(feedback).toHaveAttribute("data-step", "2");
-  await expect(page.locator(".cc-marking-band")).toHaveCount(1);
-  await page.mouse.move(destination.x, destination.y, { steps: 5 });
+  await expect(feedback.locator(".cc-marking-band, .cc-marking-threshold")).toHaveCount(0);
+  await expect(feedback.locator(".cc-marking-center")).toHaveAttribute("data-node", "revenue");
+  await expect(feedback.locator(".cc-marking-sunburst")).toHaveCount(1);
+  await expect(feedback.locator(".cc-marking-halo").first()).toHaveCSS("stroke", "none");
+  await expect(feedback.locator('.cc-marking-halo[data-target="staff"]')).toBeVisible();
+  await expect.poll(() => nodesWith(page, ".route-node, .focus")).toContain("revenue");
+  await expect(feedback.locator("text")).toHaveCount(1);
+  await expect(feedback.locator(".cc-marking-step")).toHaveText("2");
+  const movement = await feedback.locator('.cc-marking-center').evaluate(el => getComputedStyle(el).transitionDuration);
+  expect(movement).toBe(reducedMotion === "reduce" ? "0s" : "0.22s");
+  const child = await pagePoint(page, "revenue");
+  await page.mouse.move(child.x, child.y + 100, { steps: 5 });
+  await expect(feedback.locator('.cc-marking-halo[data-target="staff"]')).toHaveAttribute("data-active", "true");
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "revenue", "staff"]);
+  await page.mouse.move(p.x + 30, p.y, { steps: 5 });
   await expect(feedback).toHaveAttribute("data-step", "1");
+  await expect(feedback.locator(".cc-marking-center")).toHaveAttribute("data-node", "customers");
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "revenue"]);
   await page.mouse.move(far.x, far.y, { steps: 5 });
-  await expect(feedback).toHaveAttribute("data-step", "2");
-  const committed = await nodesWith(page, ".route-node");
+  await page.mouse.move(child.x, child.y + 100, { steps: 5 });
   await page.mouse.up();
-  await expect(page.getByRole("group", { name: "Steps shown", exact: true }).getByRole("button", { name: "2", exact: true })).toHaveAttribute("aria-pressed", "true");
-
-  await expect(page.getByRole("menu")).toHaveCount(0);
-  await expect(page.getByLabel("Node revenue")).toBeVisible();
-  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(committed);
-  // The next canvas click clears the committed state normally.
-  await page.evaluate(() => {
-    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
-    div._cyreg.cy.panBy({ x: 3000, y: 0 });
-    return new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-  });
-  await page.mouse.click(300, 450);
-  await expect(page.getByLabel(/^Node /)).toHaveCount(0);
-  await expect.poll(() => nodesWith(page, ".route-node, .focus")).toEqual([]);
+  // Letting go commits, and the locked menu moves to the node reached
+  await expect(page.getByRole("menu", { name: /Staff on shift$/ })).toBeVisible();
+  await expect(page.getByLabel("Node staff")).toBeVisible();
+  await expect.poll(() => nodesWith(page, ".route-node")).toEqual(["customers", "revenue", "staff"]);
 });
+
+}

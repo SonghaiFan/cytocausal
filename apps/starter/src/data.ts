@@ -1,7 +1,12 @@
 import type { CausalDataset } from "@cytocausal/core";
 
 // Replace this with your own data. It's a made-up model of a coffee shop, as a barista and a
-// manager described it. Evidence on a link records who stated it and why.
+// manager described it over five meetings. Evidence on a link records who stated it and why.
+//
+// V1 → V2: Satisfaction is renamed Customer satisfaction
+// V2 → V3: Revenue joins, fed by customers
+// V3 → V4: Staff on shift joins, first thought to lengthen the queue
+// V4 → final: the barista corrects that: more staff shortens the queue
 export const dataset: CausalDataset = {
   id: "coffee-shop",
   snapshots: [
@@ -25,6 +30,52 @@ export const dataset: CausalDataset = {
           target: "customers",
           polarity: "positive",
         },
+      ],
+    },
+    {
+      id: "V2",
+      nodes: [
+        { id: "customers", label: "Customers" },
+        { id: "queue", label: "Queue length" },
+        { id: "customer-satisfaction", label: "Customer satisfaction" },
+      ],
+      edges: [
+        { id: "customers-queue", source: "customers", target: "queue", polarity: "positive" },
+        { id: "queue-satisfaction", source: "queue", target: "customer-satisfaction", polarity: "negative" },
+        { id: "satisfaction-customers", source: "customer-satisfaction", target: "customers", polarity: "positive" },
+      ],
+    },
+    {
+      id: "V3",
+      nodes: [
+        { id: "customers", label: "Customers" },
+        { id: "queue", label: "Queue length" },
+        { id: "customer-satisfaction", label: "Customer satisfaction" },
+        { id: "revenue", label: "Revenue" },
+      ],
+      edges: [
+        { id: "customers-queue", source: "customers", target: "queue", polarity: "positive" },
+        { id: "queue-satisfaction", source: "queue", target: "customer-satisfaction", polarity: "negative" },
+        { id: "satisfaction-customers", source: "customer-satisfaction", target: "customers", polarity: "positive" },
+        { id: "customers-revenue", source: "customers", target: "revenue", polarity: "positive" },
+      ],
+    },
+    {
+      id: "V4",
+      nodes: [
+        { id: "customers", label: "Customers" },
+        { id: "queue", label: "Queue length" },
+        { id: "customer-satisfaction", label: "Customer satisfaction" },
+        { id: "revenue", label: "Revenue" },
+        { id: "staff", label: "Staff on shift" },
+      ],
+      edges: [
+        { id: "customers-queue", source: "customers", target: "queue", polarity: "positive" },
+        { id: "queue-satisfaction", source: "queue", target: "customer-satisfaction", polarity: "negative" },
+        { id: "satisfaction-customers", source: "customer-satisfaction", target: "customers", polarity: "positive" },
+        { id: "customers-revenue", source: "customers", target: "revenue", polarity: "positive" },
+        { id: "revenue-staff", source: "revenue", target: "staff", polarity: "positive" },
+        { id: "staff-queue", source: "staff", target: "queue", polarity: "positive" },
       ],
     },
     {
@@ -92,7 +143,18 @@ export const dataset: CausalDataset = {
       ],
     },
   ],
+  // Later versions keep their ids, so only the rename needs saying. V1 → final says it too, so
+  // the two can be compared directly
   correspondences: [
+    {
+      from: "V1",
+      to: "V2",
+      nodes: {
+        customers: "customers",
+        queue: "queue",
+        satisfaction: "customer-satisfaction",
+      },
+    },
     {
       from: "V1",
       to: "final",

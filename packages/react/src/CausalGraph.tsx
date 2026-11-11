@@ -24,7 +24,6 @@ export function CausalGraph({
   renderLinkTooltip = defaultLinkTooltip,
   maxZoom,
   radialMenu = true,
-  loopOptions,
   showDirections,
   className = "",
   children,
@@ -70,7 +69,7 @@ export function CausalGraph({
         }}
       />
       {children}
-      {radialMenu && <RadialMenu loopOptions={loopOptions} renderInfo={renderNodeInfo} showDirections={showDirections} />}
+      {radialMenu && <RadialMenu renderInfo={renderNodeInfo} showDirections={showDirections} />}
       <ZoomControls />
       <p role="status" className="cc-sr-only">
         {graph.announcement}

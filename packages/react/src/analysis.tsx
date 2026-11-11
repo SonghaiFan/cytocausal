@@ -9,8 +9,9 @@ import {
   type Snapshot,
 } from "@cytocausal/core";
 import type { Route } from "@cytocausal/cytoscape";
-import { useMemo, type ReactNode } from "react";
-import { required, useOptionalCausal } from "./CausalProvider.tsx";
+import { Fragment, useMemo, type ReactNode } from "react";
+import { LinkHistory, NodeHistory } from "./History.tsx";
+import { required, useOptionalCausal, type Baseline } from "./CausalProvider.tsx";
 import type { useCausalGraph } from "./useCausalGraph.ts";
 import { Segmented, Swatch } from "./controls.tsx";
 import { useCausalLabels } from "./labels.tsx";
@@ -60,8 +61,8 @@ export function DepthControl({
 }
 
 /**
- * Lists the causal paths between two nodes, in both directions, for choosing one to highlight.
- * In a provider, it follows the two selected nodes.
+ * Lists the sparse directed shortest connections for choosing one to highlight.
+ * In a provider, it follows all selected nodes.
  */
 export function PathList({
   snapshot: given,
@@ -143,17 +144,22 @@ export function SelectionPanel({
   const graph = required(given ?? causal?.graph, "SelectionPanel", "graph");
   const snapshot = required(chosen ?? causal?.snapshot, "SelectionPanel", "snapshot");
   const { selected, clear } = graph;
+  // History needs the provider's dataset and version, so only its own snapshot has one
+  const history = Boolean(causal && !chosen);
   const routes = { active: graph.activeRoute, onToggle: graph.toggleRoute };
 
   if (graph.selectedLink) {
     return (
-      <LinkDetails
-        snapshot={snapshot}
-        linkId={graph.selectedLink}
-        onSelect={graph.focus}
-        onClose={clear}
-        className={className}
-      />
+      <>
+        <LinkDetails
+          snapshot={snapshot}
+          linkId={graph.selectedLink}
+          onSelect={graph.focus}
+          onClose={clear}
+          className={className}
+        />
+        {history && <LinkHistory linkId={graph.selectedLink} className={className} />}
+      </>
     );
   }
   if (selected.length === 0) {
@@ -162,7 +168,14 @@ export function SelectionPanel({
   return (
     <>
       <div className="cc-spread">
-        <p className="cc-muted">{graph.tracing ? labels.tracingHint : selected.length === 1 ? labels.pathHint : ""}</p>
+        <div>
+          {graph.canTrace && selected.length === 1 && <button type="button" className="cc-link" aria-pressed={graph.tracing}
+            onClick={() => graph.tracing ? graph.stopTracing() : graph.startTracing()}
+            onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); graph.dismiss(); } }}>
+            {labels.tracePaths}
+          </button>}
+          {graph.tracing && <p className="cc-muted">{labels.tracingHint}</p>}
+        </div>
         <button type="button" className="cc-link" onClick={clear}>
           {labels.clearSelection}
         </button>
@@ -175,8 +188,8 @@ export function SelectionPanel({
         {...routes}
       />
       {selected.map((id) => (
+        <Fragment key={id}>
         <NodeDetails
-          key={id}
           snapshot={snapshot}
           nodeId={id}
           onSelect={graph.focus}
@@ -187,6 +200,8 @@ export function SelectionPanel({
           onToggleRoute={loopOptions ? graph.toggleRoute : undefined}
           className={className}
         />
+        {history && <NodeHistory nodeId={id} className={className} />}
+        </Fragment>
       ))}
     </>
   );
@@ -212,9 +227,11 @@ function ChangeGroup({ title, items }: { title: string; items: ReactNode[] }) {
 export function VersionDiff(props: VersionDiffProps) {
   const causal = useOptionalCausal();
   const dataset = required(props.dataset ?? causal?.dataset, "VersionDiff", "dataset");
-  const from = props.from ?? causal?.firstVersion ?? dataset.snapshots[0].id;
-  const to = props.to ?? causal?.lastVersion ?? dataset.snapshots[dataset.snapshots.length - 1].id;
-  if (from === to) return null;
+  const fallback = { from: dataset.snapshots[0].id, to: dataset.snapshots[dataset.snapshots.length - 1].id };
+  const comparison = causal ? causal.comparison : fallback;
+  const from = props.from ?? comparison?.from;
+  const to = props.to ?? comparison?.to;
+  if (!from || !to || from === to) return null;
 
   // Inside a provider, the button marks the changes on its graph
   const connected = causal && !props.onToggle;
@@ -225,6 +242,12 @@ export function VersionDiff(props: VersionDiffProps) {
       to={to}
       shown={connected ? causal.showChanges : props.shown}
       onToggle={connected ? () => causal.setShowChanges(!causal.showChanges) : props.onToggle}
+      // With more than two versions, there's a choice of what to compare with
+      baseline={
+        causal && !props.from && !props.to && dataset.snapshots.length > 2
+          ? { value: causal.baseline, onChange: causal.setBaseline }
+          : undefined
+      }
       className={props.className}
     />
   );
@@ -232,9 +255,9 @@ export function VersionDiff(props: VersionDiffProps) {
 
 export interface VersionDiffProps {
   dataset?: CausalDataset;
-  /** Defaults to the first snapshot. */
+  /** Defaults to the provider's comparison, or outside one, the first snapshot. */
   from?: string;
-  /** Defaults to the last snapshot. */
+  /** Defaults to the provider's comparison, or outside one, the last snapshot. */
   to?: string;
   /** Whether changes are marked on the graph. Leave out with `onToggle` to hide the button. */
   shown?: boolean;
@@ -248,6 +271,7 @@ function Differences({
   to,
   shown,
   onToggle,
+  baseline,
   className = "",
 }: {
   dataset: CausalDataset;
@@ -256,6 +280,7 @@ function Differences({
   /** Whether changes are marked on the graph. Leave out with `onToggle` to hide the button. */
   shown?: boolean;
   onToggle?: () => void;
+  baseline?: { value: Baseline; onChange: (baseline: Baseline) => void };
   className?: string;
 }) {
   const labels = useCausalLabels();
@@ -314,6 +339,15 @@ function Differences({
           </button>
         )}
       </div>
+      {baseline && (
+        <Segmented<Baseline>
+          label={labels.compareWith}
+          options={["previous", "first"]}
+          value={baseline.value}
+          onChange={baseline.onChange}
+          format={(option) => (option === "previous" ? labels.previousVersion : labels.firstVersion)}
+        />
+      )}
       {!changed && <p className="cc-muted">{labels.noChanges}</p>}
       {shown && (
         <ul className="cc-legend">

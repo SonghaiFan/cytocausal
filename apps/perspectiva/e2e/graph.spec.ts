@@ -129,6 +129,25 @@ test("alignment holds with the cola layout", async ({ page }) => {
   expect(alignmentOffset(left, right, anchorsOf("expert_9"))).toBeLessThan(1);
 });
 
+test("either side can show any version, and the changes follow the order chosen", async ({ page }) => {
+  await page.goto("/?dataset=expert_9");
+  const [before, after] = await settled(page, 2);
+  const changes = page.getByLabel("Changes");
+  await expect(changes.getByRole("heading")).toHaveText("Changes: V1 → final");
+
+  // Swapping the sides reads the changes the other way
+  await page.getByLabel("Left version").selectOption("final");
+  await page.getByLabel("Right version").selectOption("V1");
+  await expect(changes.getByRole("heading")).toHaveText("Changes: final → V1");
+  const [left, right] = await settled(page, 2);
+  expect(Object.keys(left).length).toBe(Object.keys(after).length);
+  expect(Object.keys(right).length).toBe(Object.keys(before).length);
+
+  // Alone, a version is compared with the one before it, or the next for the first
+  await page.getByRole("button", { name: "Single", exact: true }).click();
+  await expect(changes.getByRole("heading")).toHaveText("Changes: V1 → final");
+});
+
 test("switching dataset in the page keeps alignment", async ({ page }) => {
   await page.goto("/?dataset=citizen_1&debug=1");
   await settled(page, 2);
@@ -311,8 +330,8 @@ test("the whole workshop shows agreement, and one participant's view in place", 
   expect(await hidden()).toBe(0);
 });
 
-test("both versions pan, zoom and drag together", async ({ page }) => {
-  await page.goto("/?dataset=expert_9");
+for (const datasetId of ["expert_9", "workshop"]) test(`${datasetId}: both versions pan, zoom and drag together`, async ({ page }) => {
+  await page.goto(`/?dataset=${datasetId}`);
   await settled(page, 2);
   const views = () =>
     page.evaluate(() =>
@@ -346,7 +365,7 @@ test("both versions pan, zoom and drag together", async ({ page }) => {
       return Math.hypot(x - middle.x, y - middle.y);
     };
     return Object.entries(anchors).sort(([a], [b]) => distance(a) - distance(b))[0];
-  }, anchorsOf("expert_9"));
+  }, anchorsOf(datasetId));
   const start = await page.evaluate(
     ([leftId, rightId]) => {
       const [left, right] = [...document.querySelectorAll<any>("div")].filter((d) => d._cyreg?.cy);
@@ -434,4 +453,44 @@ test("participant and workshop scenarios have independent cycle defaults", async
   await expect(page.getByRole('heading', { name: 'Workshop cycles', exact: true })).toBeVisible();
   await expect(page.getByRole('spinbutton', { name: 'Maximum cycle length' })).toHaveValue('6');
   await expect(page.getByLabel('No length limit')).not.toBeChecked();
+});
+
+test("workshop cycles render in small batches and remain selectable", async ({ page }) => {
+  await page.goto("/?dataset=workshop");
+  await settled(page, 2);
+  const final = page.getByRole("region", { name: "Loops in final", exact: true });
+  await expect(final.locator("li")).toHaveCount(25);
+  const more = final.getByRole("button", { name: /^Show more/ });
+  await more.click();
+  await expect(final.locator("li")).toHaveCount(50);
+  const cycle = final.locator("li button").first();
+  await cycle.hover();
+  await expect(final.locator("li")).toHaveCount(50);
+  await cycle.click();
+  await expect(cycle).toHaveAttribute("aria-pressed", "true");
+});
+
+test("whole workshop hover highlights without starting per-element fades", async ({ page }) => {
+  await page.goto("/?dataset=workshop");
+  await settled(page, 2);
+  const point = await page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
+    const cy = div._cyreg.cy;
+    const node = cy.nodes()[0];
+    const proto = Object.getPrototypeOf(node);
+    const animate = proto.animate;
+    (window as any).__hoverFades = 0;
+    proto.animate = function (properties: any, ...args: any[]) {
+      if (properties?.style) (window as any).__hoverFades++;
+      return animate.call(this, properties, ...args);
+    };
+    const r = div.getBoundingClientRect(), p = node.renderedPosition();
+    return { x: r.x + p.x, y: r.y + p.y };
+  });
+  await page.mouse.move(point.x, point.y);
+  await expect.poll(() => page.evaluate(() => {
+    const div = [...document.querySelectorAll<any>("div")].find(d => d._cyreg?.cy);
+    return div._cyreg.cy.elements(".dimmed").length;
+  })).toBeGreaterThan(0);
+  expect(await page.evaluate(() => (window as any).__hoverFades)).toBe(0);
 });

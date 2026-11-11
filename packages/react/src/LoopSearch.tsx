@@ -53,7 +53,7 @@ export function LoopSettingsProvider({
   return <LoopContext.Provider value={value}>{children}</LoopContext.Provider>;
 }
 
-export function LoopSearchControls() {
+export function LoopSearchControls({ children }: { children?: ReactNode } = {}) {
   const context = useContext(LoopContext);
   if (!context) return null;
   const { settings, length, setLength, paused, setPaused, progress } = context;
@@ -98,14 +98,16 @@ export function LoopSearchControls() {
       <p className="cc-muted">
         Up to {settings.limit} cycles per search, shortest first. Longer searches may take time.
       </p>
-      {running && !paused && <button type="button" className="cc-button" onClick={() => setPaused(true)}>Cancel calculation</button>}
-      {paused ? <>
+      {!children && running && !paused && <button type="button" className="cc-button" onClick={() => setPaused(true)}>Cancel calculation</button>}
+      {!children && (paused ? <>
         <button type="button" className="cc-button" onClick={() => setPaused(false)}>Resume calculation</button>
         <p role="status">Calculation cancelled.</p>
       </> : running ? <p role="status">Calculating…</p>
         : failed ? <p role="status">Calculation failed. Change the length to retry.</p>
         : finished.length > 0 ? <p role="status">{count}{incomplete ? "+" : ""} cycles · Longest search: {formatSearchTime(elapsed)}</p>
-        : null}
+        : null)}
+      {children && paused && <button type="button" className="cc-button" onClick={() => setPaused(false)}>Resume calculation</button>}
+      {children}
 
     </section>
   );

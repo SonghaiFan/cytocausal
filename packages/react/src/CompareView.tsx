@@ -1,9 +1,8 @@
 "use client";
-import type { CausalDataset } from "@cytocausal/core";
+import { followNodes, type CausalDataset } from "@cytocausal/core";
 import {
   alignPositions,
   autoLayout,
-  getCounterparts,
   syncViews,
   type Positions,
 } from "@cytocausal/cytoscape";
@@ -61,7 +60,7 @@ export function CompareView({
   const anchorPositions = useMemo(
     () =>
       baseline?.key === baselineKey
-        ? alignPositions(baseline.positions, getCounterparts(dataset, left, right))
+        ? alignPositions(baseline.positions, followNodes(dataset, left, right))
         : undefined,
     [baseline, baselineKey, dataset, left, right],
   );
@@ -79,8 +78,8 @@ export function CompareView({
     if (!sync || !current.left || !current.right) return;
     if (current.left.destroyed() || current.right.destroyed()) return;
     current.stop = syncViews(current.left, current.right, {
-      counterparts: getCounterparts(dataset, left, right),
-      reverse: getCounterparts(dataset, right, left),
+      counterparts: followNodes(dataset, left, right),
+      reverse: followNodes(dataset, right, left),
     });
   }, [sync, dataset, left, right]);
   useEffect(() => {

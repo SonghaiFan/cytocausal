@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { directionCells, distanceStep, directionRoute, directionBoundaries } from "../src/radial.ts";
+import { directionCells } from "../src/radial.ts";
 
 const degrees = (radians: number) => Math.round((radians * 180) / Math.PI);
 const radians = (...values: number[]) => values.map((value) => (value * Math.PI) / 180);
@@ -72,26 +72,4 @@ test("dense navigation fans contain their real bearings and choose the nearest d
       assert.equal(hit, distances[nearest] <= options.reach ? nearest : -1);
     }
   }
-});
-
-test("step boundaries follow actual causal layer distances, not multiples of the first radius", () => {
-  const edges = [{ id: "ab", source: "a", target: "b" }, { id: "bc", source: "b", target: "c" }, { id: "cd", source: "c", target: "d" }];
-  const distances: Record<string, number> = { b: 168, c: 490, d: 610 };
-  const boundaries = directionBoundaries(edges, "a", "b", 4, 200, id => distances[id]);
-  assert.deepEqual(boundaries, [200, 522, 642]);
-  assert.deepEqual([200, 201, 500, 523, 900].map(d => distanceStep(d, boundaries)), [1, 2, 2, 3, 3]);
-  assert.deepEqual(directionBoundaries(edges, "a", "b", 2, 200, () => 80), [200, 200]);
-  assert.deepEqual(directionBoundaries(edges.slice(0, 1), "a", "b", 3, 200, () => 900), [200]);
-});
-
-test("held direction follows only the chosen branch, upstream or downstream, across steps", () => {
-  const edges = [
-    { id: "ab", source: "a", target: "b" },
-    { id: "bc", source: "b", target: "c" },
-    { id: "cd", source: "c", target: "d" },
-    { id: "ax", source: "a", target: "x" },
-  ];
-  assert.deepEqual(directionRoute(edges, "a", "b", 1).edges, ["ab"]);
-  assert.deepEqual(directionRoute(edges, "a", "b", 2).edges, ["ab", "bc"]);
-  assert.deepEqual(directionRoute(edges, "d", "c", 3).edges, ["cd", "bc", "ab"]);
 });

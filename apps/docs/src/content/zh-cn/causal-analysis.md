@@ -139,7 +139,7 @@ export function routes(snapshot: Snapshot) {
 
 ## 版本差异
 
-`diffSnapshots` 比较两个快照。它使用数据集中的对应关系（两个方向都可以），没有时按相同 id 匹配。反向比较时，新增和删除互换，合并和拆分互换。快照 id 不存在时会抛出错误，并列出数据集里有哪些快照。
+`diffSnapshots` 可以比较任意两个快照。它用 `followNodes` 跟随节点经过两者之间的每个版本，所以比较第一版和第五版时，第二版里的改名也会保留下来。反向比较时，新增和删除互换，合并和拆分互换。快照 id 不存在时会抛出错误，并列出数据集里有哪些快照。
 
 ```ts
 import { diffSnapshots, type CausalDataset } from "@cytocausal/core";
@@ -180,3 +180,24 @@ export function summary(dataset: CausalDataset) {
 长度按节点数计算，包含长度为 1 的自环，与邻域的“Steps shown”独立。取消长度限制不会取消条数上限。结果数量后的 `+` 表示可能未列全。切换工作坊数据集时，设置重置为对应场景的默认值。
 
 取消按钮只在 worker 正在计算时显示。完成后的列表显示回路数量和耗时；共享控制区按每个快照去重回路，并显示已完成搜索中的最长耗时。取消和失败不会显示成已完成。
+
+## 版本历史
+
+数据集可以按顺序包含任意多个版本。从一个版本到下一个版本的每一步都使用它的对应关系，没有对应关系时按相同 id 匹配，这些步骤可以跨越许多版本连起来。
+
+| 函数 | 返回 |
+| :--- | :--- |
+| `followNodes(dataset, from, to)` | 对任意两个版本（两个方向都可以），`from` 的每个节点变成了 `to` 的哪些节点。如果正好为这两个版本写了对应关系，则以它为准 |
+| `versionSteps(dataset)` | 每个版本到下一个版本的差异，以及新增、删除和变化的数量 |
+| `nodeHistory(dataset, version, id)` | 节点的经历：从哪里开始或在哪一版新增，每次改名、合并和拆分，以及在哪一版被删除。每条记录都有 `parts`，因为之后会合并的节点，在合并前可能各自有不同的变化 |
+| `linkHistory(dataset, version, id)` | 连线的经历，跟随它的两端经过改名和合并：从哪里开始或在哪一版新增，每次极性翻转，以及在哪一版被删除 |
+
+```ts
+import { nodeHistory, type CausalDataset } from "@cytocausal/core";
+
+export const story = (dataset: CausalDataset) =>
+  nodeHistory(dataset, "final", "customer-satisfaction").map(({ version, change }) => `${version}: ${change}`);
+// ["V1: start", "V2: renamed", "V3: unchanged", "V4: unchanged", "final: unchanged"]
+```
+
+当两个相邻版本之间没有对应关系、而且大部分节点 id 都变了时，`validateDataset` 会给出警告，因为在那里无法继续追踪历史。

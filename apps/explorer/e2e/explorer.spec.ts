@@ -68,7 +68,7 @@ const pointOf = async (page: Page, id: string) => {
 
 /** Clicks a node; with `add`, first asks the menu to trace paths to it. */
 const clickNode = async (page: Page, id: string, { add = false } = {}) => {
-  if (add) await page.getByRole("menuitemcheckbox", { name: "Trace paths to another node" }).click();
+  if (add) await page.getByRole("button", { name: "Trace paths to another node" }).click();
   const { x, y } = await pointOf(page, id);
   await page.mouse.click(x, y);
   if (!add) {
@@ -469,13 +469,14 @@ test("each zoom mode changes marks by its own rule", async ({ page }) => {
 
 /** Node positions once nothing is moving. */
 const settledPositions = async (page: Page) => {
+  await expect(page.locator(".cc-layout-status")).toHaveCount(0, { timeout: 20000 });
   let previous = "";
   await expect
     .poll(
       async () => {
         const now = await withCy<string>(
           page,
-          `return cy.nodes().filter((n) => n.animated()).length > 0 ? "moving" :
+          `return div.getAttribute("aria-busy") === "true" || cy.nodes().filter((n) => n.animated()).length > 0 ? "moving" :
              JSON.stringify(cy.nodes().map((n) => [n.id(), Math.round(n.position().x), Math.round(n.position().y)]));`,
         );
         const stable = now !== "moving" && now === previous;
@@ -591,6 +592,7 @@ test("the flow layout runs causes into effects, and the address keeps the layout
   await expect(page).toHaveURL(/layout=flow/);
   await settledPositions(page);
   // Loops mean some links must run backwards, but far more go left to right than before
+  await expect(page.locator(".cc-layout-status")).toHaveCount(0, { timeout: 20000 });
   const after = await forwards();
   expect(after).toBeGreaterThan(0.6);
   expect(after - before).toBeGreaterThan(0.1);
@@ -653,4 +655,90 @@ test("a failed worker is reported instead of claiming there are no cycles", asyn
   const panel = page.getByLabel(`Node ${first.id}`);
   await expect(panel.getByText("Worker unavailable for test")).toBeVisible();
   await expect(panel.getByText("No event cycles found within this range")).toHaveCount(0);
+});
+
+test("event cycles settings and selected-node results share one sidebar panel", async ({ page }) => {
+  await ready(page);
+  await clickNode(page, first.id);
+  const panel = page.locator(".cc-loop-settings");
+  await expect(panel).toHaveCount(1);
+  await expect(panel.getByLabel("Maximum cycle length")).toBeVisible();
+  await expect(panel.getByLabel("Cycles through")).toHaveValue(first.id);
+  await expect(panel.locator("section[aria-label^='Loops in']")).toHaveCount(1);
+  await expect(page.locator("section[aria-label^='Loops in']")).toHaveCount(1);
+  await expect(page.locator(".cc-radial-loop, .cc-radial-trace")).toHaveCount(0);
+  await panel.getByLabel("Cycles through").selectOption("");
+  await expect(panel.getByLabel("Cycles through")).toHaveValue("");
+});
+
+test("worker layouts keep the main thread responsive and can be cancelled or superseded", async ({ page }) => {
+  await page.addInitScript(() => {
+    const NativeWorker = window.Worker;
+    (window as any).layoutJobs = { started: 0, stopped: 0, frames: 0 };
+    const tick = () => { (window as any).layoutJobs.frames++; requestAnimationFrame(tick); }; requestAnimationFrame(tick);
+    window.Worker = class extends NativeWorker {
+      layoutJob = false;
+      postMessage(message: any) {
+        if (message.callbacks && message.elements) {
+          this.layoutJob = true; (window as any).layoutJobs.started++;
+          // Keep real force work running long enough to exercise cancellation reliably.
+          if (message.options.name === "fcose") message.options.numIter = 500000;
+        }
+        super.postMessage(message);
+      }
+      terminate() { if (this.layoutJob) (window as any).layoutJobs.stopped++; super.terminate(); }
+    };
+  });
+  await ready(page);
+  await expect(page.locator(".cc-layout-status")).toHaveCount(0);
+  await withCy(page, `
+    const proto = Object.getPrototypeOf(cy.collection()); const original = proto.layout;
+    proto.layout = function(options) {
+      if (options.name !== "preset") throw new Error("Heavy layout ran on main thread");
+      return original.call(this, options);
+    };
+  `);
+  await page.getByRole("button", { name: "Force", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).layoutJobs.started)).toBe(1);
+  const frames = await page.evaluate(() => (window as any).layoutJobs.frames);
+  await expect.poll(() => page.evaluate(() => (window as any).layoutJobs.frames)).toBeGreaterThan(frames + 2);
+  await expect(page.getByRole("button", { name: "Cancel layout", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel layout", exact: true }).click();
+  await expect(page.locator(".cc-layout-status")).toContainText("Layout cancelled");
+  expect(await page.evaluate(() => (window as any).layoutJobs.stopped)).toBe(1);
+  await page.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).layoutJobs.started)).toBe(2);
+  await page.getByRole("button", { name: "By centrality", exact: true }).click();
+  await expect(page.locator(".cc-layout-status")).toHaveCount(0, { timeout: 20000 });
+  expect(await page.evaluate(() => (window as any).layoutJobs.stopped)).toBe(3);
+  await page.getByRole("button", { name: "Original", exact: true }).click();
+  await expect(page.locator(".cc-layout-status")).toHaveCount(0);
+  const positions = await settledPositions(page);
+  for (const node of nodes) {
+    const p = positions.get(node.id)!;
+    expect(Math.hypot(p[0] - node.position.x, p[1] - node.position.y)).toBeLessThanOrEqual(1);
+  }
+});
+
+test("a worker failure stops loading and Retry restores a usable graph", async ({ page }) => {
+  await page.addInitScript(() => {
+    const NativeWorker = window.Worker;
+    let failed = false;
+    window.Worker = class extends NativeWorker {
+      postMessage(message: any) {
+        if (!failed && message.callbacks && message.elements) {
+          failed = true;
+          this.dispatchEvent(new ErrorEvent("error", { message: "Injected worker failure", cancelable: true }));
+        } else super.postMessage(message);
+      }
+    };
+  });
+  await ready(page);
+  await expect(page.locator(".cc-layout-status")).toHaveCount(0);
+  await page.getByRole("button", { name: "By centrality", exact: true }).click();
+  await expect(page.locator(".cc-layout-status")).toHaveAttribute("role", "alert");
+  await page.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(page.locator(".cc-layout-status")).toHaveCount(0, { timeout: 20000 });
+  await expect(page.getByLabel(/^Causal graph/)).toHaveAttribute("aria-busy", "false");
+  expect(await withCy(page, "return cy.nodes().length;")).toBe(nodes.length);
 });

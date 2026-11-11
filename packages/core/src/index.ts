@@ -4,6 +4,7 @@ export * from "./snapshots.ts";
 export * from "./analysis.ts";
 export * from "./graph.ts";
 export * from "./diff.ts";
+export * from "./history.ts";
 export * from "./loops.ts";
 export * from "./paths.ts";
 export * from "./search.ts";

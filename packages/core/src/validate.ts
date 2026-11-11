@@ -1,3 +1,4 @@
+import { hasCorrespondence } from "./snapshots.ts";
 import type { CausalDataset } from "./types.ts";
 
 const duplicates = (values: string[]) =>
@@ -40,6 +41,20 @@ export function validateDataset(dataset: CausalDataset): string[] {
       if (!targetIds.has(toId)) issues.push(`${from}->${to}: missing target node ${toId}`);
     }
   }
+
+  // Without a correspondence, nodes are followed from one version to the next by their ids. If
+  // most ids change, history breaks there, and every node looks removed and added again
+  dataset.snapshots.slice(1).forEach((later, index) => {
+    const earlier = dataset.snapshots[index];
+    if (earlier.nodes.length < 4 || hasCorrespondence(dataset, earlier.id, later.id)) return;
+    const kept = new Set(later.nodes.map(({ id }) => id));
+    const shared = earlier.nodes.filter(({ id }) => kept.has(id)).length;
+    if (shared * 2 < earlier.nodes.length) {
+      issues.push(
+        `${earlier.id}->${later.id}: no correspondence, and only ${shared} of ${earlier.nodes.length} nodes keep their id, so their history can't be followed`,
+      );
+    }
+  });
 
   return issues;
 }

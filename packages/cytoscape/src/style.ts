@@ -265,6 +265,9 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
       style: { "line-style": "dashed" },
     },
     ...(options.baseRules ?? []),
+    // The marking sunburst supplies press feedback; suppress Cytoscape's
+    // default grey rounded rectangle while a node is held.
+    { selector: "node:active", style: { "overlay-opacity": 0 } },
     { selector: "node.labelled", style: shownLabel },
     { selector: ".dimmed", style: { opacity: dimmedOpacity } },
     // Dimmed links fade from their full colour, as they did before receding links became pale
@@ -312,6 +315,11 @@ export function createCausalStyle(theme: CausalTheme, options: CausalStyleOption
     {
       selector: "node.keyboard-cursor",
       style: { "outline-width": stroke(3), "outline-color": colors.ink, "outline-offset": stroke(3) },
+    },
+    // The node a long press locked the radial menu on: a border, as asked for, in ink
+    {
+      selector: "node.menu-held",
+      style: { "border-width": stroke(2), "border-color": colors.ink },
     },
   ] as unknown as Stylesheet[];
 }

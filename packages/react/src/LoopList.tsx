@@ -1,4 +1,5 @@
 "use client";
+import { useMemo, useState } from "react";
 import type { FeedbackLoop, Snapshot } from "@cytocausal/core";
 import type { Route } from "@cytocausal/cytoscape";
 import { required, useOptionalCausal } from "./CausalProvider.tsx";
@@ -7,6 +8,7 @@ import { formatSearchTime, type LoopSearchStatus } from "./LoopSearch.tsx";
 import { RouteButton } from "./RouteButton.tsx";
 
 export interface LoopListProps {
+  hideHeading?: boolean;
   elapsedMs?: number;
   status?: LoopSearchStatus;
   error?: string;
@@ -31,6 +33,7 @@ const count = (loops: FeedbackLoop[], type: FeedbackLoop["type"]) =>
 
 /** Lists feedback loops, marked reinforcing or balancing, for choosing one to highlight. */
 export function LoopList({
+  hideHeading = false,
   elapsedMs: givenElapsed,
   status: givenStatus,
   error,
@@ -50,7 +53,11 @@ export function LoopList({
   const snapshot = required(given ?? causal?.snapshot, "LoopList", "snapshot");
   const loops = required(givenLoops ?? causal?.loops, "LoopList", "loops");
   const complete = givenComplete ?? (givenLoops ? true : causal?.loopsComplete);
-  const labelOf = (id: string) => snapshot.nodes.find((node) => node.id === id)?.label ?? id;
+  const names = useMemo(() => new Map(snapshot.nodes.map(node => [node.id, node.label])), [snapshot.nodes]);
+  const labelOf = (id: string) => names.get(id) ?? id;
+  const [page, setPage] = useState<{ loops: FeedbackLoop[]; count: number } | null>(null);
+  const visibleCount = page?.loops === loops ? page.count : 25;
+  const shownLoops = loops.slice(0, visibleCount);
   const typed = loops.some((loop) => loop.type !== "unknown");
   const status = givenStatus ?? (givenLoops ? "complete" : causal?.loopSearch.status) ?? "complete";
   const elapsedMs = givenElapsed ?? (givenLoops ? undefined : causal?.loopSearch.elapsedMs);
@@ -61,7 +68,7 @@ export function LoopList({
       aria-label={`Loops in ${snapshot.id}`}
       className={`${bare ? "" : "cc-panel"} ${className}`}
     >
-      <h3 className="cc-heading">{heading}</h3>
+      {!hideHeading && <h3 className="cc-heading">{heading}</h3>}
       {status === "complete" && elapsedMs !== undefined && <p role="status" className="cc-muted">{loops.length}{complete ? "" : "+"} cycles · {formatSearchTime(elapsedMs)}</p>}
       {status !== "complete" ? (
         <p role="status" className="cc-muted">
@@ -78,7 +85,7 @@ export function LoopList({
             </p>
           )}
           <ul className="cc-list">
-            {loops.map((loop) => (
+            {shownLoops.map((loop) => (
               <li key={loop.edges.join()}>
                 <RouteButton route={loop} active={active} onToggle={onToggle} onPreview={onPreview}>
                   {loop.type !== "unknown" && (
@@ -92,6 +99,10 @@ export function LoopList({
               </li>
             ))}
           </ul>
+          {visibleCount < loops.length && <button type="button" className="cc-link"
+            onClick={() => setPage({ loops, count: visibleCount + 25 })}>
+            Show more ({Math.min(visibleCount, loops.length)} / {loops.length})
+          </button>}
         </>
       )}
     </section>

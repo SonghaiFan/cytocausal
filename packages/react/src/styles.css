@@ -211,9 +211,47 @@
 
 /* Held menu: distance thresholds and the currently chosen direction/step. */
 .cc-marking-feedback { pointer-events: none; }
-.cc-marking-threshold { fill: none; stroke: var(--cc-muted-text); stroke-opacity: .4; stroke-dasharray: 3 5; }
-.cc-marking-feedback [data-active="true"] .cc-marking-threshold { stroke: var(--cc-ink); stroke-opacity: .8; stroke-dasharray: none; }
-.cc-marking-band { fill: var(--cc-ink); fill-opacity: .12; stroke: var(--cc-ink); stroke-opacity: .4; }
+.cc-marking-threshold { fill: none; stroke: var(--cc-muted-text); stroke-opacity: .18; stroke-dasharray: 3 5; }
+.cc-marking-feedback [data-active="true"] .cc-marking-threshold { stroke: var(--cc-ink); stroke-opacity: .35; stroke-dasharray: none; }
+.cc-marking-band { fill: var(--cc-ink); fill-opacity: .07; stroke: none; }
 .cc-marking-feedback text { fill: var(--cc-muted-text); font: 500 11px var(--cc-font-family, sans-serif); paint-order: stroke; stroke: var(--cc-background); stroke-width: 4px; }
 .cc-marking-feedback [data-active="true"] text { fill: var(--cc-ink); font-weight: 700; }
 .cc-marking-bearing { stroke: var(--cc-ink); stroke-width: 1.5; }
+
+.cc-marking-level { animation: cc-fan-enter 180ms ease-out both; transform-box: view-box; transform-origin: 0 0; transition: opacity 180ms ease-out; }
+.cc-marking-feedback [data-current] { transition: opacity 180ms ease-out; }
+.cc-marking-feedback [data-current="false"] { opacity: .5; }
+.cc-marking-level.cc-marking-leaving { animation: cc-fan-retreat 220ms ease-in both; }
+.cc-marking-center { transition: transform 220ms cubic-bezier(.22,.61,.36,1); }
+.cc-marking-center text { fill: var(--cc-ink); font-weight: 700; }
+@keyframes cc-fan-enter { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
+@keyframes cc-fan-retreat { from { opacity: .5; transform: translate(0, 0) scale(1); } to { opacity: 0; transform: translate(var(--cc-retreat-x), var(--cc-retreat-y)) scale(.85); } }
+@media (prefers-reduced-motion: reduce) {
+  .cc-marking-level, .cc-marking-center, .cc-marking-feedback [data-current] { animation: none; transition: none; }
+  .cc-marking-level.cc-marking-leaving { display: none; }
+}
+
+.cc-marking-halo { fill: var(--cc-ink); fill-opacity: .14; stroke: none; transition: fill-opacity 150ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .cc-marking-halo { transition: none; } }
+
+.cc-marking-halo[data-active="true"] { fill-opacity: .3; }
+
+.cc-layout-status { position: absolute; z-index: 45; top: 64px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: var(--cc-background); color: var(--cc-text); box-shadow: 0 1px 8px #0002; font-size: 12px; }
+.cc-layout-spinner { width: 12px; height: 12px; border: 2px solid var(--cc-border); border-top-color: var(--cc-ink); border-radius: 50%; animation: cc-layout-spin .8s linear infinite; }
+@keyframes cc-layout-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .cc-layout-spinner { animation: none; } }
+
+/* A long history: earlier and later buttons around a scrolling row of versions. Each version
+   marks how much changed since the one before as a length, in the text colour */
+.cc-timeline { display: flex; align-items: center; gap: .25rem; max-width: 100%; }
+.cc-timeline-track { display: flex; gap: 2px; margin: 0; padding: 0; list-style: none; overflow-x: auto; scrollbar-width: thin; max-width: min(60vw, 32rem); }
+.cc-timeline-version { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 2px; white-space: nowrap; }
+.cc-timeline-version[aria-current="true"] { background: var(--cc-ink); border-color: var(--cc-ink); color: var(--cc-background); }
+.cc-timeline-change { display: block; height: 2px; min-width: 0; border-radius: 1px; background: currentColor; opacity: .5; }
+.cc-timeline .cc-button:disabled { opacity: .4; cursor: default; }
+
+/* A node's or link's history: a version, then what happened there. The shown version is bold */
+.cc-history { display: grid; grid-template-columns: max-content 1fr; gap: .25rem .75rem; margin: 0; padding: 0; list-style: none; }
+.cc-history li { display: contents; }
+.cc-history-version { font-variant-numeric: tabular-nums; justify-self: start; }
+.cc-history li[aria-current] .cc-history-version { font-weight: 600; }

@@ -139,7 +139,7 @@ Paths come shortest first, and a list cut short by `limit` holds the shortest on
 
 ## Version differences
 
-`diffSnapshots` compares two snapshots. It uses the dataset's correspondences in either direction, and falls back to matching ids when there are none. Reading it the other way swaps added and removed, and merged and split. An unknown snapshot id throws an error that names the snapshots the dataset has.
+`diffSnapshots` compares any two snapshots. It follows nodes through every version between them with `followNodes`, so comparing the first with the fifth keeps a rename made in the second. Reading it the other way swaps added and removed, and merged and split. An unknown snapshot id throws an error that names the snapshots the dataset has.
 
 ```ts
 import { diffSnapshots, type CausalDataset } from "@cytocausal/core";
@@ -180,3 +180,24 @@ Browser views run cycle enumeration in a Web Worker. The core search first isola
 Length counts nodes (including one-node self-loops), independently of the neighbourhood's “Steps shown”. Removing the length bound does not remove the result limit. A `+` on a result count means the search may be incomplete. The combined and participant scenarios reset their settings when the dataset changes.
 
 The cancel button is shown only while workers are running. Completed lists show their cycle count and elapsed time. The shared controls deduplicate cycles within each snapshot and show the longest completed search time; cancelled and failed searches are not reported as completed.
+
+## Version history
+
+A dataset can hold any number of versions, in order. Each step from one version to the next uses its correspondence, or matches ids where it has none, and these join up across many versions.
+
+| Function | Returns |
+| :--- | :--- |
+| `followNodes(dataset, from, to)` | Which nodes of `to` each node of `from` became, for any two versions, in either direction. A correspondence stated for exactly those two wins |
+| `versionSteps(dataset)` | The diff from each version to the next, with counts of what was added, removed and changed |
+| `nodeHistory(dataset, version, id)` | A node's story: where it started or was added, each rename, merge and split, and where it was removed. Each entry has `parts`, as nodes that later merge may change in different ways before |
+| `linkHistory(dataset, version, id)` | A link's story, following both its ends through renames and merges: where it started or was added, each polarity flip, and where it was removed |
+
+```ts
+import { nodeHistory, type CausalDataset } from "@cytocausal/core";
+
+export const story = (dataset: CausalDataset) =>
+  nodeHistory(dataset, "final", "customer-satisfaction").map(({ version, change }) => `${version}: ${change}`);
+// ["V1: start", "V2: renamed", "V3: unchanged", "V4: unchanged", "final: unchanged"]
+```
+
+`validateDataset` warns where two neighbouring versions have no correspondence and most node ids change, since history can't be followed there.

@@ -3,19 +3,19 @@ import {
   linksInto,
   linksOutOf,
   type CausalNode,
-  type FeedbackLoop,
   type LoopOptions,
   type Snapshot,
 } from "@cytocausal/core";
-import { sameRoute, type Route } from "@cytocausal/cytoscape";
+import { type Route } from "@cytocausal/cytoscape";
 import type { Core, EventObject } from "cytoscape";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
-import { useLoopSearch } from "./LoopSearch.tsx";
-import { directionCells, distanceStep, directionRoute, directionBoundaries } from "./radial.ts";
+import { directionCells } from "./radial.ts";
 import { required, useOptionalCausal } from "./CausalProvider.tsx";
 import { useCausalLabels } from "./labels.tsx";
-import { menuArea, menuTarget, menuPointing, setMenuArea } from "./overlay.ts";
+import { menuArea, menuPointing, setMenuArea } from "./overlay.ts";
 import type { useCausalGraph } from "./useCausalGraph.ts";
+
+import { moveMarking, markingRoute, type MarkingState } from "./marking.ts";
 
 type Graph = ReturnType<typeof useCausalGraph>;
 type Direction = "cause" | "effect" | "both";
@@ -30,7 +30,6 @@ interface Neighbour {
 /** Ring sizes in screen pixels, out from the edge of the node. */
 const GAP = 6;
 const STEP = 8;
-const LOOP = 10;
 /**
  * How far a direction reaches either side of its node, so the space between linked nodes that
  * lie far apart stays plain background.
@@ -44,7 +43,6 @@ const OUTER_MIN = 48;
 const directionReach = (node: number, rings: number, distance: number) =>
   Math.max(menuRadius(node, rings) + OUTER_MIN, distance + OUTER_PAST);
 const SPACE = 4;
-const MAX_LOOPS = 12;
 
 /** The card beside the menu, in pixels: room it needs, and its gap from the rings. */
 const CARD_WIDTH = 280;
@@ -52,13 +50,13 @@ const CARD_GAP = 8;
 
 
 /** The button that starts tracing paths, sitting just outside the rings. */
-const TRACE = 11;
+
 
 /**
  * How far the menu reaches from the centre of a node of this radius, with a ring for each step
  * past the first and the trace button.
  */
-const menuRadius = (node: number, rings: number) => node + GAP + rings * (STEP + SPACE) + LOOP + 2 + 2 * TRACE + SPACE;
+const menuRadius = (node: number, rings: number) => node + GAP + rings * (STEP + SPACE) + SPACE;
 
 
 /** The outline of a ring segment from one angle to another, in radians, centred on 0, 0. */
@@ -203,7 +201,7 @@ const cardPlacement = (x: number, size: number, area?: DOMRect): CSSProperties =
 
 /**
  * A ring menu around the selected node. Two thin rings set how many steps the highlight reaches,
- * and the outer band lists the feedback loops through the node. The space around the node is
+ * while cycle selection lives in the sidebar. The space around the node is
  * split by direction, unseen: point anywhere toward a linked node to preview the link, and click
  * to walk there. It uses contrast only, so the accent stays on the node itself. Outside a
  * provider, pass `graph` and `snapshot`.
@@ -211,14 +209,13 @@ const cardPlacement = (x: number, size: number, area?: DOMRect): CSSProperties =
 export function RadialMenu({
   graph: given,
   snapshot: chosen,
-  loopOptions,
   renderInfo,
   showDirections = false,
   className = "",
 }: {
   graph?: Graph;
   snapshot?: Snapshot;
-  /** Limits for finding loops through the node. Set these for large graphs. */
+  /** @deprecated Cycle selection and configuration live in the sidebar. */
   loopOptions?: LoopOptions;
   /**
    * A card beside the menu about the node, such as its evidence, for pages without a sidebar.
@@ -251,19 +248,6 @@ export function RadialMenu({
   // A ring for each step past the first, up to the graph's limit
   const steps = Array.from({ length: Math.max(0, graph.maxDepth - 1) }, (_, index) => index + 2);
   const rings = steps.length;
-  const nearbySnapshot = useMemo(() => {
-    if (!id) return null;
-    const reached = reach(snapshot, id, graph.depth);
-    reached.delete(id);
-    return { ...snapshot, nodes: snapshot.nodes.filter(n => reached.has(n.id)),
-      edges: snapshot.edges.filter(e => reached.has(e.source) && reached.has(e.target)) };
-  }, [snapshot, id, graph.depth]);
-  const throughSearch = useLoopSearch(id ? snapshot : null, { ...loopOptions, through: id ?? undefined });
-  const nearbySearch = useLoopSearch(nearbySnapshot, loopOptions);
-  const loops = { loops: [
-    ...throughSearch.loops.map(loop => ({ loop, nearby: false })),
-    ...nearbySearch.loops.map(loop => ({ loop, nearby: true })),
-  ] };
   // The instance count changes when the graph is rebuilt, so the menu follows the new one
   const cy = useMemo(() => graph.cy.current, [graph.cy, graph.instanceCount]); // eslint-disable-line react-hooks/exhaustive-deps
   const geometry = useGeometry(cy, id, neighbours);
@@ -305,7 +289,9 @@ export function RadialMenu({
           to: hitCells[index].to,
           reach: directionReach(geometry.radius, rings, geometry.distances[other]),
         }));
-    setMenuArea(cy, { x: geometry.x, y: geometry.y, radius, inner: geometry.radius, node: id, sectors });
+    const area = { x: geometry.x, y: geometry.y, radius, inner: geometry.radius, node: id, sectors };
+    setMenuArea(cy, area);
+    setMarkingFeedback(current => current?.levels.length === 0 ? { levels: [{ area, chosen: null }] } : current);
   }, [cy, id, geometry, ordered, hitCells, graph.tracing, rings]);
 
   // The modal owns graph interaction: backdrop nodes cannot be dragged out from
@@ -324,39 +310,65 @@ export function RadialMenu({
     };
   }, [cy, id]);
 
-  const [markingFeedback, setMarkingFeedback] = useState<{ step: number; target: string | null; angle: number; distance: number; boundaries: number[] } | null>(null);
+  const [markingFeedback, setMarkingFeedback] = useState<MarkingState | null>(null);
   const markingGraph = useLatest(graph);
   const markingSnapshot = useLatest(snapshot);
+  // Leaves a locked menu without committing, when the menu closes some other way
+  const leaveLock = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    if (!id) leaveLock.current?.();
+  }, [id]);
   useEffect(() => {
     if (!cy || cy.destroyed()) return;
+    const container = cy.container()!;
+    /** While set, Cytoscape's own taps do nothing: the locked menu has the clicks. */
+    const RELEASE = "cytocausal-marking-release";
     let timer: ReturnType<typeof setTimeout> | undefined;
     let origin: { x: number; y: number; node: string } | null = null;
-    let held = false;
+    // A long press locks the menu open, like a modal. Moving then steers through it without
+    // holding the button, a click commits, and a click outside the canvas, or Escape, leaves
+    let locked = false;
+    // Whether the press that locked the menu is still held
+    let pressed = false;
+    let navigation: MarkingState | null = null;
     let suppressClick = false;
     let panEnabled = true;
     let target: string | null = null;
     let route: Route | null = null;
     let step: number | undefined;
-    let trace = false;
     const cancelTimer = () => { clearTimeout(timer); timer = undefined; };
+    /** Borders the node the locked menu is on, so it reads as chosen. */
+    const markRoot = (node: string | null) => {
+      cy.nodes(".menu-held").removeClass("menu-held");
+      if (node) cy.getElementById(node).addClass("menu-held");
+    };
+    const resetSteering = () => {
+      target = null; route = null; step = undefined;
+      navigation = null;
+      setMarkingFeedback({ levels: [] });
+    };
     const down = (event: EventObject) => {
+      // Inside a locked menu, a click commits instead
+      if (locked) return;
       const mouse = event.originalEvent as MouseEvent | undefined;
       if (!mouse || mouse.button !== 0 || mouse.shiftKey || markingGraph.current.tracing) return;
       cancelTimer();
       origin = { x: mouse.clientX, y: mouse.clientY, node: event.target.id() };
       timer = setTimeout(() => {
         if (!origin || cy.destroyed()) return;
-        held = true;
-        target = null; route = null; step = undefined; trace = false;
+        locked = true;
+        pressed = true;
         panEnabled = cy.userPanningEnabled();
         cy.userPanningEnabled(false);
         cy.stop(true, false);
-        setMarkingFeedback({ step: 1, target: null, angle: 0, distance: 0, boundaries: [] });
+        cy.scratch(RELEASE, true);
+        resetSteering();
+        markRoot(origin.node);
         markingGraph.current.beginMarking(origin.node);
       }, 400);
     };
     const move = (event: MouseEvent) => {
-      if (!held) {
+      if (!locked) {
         if (origin && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 8) {
           cancelTimer(); origin = null;
         }
@@ -365,63 +377,105 @@ export function RadialMenu({
       event.preventDefault();
       event.stopImmediatePropagation();
       const g = markingGraph.current;
-      const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-mark-route], [data-mark-trace]");
-      target = null; route = null; step = undefined; trace = false;
+      target = null; route = null; step = undefined;
       const area = menuArea(cy);
-      let boundaries: number[] = [];
-      if (hit && cy.container()!.parentElement?.contains(hit)) {
-        if (hit.hasAttribute("data-mark-route")) route = JSON.parse(hit.getAttribute("data-mark-route")!) as Route;
-        trace = hit.hasAttribute("data-mark-trace");
-        setCaption(hit.getAttribute("aria-label"));
-      } else if (area) {
-        target = menuTarget(area, { x: event.clientX, y: event.clientY }, true);
-        const sector = area.sectors?.find(s => s.node === target);
-        if (sector) {
-          const center = cy.getElementById(area.node).renderedPosition();
-          boundaries = directionBoundaries(markingSnapshot.current.edges, area.node, sector.node, g.maxDepth, sector.reach, id => {
-            const point = cy.getElementById(id).renderedPosition();
-            return Math.hypot(point.x - center.x, point.y - center.y);
-          });
-          step = distanceStep(Math.hypot(event.clientX - area.x, event.clientY - area.y), boundaries);
-          route = directionRoute(markingSnapshot.current.edges, area.node, sector.node, step);
-        }
-        setCaption(step === undefined ? null : `${target ? String(cy.getElementById(target).data("label")) + " · " : ""}${labels.depth}: ${step}`);
+
+      if (area) {
+        navigation ??= { levels: [{ area, chosen: null }] };
+        navigation = moveMarking(navigation, { x: event.clientX, y: event.clientY }, g.maxDepth, (node, visited) => {
+          const source = cy.getElementById(node);
+          const center = source.renderedPosition();
+          const box = cy.container()!.getBoundingClientRect();
+          const radius = Math.max(source.renderedOuterWidth(), source.renderedOuterHeight()) / 2;
+          const ringCount = Math.max(0, g.maxDepth - 1);
+          const neighbours = neighboursOf(markingSnapshot.current, node)
+            .filter(n => !visited.includes(n.id))
+            .map(n => {
+              const point = cy.getElementById(n.id).renderedPosition();
+              return { ...n, angle: Math.atan2(point.y - center.y, point.x - center.x), distance: Math.hypot(point.x - center.x, point.y - center.y) };
+            }).sort((a, b) => a.angle - b.angle);
+          const cells = directionCells(neighbours.map(n => n.angle), { min: 0, reach: REACH });
+          return { node, x: box.left + center.x, y: box.top + center.y, radius: menuRadius(radius, ringCount), inner: radius,
+            sectors: neighbours.map((n, i) => ({ node: n.id, links: n.links, from: cells[i].from, to: cells[i].to, reach: directionReach(radius, ringCount, n.distance) })) };
+        });
+        const current = navigation.levels[navigation.levels.length - 1];
+        target = current.chosen?.node ?? (navigation.levels.length > 1 ? current.area.node : null);
+        step = navigation.levels.length;
+        const path = markingRoute(navigation);
+        route = path.edges.length ? path : null;
+        setMarkingFeedback(navigation);
+        setCaption(null);
       }
-      if (area) setMarkingFeedback({ step: step ?? g.depth, target, angle: Math.atan2(event.clientY - area.y, event.clientX - area.x), distance: Math.hypot(event.clientX - area.x, event.clientY - area.y), boundaries });
       g.previewDepth(step ?? null);
       g.previewRoute(route);
     };
-    const release = (event?: MouseEvent) => {
-      cancelTimer(); origin = null;
-      if (!held) {
-        if (event && cy.scratch("cytocausal-marking-release")) {
-          suppressClick = true;
-          setTimeout(() => { suppressClick = false; if (!cy.destroyed()) cy.removeScratch("cytocausal-marking-release"); }, 0);
-        }
-        return;
-      }
-      held = false;
-      setMarkingFeedback(null);
-      event?.preventDefault();
-      // Let Cytoscape see mouseup to end its grab, but suppress the resulting tap.
-      cy.scratch("cytocausal-marking-release", true);
-      suppressClick = true;
-      if (event) setTimeout(() => { suppressClick = false; if (!cy.destroyed()) cy.removeScratch("cytocausal-marking-release"); }, 0);
-      cy.userPanningEnabled(panEnabled);
-      markingGraph.current.finishMarking(target, route, step);
-      if (trace) markingGraph.current.startTracing();
+    /** Commits the direction pointed at: the menu moves to that node and stays locked. */
+    const commit = () => {
+      if (!target) return;
+      const chosen = target;
+      markingGraph.current.finishMarking(chosen, route, step, { keepOpen: true });
+      markRoot(chosen);
+      resetSteering();
       setCaption(null);
     };
-    const click = (event: MouseEvent) => {
-      if (suppressClick) { event.preventDefault(); event.stopImmediatePropagation(); }
+    /** Unlocks: panning and Cytoscape's taps come back, and the border goes. */
+    const unlockQuietly = () => {
+      if (!locked) return;
+      locked = false;
+      pressed = false;
+      cancelTimer(); origin = null;
+      if (!cy.destroyed()) {
+        cy.userPanningEnabled(panEnabled);
+        cy.removeScratch(RELEASE);
+        markRoot(null);
+      }
+      setMarkingFeedback(null);
+      setCaption(null);
     };
-    const blur = () => { target = null; route = null; step = undefined; trace = false; release(); };
+    /** Leaves the locked menu: it closes, and the node stays selected. */
+    const unlock = () => {
+      if (!locked) return;
+      unlockQuietly();
+      const g = markingGraph.current;
+      g.previewDepth(null);
+      g.previewRoute(null);
+      g.finishMarking(null, null, undefined);
+    };
+    leaveLock.current = unlockQuietly;
+    const release = (event?: MouseEvent) => {
+      cancelTimer(); origin = null;
+      if (!locked || !pressed) return;
+      // The press that locked the menu ends here, and the menu stays. Having dragged to a
+      // direction commits it, as before; its click must not commit again
+      pressed = false;
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 0);
+      event?.preventDefault();
+      commit();
+    };
+    const click = (event: MouseEvent) => {
+      if (suppressClick) { event.preventDefault(); event.stopImmediatePropagation(); return; }
+      if (!locked || !container.contains(event.target as Node)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      commit();
+    };
+    // Outside the canvas, a press leaves; the menu's own rings and buttons still work
+    const pressOutside = (event: MouseEvent) => {
+      if (!locked) return;
+      const element = event.target as Element | null;
+      if (!element || container.contains(element) || element.closest?.(".cc-radial")) return;
+      unlock();
+    };
+    // Leaving the window lets go of the button, but the menu stays locked
+    const blur = () => { cancelTimer(); origin = null; pressed = false; };
     const escape = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Escape") return;
       cancelTimer(); origin = null;
-      if (held) { event.preventDefault(); event.stopImmediatePropagation(); blur(); }
+      if (locked) { event.preventDefault(); event.stopImmediatePropagation(); unlock(); }
     };
     cy.on("mousedown", "node", down);
+    window.addEventListener("mousedown", pressOutside, true);
     window.addEventListener("mousemove", move, true);
     window.addEventListener("mouseup", release, true);
     window.addEventListener("click", click, true);
@@ -429,10 +483,10 @@ export function RadialMenu({
     window.addEventListener("keydown", escape, true);
     return () => {
       cancelTimer();
-      if (!cy.destroyed()) {
-        cy.removeListener("mousedown", "node", down);
-        if (held) cy.userPanningEnabled(panEnabled);
-      }
+      unlockQuietly();
+      leaveLock.current = null;
+      if (!cy.destroyed()) cy.removeListener("mousedown", "node", down);
+      window.removeEventListener("mousedown", pressOutside, true);
       window.removeEventListener("mousemove", move, true);
       window.removeEventListener("mouseup", release, true);
       window.removeEventListener("click", click, true);
@@ -485,20 +539,8 @@ export function RadialMenu({
     const inner = geometry.radius + GAP + (step - 2) * (STEP + SPACE);
     return [inner, inner + STEP] as const;
   };
-  // Loops sit just outside the last ring, or the node when there are none
-  const loopInner = (rings ? stepRing(steps[rings - 1])[1] : geometry.radius + GAP - SPACE) + SPACE;
-  const loopOuter = loopInner + LOOP;
   const size = menuRadius(geometry.radius, rings);
 
-  const shownLoops = (loops?.loops ?? []).slice(0, MAX_LOOPS);
-  const loopWidth = (2 * Math.PI) / Math.max(shownLoops.length, 1);
-  const loopRoute = (loop: FeedbackLoop): Route => loop;
-  const loopText = (loop: FeedbackLoop, nearby: boolean) => {
-    const mark = loop.type === "reinforcing" ? labels.reinforcingMark : loop.type === "balancing" ? labels.balancingMark : "";
-    const kind = loop.type === "unknown" ? labels.loops : labels[loop.type];
-    const path = [...loop.nodes, loop.nodes[0]].map(labelOf).join(" → ");
-    return { mark, text: `${nearby ? `${labels.loopWithin(graph.depth)} · ` : ""}${kind}: ${path}` };
-  };
   const center = labelOf(id);
   const node = snapshot.nodes.find((item) => item.id === id);
 
@@ -536,26 +578,9 @@ export function RadialMenu({
         viewBox={`${-size} ${-size} ${size * 2} ${size * 2}`}
       >
         {markingFeedback && (
-          <g className="cc-marking-feedback" aria-hidden="true" data-step={markingFeedback.step}>
-            {markingFeedback.boundaries.map((outer, index) => {
-              const step = index + 1;
-              const neighbour = ordered.find(n => n.id === markingFeedback.target);
-              if (!neighbour) return null;
-              const inner = index === 0 ? geometry.radius : markingFeedback.boundaries[index - 1];
-              const active = step === markingFeedback.step;
-              const cell = hitCells[ordered.findIndex(n => n.id === markingFeedback.target)];
-              if (!cell) return null;
-              const middle = (cell.from + cell.to) / 2;
-              const labelRadius = (Math.max(size, inner) + outer) / 2;
-              return <g key={step} data-active={active}>
-                {active && cell && <path className="cc-marking-band" d={sector(cell.from, cell.to, inner, outer)} />}
-                <path d={sector(cell.from, cell.to, inner, outer)} className="cc-marking-threshold" />
-                <text x={labelRadius * Math.cos(middle)} y={labelRadius * Math.sin(middle)} textAnchor="middle">{labels.depth}: {step}</text>
-              </g>;
-            })}
-            {markingFeedback.target && <line className="cc-marking-bearing" x1={geometry.radius * Math.cos(markingFeedback.angle)} y1={geometry.radius * Math.sin(markingFeedback.angle)} x2={markingFeedback.distance * Math.cos(markingFeedback.angle)} y2={markingFeedback.distance * Math.sin(markingFeedback.angle)} />}
-          </g>
+          <MarkingFeedback state={markingFeedback} x={geometry.x} y={geometry.y} showDirections={showDirections} />
         )}
+
         {!markingFeedback && steps.map((step) => {
           const [inner, outer] = stepRing(step);
           const count = reach(snapshot, id, step).size - 1;
@@ -588,71 +613,6 @@ export function RadialMenu({
           );
         })}
 
-        {shownLoops.map(({ loop, nearby }, index) => {
-          const from = -Math.PI / 2 + index * loopWidth;
-          const { mark, text } = loopText(loop, nearby);
-          const middle = from + loopWidth / 2;
-          const radius = (loopInner + loopOuter) / 2;
-          const active = sameRoute(graph.activeRoute, loop);
-          return (
-            <g
-              key={loop.edges.join()}
-              // Loops through the node come first; those only within reach are lighter
-              className={`cc-radial-loop${nearby ? " cc-radial-nearby" : ""}`}
-              data-mark-route={JSON.stringify(loopRoute(loop))}
-              role="menuitemcheckbox"
-              tabIndex={0}
-              aria-checked={active}
-              aria-label={text}
-              onMouseEnter={() => {
-                graph.previewRoute(loopRoute(loop));
-                setCaption(text);
-              }}
-              onMouseLeave={() => {
-                graph.previewRoute(null);
-                setCaption(null);
-              }}
-              onFocus={() => { graph.previewRoute(loopRoute(loop)); setCaption(text); }}
-              onBlur={() => { graph.previewRoute(null); setCaption(null); }}
-              onClick={() => graph.toggleRoute(loopRoute(loop))}
-              onKeyDown={keys(() => graph.toggleRoute(loopRoute(loop)), close)}
-            >
-              <path d={sector(from + 0.03, from + loopWidth - 0.03, loopInner, loopOuter)} />
-              {mark && loopWidth > 0.35 && (
-                <text
-                  x={radius * Math.cos(middle)}
-                  y={radius * Math.sin(middle)}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                >
-                  {mark}
-                </text>
-              )}
-            </g>
-          );
-        })}
-        {graph.canTrace && (
-          <g
-            className="cc-radial-trace"
-            data-mark-trace="true"
-            role="menuitemcheckbox"
-            tabIndex={0}
-            aria-checked={graph.tracing}
-            aria-label={labels.tracePaths}
-            transform={`translate(0 ${loopOuter + SPACE + TRACE})`}
-            onMouseEnter={() => setCaption(labels.tracePaths)}
-            onMouseLeave={() => setCaption(null)}
-            onFocus={() => setCaption(labels.tracePaths)}
-            onBlur={() => { graph.previewRoute(null); setCaption(null); }}
-            onClick={() => (graph.tracing ? graph.stopTracing() : graph.startTracing())}
-            onKeyDown={keys(() => (graph.tracing ? graph.stopTracing() : graph.startTracing()), close)}
-          >
-            <circle r={TRACE} />
-            <text textAnchor="middle" dominantBaseline="central">
-              ⤳
-            </text>
-          </g>
-        )}
       </svg>
       {shownCaption && (
         <p className="cc-radial-caption cc-tooltip" role="status" style={{ top: size * 2 + 4 }}>
@@ -705,4 +665,59 @@ function DirectionsOverlay({ x, y, inner, areas }: { x: number; y: number; inner
       })}
     </svg>
   );
+}
+
+/** Visual presence follows navigation without delaying hit testing or the committed path. */
+function MarkingFeedback({ state, x, y, showDirections }: {
+  state: MarkingState; x: number; y: number; showDirections: boolean;
+}) {
+  const previous = useRef(state.levels);
+  const [leaving, setLeaving] = useState<MarkingState["levels"]>([]);
+  useEffect(() => {
+    const removed = previous.current.filter(old => !state.levels.some(level => level.area.node === old.area.node));
+    previous.current = state.levels;
+    if (removed.length) setLeaving(removed);
+  }, [state]);
+  useEffect(() => {
+    if (!leaving.length) return;
+    const timer = setTimeout(() => setLeaving([]), 220);
+    return () => clearTimeout(timer);
+  }, [leaving]);
+  const current = state.levels[state.levels.length - 1];
+  const draw = ({ area, chosen }: MarkingState["levels"][number], index: number, exiting = false) => {
+    const activeLevel = !exiting && index === state.levels.length - 1;
+    const fans = activeLevel || exiting ? area.sectors ?? [] : [];
+    return <g key={`${exiting ? "exit-" : ""}${area.node}`} transform={`translate(${area.x - x} ${area.y - y})`}
+      data-center={area.node} data-level={index + 1} data-current={activeLevel} data-exiting={exiting}>
+      <g className={`cc-marking-level ${exiting ? "cc-marking-leaving" : ""}`} style={{
+        "--cc-retreat-x": `${(current?.area.x ?? area.x) - area.x}px`,
+        "--cc-retreat-y": `${(current?.area.y ?? area.y) - area.y}px`,
+      } as CSSProperties}>
+        {fans.map(fan => {
+          const active = fan.node === chosen?.node;
+          return <g key={fan.node} data-active={active} data-target={fan.node}>
+            {active && <path className="cc-marking-band" d={sector(fan.from, fan.to, area.inner ?? area.radius, fan.reach)} />}
+            {(active || !chosen) && <path d={sector(fan.from, fan.to, area.inner ?? area.radius, fan.reach)} className="cc-marking-threshold" />}
+          </g>;
+        })}
+      </g>
+    </g>;
+  };
+  return <g className="cc-marking-feedback" aria-hidden="true" data-step={state.levels.length || 1}>
+    {showDirections && leaving.filter(old => !state.levels.some(level => level.area.node === old.area.node)).map((level, index) => draw(level, state.levels.length + index, true))}
+    {showDirections && state.levels.map((level, index) => draw(level, index))}
+    {current && <g className="cc-marking-center" data-node={current.area.node}
+      style={{ transform: `translate(${current.area.x - x}px, ${current.area.y - y}px)` }}>
+      <g className="cc-marking-sunburst">
+        {(current.area.sectors ?? []).map(fan => {
+          const gap = Math.min(0.04, (fan.to - fan.from) / 8);
+          return <path key={fan.node} className="cc-marking-halo" data-target={fan.node}
+            data-active={current.chosen?.node === fan.node}
+            data-from={fan.from} data-to={fan.to}
+            d={sector(fan.from + gap, fan.to - gap, (current.area.inner ?? 12) + 3, (current.area.inner ?? 12) + 20)} />;
+        })}
+      </g>
+      <text className="cc-marking-step" y={-(current.area.inner ?? 12) - 14} textAnchor="middle">{state.levels.length}</text>
+    </g>}
+  </g>;
 }

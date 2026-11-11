@@ -6,8 +6,7 @@ import { CausalProvider, useCausal, type CausalProviderProps } from "./CausalPro
 import { LayoutSwitcher, Legend, SidebarHeader, VersionSwitcher } from "./controls.tsx";
 import { useCausalLabels } from "./labels.tsx";
 import { ContributorFilter } from "./ContributorFilter.tsx";
-import { LoopSearchControls } from "./LoopSearch.tsx";
-import { LoopList } from "./LoopList.tsx";
+import { CyclePanel } from "./CyclePanel.tsx";
 import { NodeSearch } from "./NodeSearch.tsx";
 
 export interface CausalWorkspaceProps extends Omit<CausalProviderProps, "children" | "className"> {
@@ -56,9 +55,8 @@ function Workspace({ title, children, showDirections }: Pick<CausalWorkspaceProp
         )}
         <NodeSearch />
         <ContributorFilter />
-        <LoopSearchControls />
+        <CyclePanel />
         <SelectionPanel />
-        <LoopList />
         <VersionDiff />
         {children}
       </aside>

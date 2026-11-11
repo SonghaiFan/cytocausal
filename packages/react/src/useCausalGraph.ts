@@ -42,7 +42,7 @@ export interface CausalGraphOptions {
 }
 
 /**
- * Bounded paths for every selected pair, in both directions, merged with all selected nodes.
+ * Sparse connections of selected nodes using directed shortest paths.
  * It searches the graph as drawn, so filters apply.
  */
 function pathsBetween(cy: Core, selected: string[]): Route {
@@ -134,24 +134,26 @@ export function useCausalGraph({
         highlightCausalNeighbours(instance, []);
         highlightRoute(instance, route);
       } else if (selected.length >= 2) {
-        // Union of paths across every selected pair. Unconnected selected nodes
+        // Union of the chosen shortest connections. Unconnected selected nodes
         // remain bright too; selection is not limited to endpoints of found paths.
         const paths = pathsBetween(instance, selected);
-        highlightRoute(instance, null);
+        instance.elements().removeClass("route-node route-link");
         if (paths.edges.length) {
           highlightCausalNeighbours(instance, []);
           highlightRoute(instance, paths);
           instance.batch(() => selected.forEach((id) => instance.getElementById(id).removeClass("dimmed").addClass("focus")));
         } else highlightCausalNeighbours(instance, selected, 0);
       } else {
-        highlightRoute(instance, null);
+        instance.elements().removeClass("route-node route-link");
         const ids = selected.length ? selected : hovered ? [hovered] : [];
         highlightCausalNeighbours(instance, ids, depth);
       }
     };
     // A snapshot change is animating these elements already
     if (isTransitioning(instance)) change();
-    else easeStyles(instance, change, resolveMotion(motion).highlight);
+    // Hover follows the pointer immediately. Hundreds of per-element fades are
+    // otherwise cancelled and rebuilt at every node crossing (including during drag).
+    else easeStyles(instance, change, selected.length === 0 && !route ? 0 : resolveMotion(motion).highlight);
   }, [motion]);
 
   useEffect(() => {
@@ -330,10 +332,13 @@ export function useCausalGraph({
     setSelected([id]);
     setMenuVisible(true);
   }, [stopTracing]);
-  /** Mouse release commits the preview but dismisses only the menu. */
-  const finishMarking = useCallback((target: string | null, route: Route | null, steps?: number) => {
+  /**
+   * Commits a marked direction: the node it leads to becomes the selection, with the route there
+   * kept. With `keepOpen`, as in a locked menu, the menu moves to that node instead of closing.
+   */
+  const finishMarking = useCallback((target: string | null, route: Route | null, steps?: number, { keepOpen = false } = {}) => {
     stopTracing();
-    setMenuVisible(false);
+    if (!keepOpen) setMenuVisible(false);
     if (target) setSelected([target]);
     setActiveRoute(route);
     if (steps !== undefined) setDepth(steps);

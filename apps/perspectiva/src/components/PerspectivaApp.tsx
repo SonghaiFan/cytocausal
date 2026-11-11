@@ -43,6 +43,7 @@ import {
   useColorScheme,
   VersionDiff,
   VersionSwitcher,
+  resolveComparison,
   ZoomControls,
 } from "@cytocausal/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -50,8 +51,6 @@ import datasetsJson from "../../data/datasets.json";
 import { annotationLegend, graphStyles } from "@/graph-style";
 
 const datasets = datasetsJson as CausalDataset[];
-const LEFT = "V1";
-const RIGHT = "final";
 const VIEWS = ["Compare", "Single"] as const;
 // Force layouts keep anchored nodes comparable between versions, so only those are offered
 const LAYOUTS = ["cola", "fcose"] as const;
@@ -79,6 +78,8 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
   );
   // Line width shows agreement, which only means something once everyone is combined
   const combined = dataset.id === WORKSHOP;
+  const cycleLabels = useMemo(() => ({ loops: combined ? "Workshop cycles" : "Participant cycles", noLoops: "No cycles found within this range" }), [combined]);
+  const cycleSettings = useMemo(() => ({ title: combined ? "Workshop cycles" : "Participant cycles", description: combined ? "Cycles across the combined contributions of the workshop." : "Reinforcing and balancing cycles in this participant’s diagram.", maxLength: combined ? COMBINED_LOOPS.maxLength : Infinity, limit: 1000 }), [combined]);
   const stylesheet = useMemo(
     () => graphStyles(theme, { weightBySupport: combined }),
     [theme, combined],
@@ -89,7 +90,15 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
   const [view, setView] = useState<(typeof VIEWS)[number]>(() =>
     window.matchMedia("(max-width: 800px)").matches ? "Single" : "Compare",
   );
-  const [version, setVersion] = useState(LEFT);
+  const versions = ids(dataset.snapshots);
+  const [version, setVersion] = useState(() => versions[0]);
+  // The versions side by side, the first and last unless chosen. Another dataset may not have
+  // the ones chosen, so those fall back too
+  const [sides, setSides] = useState<{ left?: string; right?: string }>({});
+  const leftVersion = sides.left && versions.includes(sides.left) ? sides.left : versions[0];
+  const rightVersion = sides.right && versions.includes(sides.right) ? sides.right : versions[versions.length - 1];
+  // Alone, a version is compared with the one before it
+  const comparison = resolveComparison(dataset, version, "previous");
   const [showChanges, setShowChanges] = useState(false);
   const positionCache = useRef<Record<string, Positions>>({});
   const comparing = view === "Compare";
@@ -97,7 +106,7 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
   // One graph for each pane. In a single view, only `main` is on screen.
   const main = useCausalGraph({ motion: theme.motion });
   const right = useCausalGraph({ motion: theme.motion });
-  const paneOf = (snapshotId: string) => (comparing && snapshotId === RIGHT ? right : main);
+  const paneOf = (snapshotId: string) => (comparing && snapshotId === rightVersion ? right : main);
   const snapshotOf = (id: string) => dataset.snapshots.find((snapshot) => snapshot.id === id)!;
 
   // Only one pane holds the selection at a time, so the sidebar describes one graph
@@ -111,7 +120,7 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
   }, [rightSelected, right.selectedLink, clearLeft]);
 
   const active = comparing && (rightSelected.length || right.selectedLink) ? right : main;
-  const activeSnapshot = snapshotOf(!comparing ? version : active === right ? RIGHT : LEFT);
+  const activeSnapshot = snapshotOf(!comparing ? version : active === right ? rightVersion : leftVersion);
   const contributorList = useMemo(() => listContributors(activeSnapshot), [activeSnapshot]);
 
   // Each graph shows only the chosen people's parts, including a graph rebuilt later
@@ -124,11 +133,12 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
     [dataset],
   );
   useEffect(() => {
-    if (leftCy.current) filter(leftCy.current, comparing ? LEFT : version);
-    if (comparing && rightCy.current) filter(rightCy.current, RIGHT);
-  }, [contributors, comparing, version, filter, leftCy, rightCy]);
+    if (leftCy.current) filter(leftCy.current, comparing ? leftVersion : version);
+    if (comparing && rightCy.current) filter(rightCy.current, rightVersion);
+  }, [contributors, comparing, version, leftVersion, rightVersion, filter, leftCy, rightCy]);
 
-  const shownVersions = comparing ? [LEFT, RIGHT] : [version];
+  // The same version on both sides lists its cycles once
+  const shownVersions = comparing ? [...new Set([leftVersion, rightVersion])] : [version];
 
   const toggleLoop = (snapshotId: string, route: Route) => {
     const target = paneOf(snapshotId);
@@ -146,7 +156,9 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
     };
 
   useEffect(() => {
-    const diff = diffSnapshots(dataset, LEFT, RIGHT);
+    const [from, to] = comparing ? [leftVersion, rightVersion] : [comparison?.from, comparison?.to];
+    if (!from || !to) return;
+    const diff = diffSnapshots(dataset, from, to);
     const marks = (side: "from" | "to") => (showChanges ? changeMarks(diff, side) : {});
     const duration = resolveMotion(theme.motion).highlight;
     const mark = (cy: Core | null, shown: ReturnType<typeof marks>) => {
@@ -159,9 +171,10 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
       mark(leftCy.current, marks("from"));
       mark(rightCy.current, marks("to"));
     } else {
-      mark(leftCy.current, marks(version === RIGHT ? "to" : "from"));
+      mark(leftCy.current, marks(version === to ? "to" : "from"));
     }
-  }, [dataset, showChanges, comparing, version, layoutName, leftCy, rightCy, theme]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataset, showChanges, comparing, version, leftVersion, rightVersion, layoutName, leftCy, rightCy, theme]);
 
   const both = {
     zoomIn: () => [main, ...(comparing ? [right] : [])].forEach((pane) => pane.zoomIn()),
@@ -179,19 +192,19 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
   };
 
   return (
-    <CausalLabelsProvider labels={{ loops: combined ? "Workshop cycles" : "Participant cycles", noLoops: "No cycles found within this range" }}>
-    <LoopSettingsProvider key={dataset.id} settings={{ title: combined ? "Workshop cycles" : "Participant cycles", description: combined ? "Cycles across the combined contributions of the workshop." : "Reinforcing and balancing cycles in this participant’s diagram.", maxLength: combined ? COMBINED_LOOPS.maxLength : Infinity, limit: 1000 }}>
+    <CausalLabelsProvider labels={cycleLabels}>
+    <LoopSettingsProvider key={dataset.id} settings={cycleSettings}>
     <CausalRoot theme={theme} className="cc-workspace h-screen">
       <div className="cc-graph">
         {comparing ? (
           <CompareView
             key="compare"
             {...shared}
-            left={LEFT}
-            right={RIGHT}
+            left={leftVersion}
+            right={rightVersion}
             format={titleCase}
             onReady={(cy, snapshotId) => {
-              (snapshotId === LEFT ? main : right).attach(cy);
+              (snapshotId === leftVersion ? main : right).attach(cy);
               filter(cy, snapshotId);
             }}
           />
@@ -211,6 +224,28 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
         <div className="cc-overlay cc-overlay-top">
           <div className="cc-buttons">
             <Segmented label="View" options={VIEWS} value={view} onChange={clearing(setView)} />
+            {comparing && (
+              <div className="cc-inline">
+                {(["left", "right"] as const).map((side) => (
+                  <select
+                    key={side}
+                    className="cc-button"
+                    aria-label={side === "left" ? "Left version" : "Right version"}
+                    value={side === "left" ? leftVersion : rightVersion}
+                    onChange={(event) => {
+                      const chosen = event.target.value;
+                      clearing(() => setSides((current) => ({ ...current, [side]: chosen })))(undefined);
+                    }}
+                  >
+                    {versions.map((id) => (
+                      <option key={id} value={id}>
+                        {titleCase(id)}
+                      </option>
+                    ))}
+                  </select>
+                ))}
+              </div>
+            )}
             {!comparing && (
               <VersionSwitcher
                 bare
@@ -302,11 +337,11 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
           chosen={contributors}
           onChange={setContributors}
         />
-        <LoopSearchControls />
         <SelectionPanel graph={active} snapshot={activeSnapshot} />
 
+        <LoopSearchControls>
         {shownVersions.map((id) => { const snapshot = snapshotOf(id); return (
-          <SnapshotCycles
+          <SnapshotCycles bare
             key={snapshot.id}
             title={`${combined ? "Workshop cycles" : "Participant cycles"}: ${snapshot.id}`}
             snapshot={snapshot}
@@ -315,11 +350,12 @@ export function PerspectivaApp({ datasetId }: { datasetId?: string; debug?: bool
             onPreview={paneOf(snapshot.id).previewRoute}
           />
         ); })}
+        </LoopSearchControls>
 
         <VersionDiff
           dataset={dataset}
-          from={LEFT}
-          to={RIGHT}
+          from={comparing ? leftVersion : comparison?.from}
+          to={comparing ? rightVersion : comparison?.to}
           shown={showChanges}
           onToggle={() => setShowChanges(!showChanges)}
         />

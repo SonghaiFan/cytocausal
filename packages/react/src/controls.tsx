@@ -1,6 +1,6 @@
 "use client";
-import type { CausalNode } from "@cytocausal/core";
-import type { ReactNode } from "react";
+import { versionSteps, type CausalDataset, type CausalNode } from "@cytocausal/core";
+import { useEffect, useMemo, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { required, useOptionalCausal } from "./CausalProvider.tsx";
 import { useCausalLabels } from "./labels.tsx";
 
@@ -67,7 +67,108 @@ export function SidebarHeader({
   );
 }
 
-/** Buttons for moving between snapshots. */
+/** How many nodes and links changed on the way into each version, the first counting none. */
+function useChangeCounts(dataset: CausalDataset | undefined) {
+  return useMemo(() => {
+    if (!dataset) return {};
+    const counts: Record<string, number> = {};
+    for (const { to, counts: step } of versionSteps(dataset)) counts[to] = step.added + step.removed + step.changed;
+    return counts;
+  }, [dataset]);
+}
+
+/**
+ * A timeline of snapshots, for a history too long for a row of buttons. It scrolls to keep the
+ * shown version in view, steps with the arrow keys, Home and End, and marks under each version
+ * how much changed since the one before. Outside a provider, pass `versions`, `value` and
+ * `onChange`, and `changes` for the marks.
+ */
+export function VersionTimeline({
+  versions,
+  value,
+  onChange,
+  changes: given,
+  format = (version) => version,
+  className = "",
+}: {
+  versions?: string[];
+  value?: string;
+  onChange?: (version: string) => void;
+  /** How many nodes and links changed on the way into each version, by id. */
+  changes?: Record<string, number>;
+  format?: (version: string) => string;
+  className?: string;
+}) {
+  const labels = useCausalLabels();
+  const causal = useOptionalCausal();
+  const counted = useChangeCounts(given ? undefined : causal?.dataset);
+  const changes = given ?? counted;
+  const shown = required(versions ?? causal?.dataset.snapshots.map(({ id }) => id), "VersionTimeline", "versions");
+  const current = value ?? causal?.version;
+  const choose = onChange ?? causal?.setVersion;
+  const at = current ? shown.indexOf(current) : -1;
+  const most = Math.max(1, ...Object.values(changes));
+
+  const track = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    track.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [current]);
+
+  const go = (index: number) => {
+    const next = shown[Math.max(0, Math.min(shown.length - 1, index))];
+    if (next && next !== current) choose?.(next);
+  };
+  const onKeyDown = (event: KeyboardEvent) => {
+    const moves: Record<string, number> = { ArrowLeft: at - 1, ArrowRight: at + 1, Home: 0, End: shown.length - 1 };
+    if (!(event.key in moves)) return;
+    event.preventDefault();
+    go(moves[event.key]);
+  };
+  if (shown.length < 2) return null;
+
+  return (
+    <nav aria-label={labels.version} className={`cc-timeline ${className}`} onKeyDown={onKeyDown}>
+      <button type="button" className="cc-button" aria-label={labels.earlierVersion} disabled={at <= 0} onClick={() => go(at - 1)}>
+        ‹
+      </button>
+      <ol ref={track} className="cc-timeline-track">
+        {shown.map((version) => {
+          const count = changes[version] ?? 0;
+          const name = format(version);
+          return (
+            <li key={version}>
+              <button
+                type="button"
+                className="cc-button cc-timeline-version"
+                aria-current={version === current}
+                title={count ? labels.changeCount(count) : undefined}
+                onClick={() => go(shown.indexOf(version))}
+              >
+                {name}
+                {/* How much changed since the version before, as a length */}
+                <span className="cc-timeline-change" style={{ width: `${(count / most) * 100}%` }} />
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      <button
+        type="button"
+        className="cc-button"
+        aria-label={labels.laterVersion}
+        disabled={at < 0 || at >= shown.length - 1}
+        onClick={() => go(at + 1)}
+      >
+        ›
+      </button>
+    </nav>
+  );
+}
+
+/**
+ * Buttons for moving between snapshots. With more than four, it's a `VersionTimeline` instead,
+ * which scrolls and steps through a long history.
+ */
 export function VersionSwitcher({
   versions,
   value,
@@ -95,6 +196,16 @@ export function VersionSwitcher({
   const current = value ?? causal?.version;
   const choose = onChange ?? causal?.setVersion;
   if (shown.length < 2) return null;
+  if (shown.length > 4) {
+    const timeline = <VersionTimeline versions={shown} value={current} onChange={choose} format={format} />;
+    if (bare) return <div className={className}>{timeline}</div>;
+    return (
+      <section className={`cc-panel ${className}`}>
+        <h3 className="cc-heading">{labels.version}</h3>
+        {timeline}
+      </section>
+    );
+  }
 
   const buttons = (
     <Segmented

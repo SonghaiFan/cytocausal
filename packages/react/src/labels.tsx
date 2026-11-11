@@ -29,6 +29,29 @@ export interface CausalLabels {
   noPaths: string;
   changes: string;
   showChanges: string;
+  /** Chooses what changes are measured against. */
+  compareWith: string;
+  previousVersion: string;
+  firstVersion: string;
+  earlierVersion: string;
+  laterVersion: string;
+  history: string;
+  /** Names a node's or link's history, for assistive technology. */
+  historyOf: (id: string) => string;
+  goToVersion: (version: string) => string;
+  historyStart: string;
+  historyAdded: string;
+  historyUnchanged: string;
+  historyRemoved: string;
+  historyRenamed: (from: string) => string;
+  historyMerged: (from: string) => string;
+  historySplit: (into: string) => string;
+  historyRegrouped: (from: string, into: string) => string;
+  historyFlipped: (polarity: string) => string;
+  /** Parallel links that disagree on polarity. */
+  mixed: string;
+  /** How many nodes and links changed on the way into a version. */
+  changeCount: (count: number) => string;
   added: string;
   removed: string;
   renamed: string;
@@ -104,6 +127,25 @@ export const defaultLabels: CausalLabels = {
   noPaths: "No paths found",
   changes: "Changes",
   showChanges: "Show on graph",
+  compareWith: "Compare with",
+  previousVersion: "Previous",
+  firstVersion: "First",
+  earlierVersion: "Earlier version",
+  laterVersion: "Later version",
+  history: "History",
+  historyOf: (id) => `History of ${id}`,
+  goToVersion: (version) => `Go to ${version}`,
+  historyStart: "In the first version",
+  historyAdded: "Added",
+  historyUnchanged: "Unchanged",
+  historyRemoved: "Removed",
+  historyRenamed: (from) => `Renamed from ${from}`,
+  historyMerged: (from) => `Merged from ${from}`,
+  historySplit: (into) => `Split into ${into}`,
+  historyRegrouped: (from, into) => `Regrouped from ${from} into ${into}`,
+  historyFlipped: (polarity) => `Flipped to ${polarity}`,
+  mixed: "Mixed",
+  changeCount: (count) => `${count} ${count === 1 ? "change" : "changes"}`,
   added: "Added",
   removed: "Removed",
   renamed: "Renamed",
@@ -115,7 +157,7 @@ export const defaultLabels: CausalLabels = {
   polarityChanged: "Polarity changed",
   noChanges: "No changes",
   selectHint: "Click a node to see what causes it and what it leads to.",
-  pathHint: "Choose ⤳ in the node's menu to trace the paths to another node.",
+  pathHint: "Use the sidebar to trace paths to another node.",
   clearSelection: "Clear selection",
   exportImage: "Export PNG",
   copyLink: "Copy link",
@@ -137,7 +179,7 @@ export const defaultLabels: CausalLabels = {
   selected: "Selected",
   linked: "Causes and effects",
   changed: "Changed",
-  radialMenu: "Linked nodes and loops",
+  radialMenu: "Linked nodes",
   stepsReach: (steps, nodes) => `${steps} steps: ${nodes} ${nodes === 1 ? "node" : "nodes"}`,
   linkedBothWays: "Causes and follows from",
   loopWithin: (steps) => `Within ${steps} ${steps === 1 ? "step" : "steps"}`,

@@ -33,27 +33,35 @@ const CLASSES = "dimmed focus cause effect cause-link effect-link";
  * links away.
  */
 export function highlightCausalNeighbours(cy: Core, ids: string[], depth = 1) {
-  cy.batch(() => {
-    cy.elements().removeClass(CLASSES);
-    if (ids.length === 0) return;
-    cy.elements().addClass("dimmed");
-    for (const id of ids) {
-      let upstream = cy.getElementById(id).nodes();
-      let downstream = upstream;
-      for (let step = 0; step < depth; step++) {
-        const causes = upstream.incomers();
-        const effects = downstream.outgoers();
-        causes.removeClass("dimmed");
-        effects.removeClass("dimmed");
-        causes.nodes().addClass("cause");
-        causes.edges().addClass("cause-link");
-        effects.nodes().addClass("effect");
-        effects.edges().addClass("effect-link");
-        upstream = causes.nodes();
-        downstream = effects.nodes();
-      }
+  // Compute the final classes before touching Cytoscape. Clearing and re-adding them
+  // invalidates styles for the entire graph on every pointer crossing.
+  const desired = new Map<string, Set<string>>();
+  const mark = (id: string, name: string) => {
+    let classes = desired.get(id);
+    if (!classes) desired.set(id, classes = new Set());
+    classes.add(name);
+  };
+  for (const id of ids) {
+    let upstream = cy.getElementById(id).nodes();
+    let downstream = upstream;
+    for (let step = 0; step < depth; step++) {
+      const causes = upstream.incomers();
+      const effects = downstream.outgoers();
+      causes.forEach(ele => mark(ele.id(), ele.isNode() ? "cause" : "cause-link"));
+      effects.forEach(ele => mark(ele.id(), ele.isNode() ? "effect" : "effect-link"));
+      upstream = causes.nodes();
+      downstream = effects.nodes();
     }
-    for (const id of ids) cy.getElementById(id).removeClass("dimmed cause effect").addClass("focus");
+  }
+  for (const id of ids) desired.set(id, new Set(["focus"]));
+  const owned = new Set(CLASSES.split(" "));
+  cy.batch(() => {
+    cy.elements().forEach(ele => {
+      const target = desired.get(ele.id()) ?? new Set(ids.length ? ["dimmed"] : []);
+      const current = ele.classes();
+      const next = [...current.filter(name => !owned.has(name)), ...target];
+      if (next.length !== current.length || next.some(name => !ele.hasClass(name))) ele.classes(next);
+    });
   });
   refreshLabels(cy);
 }

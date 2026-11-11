@@ -5,7 +5,7 @@ import type { LayoutOptions } from "cytoscape";
 import {
   CausalGraph,
   CausalProvider,
-  LoopSearchControls,
+  CyclePanel,
   DepthControl,
   Legend,
   LayoutSwitcher,
@@ -74,7 +74,7 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
   const { dataset, snapshot, graph, scheme, toggleScheme, exportImage, copyLink, copied, theme, layout } =
     useCausal();
   const { nodes, edges } = snapshot;
-  const { keepSelected, fit, cy } = graph;
+  const { keepSelected, fit, cy, instanceCount } = graph;
   const [loopsOnly, setLoopsOnly] = useState(false);
   // Add ?debug=directions to the address to see the area around a selected node that leads to
   // each linked node
@@ -109,13 +109,13 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
     // The original positions come from the data, so those only need fitting to the screen
     const current = shownLayout.current;
     if (!firstFilter.current && current.name !== "preset") {
-      relayout(instance, current, { motion: theme.motion });
+      instance.emit("cytocausal-layout-request");
     } else {
       fit();
     }
     firstFilter.current = false;
     keepSelected((id) => inScope(nodeById.get(id)!));
-  }, [loopsOnly, inScope, nodeById, cy, fit, keepSelected, theme]);
+  }, [loopsOnly, inScope, nodeById, cy, fit, keepSelected, theme, instanceCount]);
 
   return (
     <>
@@ -171,8 +171,8 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
         </SidebarHeader>
 
         <NodeSearch nodes={visibleNodes} />
-        <LoopSearchControls />
-        <SelectionPanel loopOptions={LOOP_SEARCH} />
+        <CyclePanel />
+        <SelectionPanel />
 
         <details className="cc-panel cc-disclosure" open={graph.selected.length === 0}>
           <summary>About this graph</summary>
