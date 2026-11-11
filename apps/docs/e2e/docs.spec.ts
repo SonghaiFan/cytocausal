@@ -50,7 +50,9 @@ for (const lang of languages) {
       const images = page.locator("article img");
       for (let index = 0; index < (await images.count()); index++) {
         const image = images.nth(index);
-        await image.scrollIntoViewIfNeeded();
+        // Theme-specific wordmarks intentionally hide one image. Validate both assets,
+        // but only scroll images that participate in the current layout.
+        if (await image.isVisible()) await image.scrollIntoViewIfNeeded();
         await expect
           .poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth))
           .toBeGreaterThan(0);
