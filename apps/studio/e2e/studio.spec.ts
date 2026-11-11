@@ -213,3 +213,19 @@ test('Explore has no reach ring: steps are a sidebar setting, and the ring clear
   const steps=page.getByRole('radiogroup',{name:'Steps shown'}).or(page.getByRole('group',{name:'Steps shown'}));
   await expect(steps).toBeVisible();
 });
+
+test('an interrupted sector drag cancels cleanly without creating a relationship', async ({page}) => {
+  await seed(page); await clickNode(page,'a','right');
+  const box = await page.getByRole('menuitem',{name:/Add effect/}).boundingBox();
+  const drop = await blank(page);
+  await page.mouse.move(box!.x+box!.width/2,box!.y+box!.height/2);
+  await page.mouse.down(); await page.mouse.move(drop.x,drop.y,{steps:6});
+  await expect(page.locator('.connection-preview')).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointercancel')));
+  await expect(page.locator('.connection-hint')).toHaveCount(0);
+  await page.mouse.up(); await page.mouse.move(drop.x-30,drop.y-30);
+  await expect(page.locator('.connection-preview')).toHaveCount(0);
+  await expect(page.getByRole('textbox',{name:'Variable name'})).toHaveCount(0);
+  expect((await state(page))?.edges).toHaveLength(0);
+  expect((await state(page))?.nodes).toHaveLength(3);
+});

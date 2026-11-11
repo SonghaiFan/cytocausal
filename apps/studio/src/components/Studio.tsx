@@ -74,13 +74,15 @@ function Editor({ nodeStyle, onNodeStyle, history, dispatch, viewport, restoreEr
   const positions = useRef<Positions>({});
   const ready = useRef(false);
   const dragBefore = useRef<DocumentState | null>(null);
+  const cancelDrag = useRef<(() => void) | null>(null);
+  useEffect(() => () => cancelDrag.current?.(), []);
   const latest = useRef({ mode, connection, draft, menu }); latest.current = { mode, connection, draft, menu };
   const node = snapshot.nodes.find(n => n.id === graph.selected[0]);
   const edge = snapshot.edges.find(e => e.id === graph.selectedLink);
   const selected = (): Selection => ({ nodes: [...graph.selected], link: graph.selectedLink });
   const materialize = (): DocumentState => ({ dataset: withPositions(dataset, version, positions.current), version, selection: selected() });
   const current = useRef(materialize); current.current = materialize;
-  const close = () => { setMenu(null); setConnection(null); setDraft(null); setPointer(null); setQuickEdge(null); };
+  const close = () => { cancelDrag.current?.(); setMenu(null); setConnection(null); setDraft(null); setPointer(null); setQuickEdge(null); };
   const focusCanvas = () => graph.cy.current?.container()?.focus();
   const selectNode = (id: string) => { graph.clear(); graph.toggle(id); };
   const commit = (data: CausalDataset, selection = selected(), before = materialize(), nextVersion = version) => {
@@ -114,10 +116,13 @@ function Editor({ nodeStyle, onNodeStyle, history, dispatch, viewport, restoreEr
    * the pointer, to be placed with a click.
    */
   const dragOut = (origin: string, direction: Direction, start: Point) => {
+    cancelDrag.current?.();
     beginConnection(origin, direction);
     const local = (e: PointerEvent): Point => { const box = canvas.current!.getBoundingClientRect(); return { x: e.clientX - box.left, y: e.clientY - box.top }; };
     const move = (e: PointerEvent) => setPointer(local(e));
-    const done = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", done); };
+    const done = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", cancel); window.removeEventListener("blur", cancel); cancelDrag.current = null; };
+    const cancel = () => { done(); close(); };
+    cancelDrag.current = done;
     const up = (e: PointerEvent) => {
       done();
       const cy = graph.cy.current; const box = canvas.current;
@@ -127,7 +132,7 @@ function Editor({ nodeStyle, onNodeStyle, history, dispatch, viewport, restoreEr
       if (hit.nonempty()) { if (hit.id() !== origin) handlers.current.createLink({ origin, direction }, hit.id()); }
       else setDraft({ label: "", position: { x: (p.x - cy.pan().x) / cy.zoom(), y: (p.y - cy.pan().y) / cy.zoom() }, connection: { origin, direction } });
     };
-    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", done);
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", cancel); window.addEventListener("blur", cancel);
   };
   const submitDraft = () => {
     if (!draft?.label.trim()) return;
@@ -218,7 +223,7 @@ function Editor({ nodeStyle, onNodeStyle, history, dispatch, viewport, restoreEr
         else if (e.target.isNode()) handlers.current.createLink(pending, e.target.id());
       } else { setMenu(null); setQuickEdge(null); }
     });
-    // Double-click is for text, on a node or on empty canvas. Right-click only ever opens a ring, so on empty canvas it adds nothing
+    // Double-click opens the edit ring on a node and creates a variable on empty canvas. Right-click only ever opens a ring, so on empty canvas it adds nothing
     cy.on("dbltap", (e: EventObject) => {
       if (latest.current.mode === "author" && e.target === cy && !latest.current.connection) { setMenu(null); setDraft({ label: "", position: { ...e.position } }); }
     });
