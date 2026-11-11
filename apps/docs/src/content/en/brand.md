@@ -40,8 +40,8 @@ Use ink text on yellow; never white text on yellow. In dark mode keep the yellow
 
 Use one yellow sunburst at the start of a page or in its navigation. Pair it with a short statement about the task, then let the real graph provide the detail. Repository artwork and presentation covers can enlarge the same mark against a solid yellow field. Avoid decorative networks, generic gradients and multiple competing logo variants.
 
-The application graph keeps its semantic palette: causes, effects, selection, polarity and changes must remain distinguishable. Brand yellow does not replace all those colours. Interaction rule: select a yellow focus node, reveal sectors, preview a direction on hover, then move focus on activation. Use the library’s real radial menu for this behaviour rather than a decorative spinner. The mark has no automatic animation; motion in the product should explain actual graph changes, with reduced-motion behaviour respected.
+Keep the graph’s semantic colours distinguishable when applying the brand. The logo is static; graph animations follow the user’s reduced-motion preference.
 
 ## Scope and attribution
 
-These new cytocausal SVG assets are included under the repository's MIT license. The Monash University logo used in the Explorer case is a separate third-party asset and is not part of this identity. See [DATA.md](https://github.com/SonghaiFan/cytocausal/blob/main/DATA.md).
+These cytocausal SVG assets are included under the repository's MIT license. The Monash University logo used in the Explorer case is a separate third-party asset and is not part of this identity. See [DATA.md](https://github.com/SonghaiFan/cytocausal/blob/main/DATA.md).

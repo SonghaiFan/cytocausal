@@ -40,55 +40,28 @@ export function Explorer({ dataset }: { dataset: CausalDataset }) {
 }
 ```
 
+## Select and explore
+
+Click a node to select it and read its details in the sidebar. Search selects and focuses a node. Click empty canvas or use Clear selection to clear the selection. Shift-click or Shift-drag a selection box to select multiple nodes; reachable selections are connected by directed paths.
+
+Use the sidebar to configure feedback-loop searches, select a loop, or choose path endpoints. Selecting a node scopes the loop list; the scope control can include all nodes.
+
+Multi-selection connects reachable nodes with a sparse set of directed paths; it does not guarantee a globally minimal network. Disconnected selections remain highlighted.
+
 ## Press-and-hold menu
 
-Cycle configuration, count, timing and selection share one sidebar panel. Selecting a node scopes the list; the scope selector can switch to all nodes. Path endpoint selection also starts in the sidebar. The graph menu only changes steps and traverses adjacent nodes.
+1. Hold a node for about 400 ms to open the exploration menu. Moving before the menu opens drags the node instead.
+2. Point toward a neighbouring node to preview a direction. Click to follow it; the menu moves to that node and the traversed path stays highlighted. Releasing the press that opened the menu also commits the current preview.
+3. Continue through neighbours to extend the path. Numbered nodes show the order of the walk. A link already traversed is not offered again.
+4. Press Escape or click outside the menu's active area to close it while keeping the committed selection and path. Click empty canvas again to clear them.
 
-- Plain-click a node to select it and show details, without opening the menu. Search selects and positions only.
-- Hold a node for about 400 ms to open the menu and lock it, without moving the camera. The node gets a border while the menu is locked.
-- While locked, the fan stays on the last node committed. Pointing inside one of its areas chooses that neighbour; past the fan, or past its reach, nothing is chosen and the fan doesn't move on. Only a commit moves it: the chosen neighbour becomes the new fan centre, with angles and radii recomputed from its own neighbours. Dead ends show an empty fan. A locked menu has no step limit: each commit adds to the walk, which stays lit, and every step after the first node is numbered on its node (1, 2, 3, …), with the steps being steered toward numbered more faintly. A link the walk has taken isn't offered again, so it can't go back and forth between two nodes; a loop can still close through another link. Only a locked menu numbers steps; the menu opened by a click previews one step. Hovering or selecting a node always highlights one step; the menu's ring reaches further for that selection only. A click, or letting go of the press that locked the menu, commits the final node and the traversed path, and the locked menu moves to that node. The current centre has a compact, translucent sunburst without an outline: each segment follows an adjacent node’s real direction, and the chosen direction darkens. It keeps the halo’s size and moves between levels. Fan areas are visible only with direction debugging enabled (`?debug=directions`), one step’s fan at a time. The earlier path remains highlighted, and steps are numbered on their nodes; fan fills and outlines stay hidden during normal use. Reduced-motion preferences disable these animations.
-- There is no need to keep holding: move toward an adjacent-node direction or step ring to preview it.
-- Only the current step’s fan is active, and only it is drawn: its areas are where a click acts. Click anywhere past them, on the canvas or outside it, or press Escape, to leave: the menu closes, the border goes, and the selection and the walk so far stay highlighted. Past the fan nothing is highlighted, since a click there commits nothing. The way in from the step before, up to the far side of the new centre, still counts as inside, as do the menu’s own rings and buttons.
-- Once the menu is closed, click empty canvas to clear the retained selection and highlight.
-- Moving more than 8 px before the hold activates performs a normal node drag. Escape cancels a held preview and closes the menu, retaining the origin.
-- Shift-click and Shift-box remain multi-selection gestures and do not open a held menu. The open menu still owns graph interaction.
-- Keyboard alternative: focus the graph and use Shift+F10 / Context Menu on the cursor or single selected node, then Tab and Enter.
-
-
-## States and priority
-
-| State | Enter | Behaviour | Exit |
-| :--- | :--- | :--- | :--- |
-| Browse / node selection | Plain click or search | Hover previews, click selects; details in the sidebar, menu closed | Empty canvas or Clear selection clears; hold opens the menu |
-| Locked menu | Hold a node for about 400 ms; the node is bordered | Graph-level modal: bright and faded elements cannot independently intercept input; move, with or without the button held, over adjacent-node directions or step controls to preview; a click commits, and the menu moves to the node reached | A click past the current fan, or Escape, closes it and keeps the selection |
-| Retained highlight | Commit a menu choice or click a route control | Keeps the selected node, connection route or loop; ordinary hover does not replace it | Empty canvas / Clear selection clears; a new selection replaces it |
-| Multi-selection | Shift-click or Shift-box outside the menu | Unlimited nodes; all details and a sparse directed shortest-path connection. Disconnected selected nodes remain bright | Shift-click removes one; plain click replaces with one; empty canvas clears |
-| Trace endpoint | Choose ⤳ in the menu | Fans disabled; choose another node to finish. Sidebar gives the next instruction | Escape, origin or background cancels and retains the origin |
-| Link details | Click a link outside the menu or use a sidebar link button | Keeps the link and endpoints highlighted, no menu | Same link, empty canvas or Clear selection exits |
-
-Closing the menu and clearing selection are separate. Leaving the locked menu closes it without clearing the committed highlight, and the press that locked it never becomes an extra ordinary click.
-
-Preview never changes selection. Highlight priority: temporary route preview → retained route/link → selected node(s) → ordinary hover. While open, the menu owns pointer interpretation; Shift cannot bypass it, and box selection and background node dragging are disabled. Ordinary interaction resumes on close.
-
-Multi-selection uses one directed shortest path per candidate connection, then greedily joins disconnected selections while preferring fewer new edges and intermediate nodes. Existing paths are reused. This is a sparse approximation, not a globally optimal Steiner network. Unreachable selections remain highlighted; shortest paths have no eight-node cutoff.
-
-## Menu controls
-
-| Control | Move while locked | Click, or let go of the locking press |
-| :--- | :--- | :--- |
-| Direction fan | Preview neighbour and connection route | Select neighbour and retain route highlight |
-| Loop arc | Preview feedback loop | Retain origin and loop highlight |
-| Step ring | Preview neighbourhood depth | Retain depth and origin |
-| ⤳ | Explain path tracing | Close menu and enter endpoint picking |
-| No fan or control | Restore origin highlight | Nothing: the menu stays locked |
-
-Fans use real angular Voronoi directions, capped at 60° on either side of the neighbour, from the origin's edge to just past the neighbour. Default `maxDepth: 2` provides one two-step ring, configurable through `graphOptions.maxDepth`.
+The step ring previews a larger neighbourhood for the current selection. `graphOptions.maxDepth` controls the available depth. Selection and hover start at `defaultDepth`.
 
 ## Keyboard and details
 
-With graph focus, arrows move the node cursor; Enter/Space selects. Shift+F10 or Context Menu opens a keyboard menu for the cursor or single selected node; Tab reaches controls, Enter/Space activates. A keyboard menu has no held mouse, so Escape follows the layered exit rules: cancel tracing or a pinned route first, then clear selection. Clear selection always exits everything.
+With graph focus, arrow keys move the node cursor and Enter or Space selects. Shift+F10 or the Context Menu key opens the menu for the cursor or single selected node. Use Tab to reach controls and Enter or Space to activate them. Escape exits the active interaction layer; Clear selection resets all interaction state.
 
-Nodes have no tooltip by default: labels stay on the graph and details/evidence in the sidebar. Modal backdrop has no link tooltip. Without a sidebar, use `renderNodeInfo` / `renderInfo` for a details card. Search and sidebar remain explicit commands; this is not a page-wide dialog.
+Node details and evidence appear in the sidebar. Without a sidebar, use `renderNodeInfo` / `renderInfo` for a details card. A selected route or link stays highlighted while ordinary hover moves elsewhere. Temporary route previews take priority until the preview ends.
 
 ## Options
 
@@ -123,8 +96,6 @@ Nodes have no tooltip by default: labels stay on the graph and details/evidence 
 ## Two graphs
 
 Each hook controls one graph. For a comparison, use one hook per graph and connect them through `onReady` on `CompareView`, which passes the snapshot id as well. `apps/perspectiva` does this.
-
-Multi-selection uses one directed shortest path per candidate connection, then greedily joins disconnected selections while preferring fewer new edges and intermediate nodes. Existing paths are reused. This is a sparse approximation, not a globally optimal Steiner network. Unreachable selections remain highlighted; shortest paths have no eight-node cutoff.
 
 ### Layout loading
 

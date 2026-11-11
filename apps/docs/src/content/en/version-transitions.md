@@ -48,24 +48,8 @@ Edges cross-fade, because old and new links rarely line up.
 
 When a version's positions are cached, `transitionToSnapshot` animates straight to them, so switching back and forth never drifts. When they aren't, it pins nodes that have counterparts and lets fcose place the rest. The result is then cached, so later switches are exact.
 
-## Interrupted transitions
+## Switching before an animation finishes
 
-Users click faster than animations run, and every problem we hit came from a transition being interrupted. All three of these are handled in `transitionToSnapshot`, and they apply to any Cytoscape animation code.
+A new snapshot selection can interrupt an active transition. `GraphView` manages the transition lifecycle; pass the latest `snapshotId` rather than removing and recreating graph elements yourself. Cached positions are reused when returning to a version.
 
-### Stopping a layout fires layoutstop
-
-`layout.stop()` fires `layoutstop` straight away, with nodes still in mid-flight. If that listener saves positions, it saves wrong ones. A transition marks itself as the current one before stopping the previous one, and a listener only runs if its transition is still current.
-
-### Interrupted animations never complete
-
-An animation's `complete` callback doesn't run after `stop()`. Cleanup placed there is skipped, which leaves stray elements on the graph. Use a timer that checks the transition is still current.
-
-### The animation pool tracks elements by id
-
-Removing an element and adding a new one with the same id strands the new element's animations. Cytoscape's pool still holds the removed element, so it treats the new one as already registered and never runs its animations. The element stays flagged as animating forever.
-
-The fix is to not remove leftovers when interrupted. They stay in the graph for the next transition to reuse or fade out.
-
-## Test the interruptions
-
-Each of these bugs looked correct on screen, or only appeared with rapid clicking. Test what you can't see: after rapid switching, check that nothing is still animating, nothing is half-faded, and positions match the first visit. `apps/perspectiva/e2e/graph.spec.ts` does this for every dataset.
+If you manage a Cytoscape instance directly, use `transitionToSnapshot`. See the [Cytoscape integration API](/en/api-cytoscape/) for the lower-level interface.

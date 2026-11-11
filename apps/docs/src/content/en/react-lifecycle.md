@@ -4,7 +4,7 @@ title: "React lifecycle"
 
 # React lifecycle
 
-Cytoscape and React both want to own what's on screen. cytocausal keeps them apart: React decides what to show, and one long-lived Cytoscape instance draws it. `GraphView` in `@cytocausal/react` does this for you, and this guide explains why it works the way it does.
+`GraphView` manages a Cytoscape instance from React props, including creation, updates and cleanup. Use it when composing an interface below the `CausalWorkspace` level.
 
 ## Render in the browser only
 
@@ -48,24 +48,26 @@ export function Diagram({ dataset }: { dataset: CausalDataset }) {
 }
 ```
 
-Keep `layout` and `stylesheet` stable by defining them outside the component. `GraphView` rebuilds the graph when either changes, so a new object on every render would rebuild it every time.
+Keep `layout` and `stylesheet` stable by defining them outside the component or memoising them. Stylesheet changes restyle the existing instance; layout changes animate when `animateLayouts` is enabled and otherwise rebuild it.
 
 ## Rebuild or update
 
 | Change | What happens |
 | :--- | :--- |
-| Dataset or layout | Destroy the instance and build a new one |
+| Dataset | Destroy the instance and build a new one |
+| Stylesheet | Restyle the existing instance |
+| Layout | Animate with `animateLayouts`; otherwise rebuild |
 | Snapshot, with `animateSnapshots` | Keep the instance and animate |
 | Snapshot, without `animateSnapshots` | Destroy the instance and build a new one |
 
-Rebuilding loses every node's identity, so nothing can move smoothly. Perspectiva originally rebuilt on every version change, and each switch looked like a brand new graph. See [Version transitions](/en/version-transitions/).
+Use `animateSnapshots` to preserve node continuity across versions. See [Version transitions](/en/version-transitions/).
 
 ## Listeners outlive renders
 
 Cytoscape listeners are attached once, but React props change. A listener that closes over a prop keeps seeing the value from when it was attached. Reading through a ref avoids that:
 
 ```tsx
-import type { Core } from "cytoscape";
+import type { Core, EventObject } from "cytoscape";
 import { useEffect, useRef } from "react";
 
 export function useNodeClicks(cy: Core | null, onClick: (id: string) => void) {
@@ -75,12 +77,15 @@ export function useNodeClicks(cy: Core | null, onClick: (id: string) => void) {
   });
 
   useEffect(() => {
-    cy?.on("tap", "node", (event) => latest.current(event.target.id()));
+    if (!cy) return;
+    const handler = (event: EventObject) => latest.current(event.target.id());
+    cy.on("tap", "node", handler);
+    return () => { cy.off("tap", "node", handler); };
   }, [cy]);
 }
 ```
 
-This caused a real bug in Perspectiva. A `layoutstop` listener held on to the old version's cache key, so it saved final positions under the V1 key and corrupted the position cache.
+The effect removes its listener when the instance changes or the component unmounts.
 
 ## Use onReady for custom behaviour
 
@@ -88,4 +93,4 @@ For the usual selection and view controls, use [`useCausalGraph`](/en/interactio
 
 ## Hidden tabs stop animations
 
-Browsers pause `requestAnimationFrame` in hidden pages. Cytoscape animations then never finish, so `layoutstop` never fires on an animated layout, and the canvas stays blank. This can look like a bug in your code when you test in a background tab or a hidden panel. Test in a visible page or a headless browser.
+Browsers may pause animation frames in hidden tabs. Animation completion can be delayed until the page is visible; avoid depending on it for unrelated application work.

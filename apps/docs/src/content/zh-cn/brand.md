@@ -40,8 +40,8 @@ title: "视觉识别"
 
 在页首或导航放一个黄色因果扇区，用简短文案说明任务，让真实因果图承担细节。仓库展示图、演示封面可以把同一个标记放大，搭配纯黄色块。避免装饰性复杂网络、泛用渐变，以及多个相互竞争的标记版本。
 
-图内的原因、结果、选择、极性和版本变化仍需保持可区分的语义色，不能全部改成品牌黄。交互规则是：选中黄色焦点节点 → 显示扇区 → 悬停预览方向 → 激活后移动焦点。用 library 的真实径向菜单承载这个行为，不使用装饰性的旋转动画。Logo 不自动循环播放动画；产品中的动效用于解释真实变化，并尊重减少动态效果设置。
+应用品牌时，应保持图中语义色的可区分性。Logo 为静态图形，图的动画遵循用户的减少动态效果设置。
 
 ## 使用范围
 
-这组新 cytocausal SVG 素材按仓库 MIT 许可提供。Explorer 案例中的 Monash University logo 是独立的第三方标记，不属于这套品牌。详见 [DATA.md](https://github.com/SonghaiFan/cytocausal/blob/main/DATA.md)。
+这组 cytocausal SVG 素材按仓库 MIT 许可提供。Explorer 案例中的 Monash University logo 是独立的第三方标记，不属于这套品牌。详见 [DATA.md](https://github.com/SonghaiFan/cytocausal/blob/main/DATA.md)。

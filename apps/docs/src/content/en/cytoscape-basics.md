@@ -116,7 +116,7 @@ export function App() {
 }
 ```
 
-`CausalWorkspace` manages the graph lifecycle and supplies selection, search, analysis panels and view controls. The causal stylesheet supplies polarity labels and line styles. `baseRules` adds our weather-node border before interaction-state rules, so built-in highlights can still take precedence. Keep configuration objects outside the component, or memoise them when they depend on props.
+`CausalWorkspace` manages the graph lifecycle and supplies selection, search, analysis panels and view controls. The causal stylesheet supplies polarity labels and line styles. `baseRules` adds the weather-node border before interaction-state rules, so built-in highlights can still take precedence. Keep configuration objects outside the component, or memoise them when they depend on props.
 
 ## How the data maps
 

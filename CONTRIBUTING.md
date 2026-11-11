@@ -32,6 +32,8 @@ Browser tests need Chrome and a production build. `npm test` also checks the rea
 
 Guides are in `apps/docs/src/content`. Update both `en` and `zh-cn` when you change one.
 
+Use the [documentation audience guide](docs/maintenance/documentation.md) to choose where content belongs. Published guides explain usage and current behaviour; implementation history and regression evidence live in `docs/maintenance/`. `AGENTS.md` contains instructions for coding agents.
+
 ## Data
 
 Datasets have their own terms, so read [DATA.md](DATA.md) first. Don't commit the full ACCESS benchmark: `apps/explorer/public/dataset.json` must stay a sample, and a test checks this.

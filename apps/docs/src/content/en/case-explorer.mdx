@@ -29,22 +29,6 @@ The figures above describe the full benchmark. The public demo shows a sample of
 - Seeing what causes a node and what it leads to
 - A readable view of a dense graph
 
-## What was wrong
-
-The original app ran on Sigma, and its data was sound. The problems were in exploring it:
-
-- Search only matched the start of a label, and 716 of 725 labels start with "a person". Searching for `sleep` found nothing.
-- Sentences appeared in a hover card that vanished when the mouse moved away.
-- Highlighting didn't separate causes from effects.
-- Node sizes ignored direction.
-- Every node was its own cluster, so the filters added up to 1,450 checkboxes that couldn't group anything.
-
-## Moving to Cytoscape
-
-The move depended on one question: could Cytoscape draw this graph with labels? [Benchmarks](/en/scale-performance/) showed 60 fps, so both demos could share one engine.
-
-The harder problem was keeping labels readable, which took collision handling.
-
 ## How the framework solved it
 
 | Need | Mechanism | Guide |
@@ -60,9 +44,9 @@ The harder problem was keeping labels readable, which took collision handling.
 
 ## Result
 
-Search now finds words anywhere in labels and sentences. Clicking a node keeps its sentences, causes and effects in a side panel, and a second click compares two nodes. The analysis of the full graph also found something new: 213 of the 725 nodes form a single set of feedback loops, so the network isn't a simple chain of causes.
+Search matches words within labels and descriptions. Selecting a node keeps its descriptions, causes and effects in the sidebar. Multi-selection connects reachable selections with directed paths.
 
-The sample keeps positions worked out for all 725 nodes, so it has gaps where the others were. A force layout for the 100 nodes shown takes about 0.2 s, so the app offers one, along with rings by centrality. With a computed layout, showing only feedback loops lays out the loops on their own. Zooming spreads nodes apart while every mark keeps its size, and a switch compares this with the other [zoom modes](/en/theming/).
+The sample keeps positions worked out for all 725 nodes, so it has gaps where the others were. The app offers a force layout for the displayed nodes and rings by centrality. With a computed layout, showing only feedback loops lays out the loops on their own. Zooming spreads nodes apart while every mark keeps its size, and a switch compares this with the other [zoom modes](/en/theming/).
 
 ## Publication
 

@@ -4,7 +4,7 @@ title: "React 生命周期"
 
 # React 生命周期
 
-Cytoscape 和 React 都想掌控屏幕上的内容。cytocausal 让两者分工：React 决定显示什么，一个长期存在的 Cytoscape 实例负责绘制。`@cytocausal/react` 中的 `GraphView` 已经处理好这些，本指南解释它为什么这样工作。
+`GraphView` 根据 React props 管理 Cytoscape 实例，包括创建、更新和清理。需要在 `CausalWorkspace` 之外组合界面时，可使用该组件。
 
 ## 只在浏览器中渲染
 
@@ -48,24 +48,26 @@ export function Diagram({ dataset }: { dataset: CausalDataset }) {
 }
 ```
 
-请把 `layout` 和 `stylesheet` 定义在组件外部以保持稳定。两者任一变化都会让 `GraphView` 重建图，如果每次渲染都生成新对象，图就会反复重建。
+把 `layout` 和 `stylesheet` 定义在组件外或使用 memo，保持引用稳定。样式表变化会更新现有实例的样式；布局变化在启用 `animateLayouts` 时播放过渡，否则重建实例。
 
 ## 重建还是更新
 
 | 变化 | 结果 |
 | :--- | :--- |
-| 数据集或布局 | 销毁实例并新建 |
+| 数据集 | 销毁实例并新建 |
+| 样式表 | 更新现有实例的样式 |
+| 布局 | 启用 `animateLayouts` 时播放过渡，否则重建 |
 | 快照，启用 `animateSnapshots` | 保留实例并播放动画 |
 | 快照，未启用 `animateSnapshots` | 销毁实例并新建 |
 
-重建会丢失所有节点的身份，因此无法平滑移动。Perspectiva 最初每次切换版本都会重建，看起来就像一张全新的图。详见[版本过渡](/zh-cn/version-transitions/)。
+需要在版本间保留节点连续性时，启用 `animateSnapshots`。详见[版本过渡](/zh-cn/version-transitions/)。
 
 ## 监听器比渲染活得更久
 
 Cytoscape 监听器只绑定一次，但 React 的 props 会变化。闭包捕获 prop 的监听器，看到的始终是绑定时的旧值。通过 ref 读取可以避免这个问题：
 
 ```tsx
-import type { Core } from "cytoscape";
+import type { Core, EventObject } from "cytoscape";
 import { useEffect, useRef } from "react";
 
 export function useNodeClicks(cy: Core | null, onClick: (id: string) => void) {
@@ -75,12 +77,15 @@ export function useNodeClicks(cy: Core | null, onClick: (id: string) => void) {
   });
 
   useEffect(() => {
-    cy?.on("tap", "node", (event) => latest.current(event.target.id()));
+    if (!cy) return;
+    const handler = (event: EventObject) => latest.current(event.target.id());
+    cy.on("tap", "node", handler);
+    return () => { cy.off("tap", "node", handler); };
   }, [cy]);
 }
 ```
 
-这在 Perspectiva 中造成过真实的 bug：一个 `layoutstop` 监听器保留了旧版本的缓存键，把 final 的位置存到了 V1 的键下，污染了位置缓存。
+实例变化或组件卸载时，effect 会移除对应监听器。
 
 ## 用 onReady 添加自定义行为
 
@@ -88,4 +93,4 @@ export function useNodeClicks(cy: Core | null, onClick: (id: string) => void) {
 
 ## 隐藏的页面会暂停动画
 
-浏览器会在隐藏页面中暂停 `requestAnimationFrame`。Cytoscape 动画因此无法结束，动画布局的 `layoutstop` 不会触发，画布也保持空白。在后台标签页或隐藏面板中测试时，这看起来很像代码有 bug。请在可见页面或无头浏览器中测试。
+浏览器可能暂停隐藏标签页的动画帧，动画完成时间会延后到页面可见时。与动画无关的应用操作应避免依赖动画完成回调。

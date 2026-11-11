@@ -121,7 +121,7 @@ Pass `animateLayouts` to `GraphView` to move nodes into a new `layout` instead o
 
 Layouts each pick their own origin. Concentric centres on the canvas, so its nodes would fly off screen before the view caught up. So a layout is worked out first and centred where the graph is now. Nodes travel in straight lines, so they stay inside the area holding both where they start and where they end: if that's off screen, the view backs out to it first, then closes in once they arrive. `measureLayout(cy, layout)` gives those positions on their own.
 
-The layout isn't scaled to fit the old one. Shrinking positions without shrinking nodes packs them into each other: an earlier version squeezed a wide flow into the square a ring layout had filled, and four pairs of nodes overlapped.
+Layouts retain their spacing instead of shrinking to the previous layout’s bounds. This preserves room for node shapes and labels.
 
 `relayout(cy, layout)` does the same on any graph. It lays out only visible nodes, so after a filter hides some, the rest can be laid out on their own. Hidden nodes keep their place for when the filter is cleared.
 

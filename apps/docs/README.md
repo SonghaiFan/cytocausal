@@ -2,6 +2,8 @@
 
 Homepage, live showcase and guides for the cytocausal causal graph library, in English and Chinese, built with [Nextra](https://nextra.site) on Next.js.
 
+This README is for contributors maintaining the documentation site. Published content in `src/content/` is for library integrators and app users. Follow the [documentation audience guide](../../docs/maintenance/documentation.md) when deciding where implementation notes or agent instructions belong.
+
 From the repository root:
 
 ```sh
