@@ -1,0 +1,104 @@
+---
+title: "Bring your own data"
+---
+
+# Bring your own data
+
+import { ExampleSource } from "../../components/examples/ExampleSource.tsx";
+
+This walkthrough turns an external JSON table into a validated causal graph, displays it, adds evidence and compares a reviewed version. The complete runnable source is shared with the [workspace example](/en/example-workspace/).
+
+## 1. Start from a running app
+
+Follow [Getting started](/en/getting-started/) and run `npm run dev`. The current integration path is the repository's React / Next.js starter, not an npm install. Put `garden.json` and `data.ts` below in `apps/starter/src/`, replacing the starter data module. Its existing `App.tsx` imports the exported `dataset`.
+
+## 2. Describe variables and relationships
+
+Use stable source ids; labels are for display and may change. Keep relationships in a separate table with their own ids. This fictional dataset has three variables and a balancing feedback loop.
+
+<ExampleSource name="garden.json" />
+
+| External field | Library field | Rule |
+| --- | --- | --- |
+| `variables[].id` | Node `id` | Stable identity, not a label or array index |
+| `variables[].label` | Node `label` | Human-readable variable or event |
+| `relationships[].id` | Edge `id` | Unique per relationship |
+| `from`, `to` | `source`, `target` | Direction runs from cause to effect |
+| `sign` | `polarity` | `+` → `positive`; `-` → `negative`; null/omitted → unknown |
+| `statement`, `person` | `evidence[].text`, `.contributor` | Preserve the claim and its source |
+
+Positive and negative describe the direction of influence, not good/bad or statistical certainty. Unknown polarity must stay unknown. CSV rows can use the same mapping after parsing with your chosen CSV parser; splitting strings on commas is not sufficient for quoted fields.
+
+## 3. Parse, convert, then validate
+
+<ExampleSource name="data.ts" />
+
+`importGarden(input: unknown)` checks external field types first, converts the tables, then runs `validateDataset`. Do not cast arbitrary JSON to `CausalDataset`: TypeScript does not validate network responses at runtime.
+
+The `node:` and `edge:` prefixes keep ids distinct across both element kinds. Cytoscape shares one id namespace. The current validator checks duplicate nodes and duplicate edges separately, so it does not detect a node and edge sharing an id.
+
+`validateDataset` checks references and identity consistency in an already-shaped dataset. It is not a JSON schema validator, and does not enforce that `snapshots` contains an entry. The React workspace needs at least one snapshot. This importer also requires at least one variable to keep the example meaningful.
+
+For a fetched response, pass the parsed JSON through the same importer:
+
+```ts
+const response = await fetch("/garden.json");
+if (!response.ok) throw new Error(`Data request failed: ${response.status}`);
+const dataset = importGarden(await response.json());
+```
+
+Present loading and error states before mounting the graph. Report validation errors to the person supplying the data; do not silently drop broken edges.
+
+## 4. Display the graph
+
+The starter already handles browser-only loading and imports the component styles. The minimal component is:
+
+```tsx
+"use client";
+import { CausalWorkspace } from "@cytocausal/react";
+import { dataset } from "../data.ts";
+
+export function App() {
+  return <CausalWorkspace dataset={dataset} title="Garden model" />;
+}
+```
+
+Import `@cytocausal/react/styles.css` once at your app boundary. Outside the starter, give the graph an explicit height and load it in the browser; `"use client"` alone does not disable server prerendering in Next.js. See [React lifecycle](/en/react-lifecycle/). When replacing an entire dataset at runtime, remount the workspace with a `key` that identifies that load so initial version/selection state resets.
+
+## 5. Follow the evidence
+
+Click a node, then a link in its details. The link's statement and contributor come from the imported `evidence`. A contributor may exist without a quote; a quote may exist without a known contributor. Avoid inventing either to fill a blank field.
+
+For a two-contributor graph, `ContributorFilter` can expose each person's part. An unattributed link is excluded when filtering for a named contributor. Support counts unique contributors, not confidence or the number of evidence records. See [Evidence and contributors](/en/provenance/).
+
+## 6. Add a reviewed version
+
+The same `data.ts` exports `versionedDataset`. It keeps the draft, creates a reviewed snapshot and records the renamed id in `correspondences`. Replace `dataset={dataset}` with `dataset={versionedDataset}` to enable version switching, or use the [comparison example](/en/example-versions/).
+
+Array order is version order. Keep ids unchanged when identity is unchanged. If an explicit correspondence exists for a pair, it replaces matching by id for that pair: include unchanged nodes too. Multiple source nodes may map to one target for a merge; reading the correspondence in reverse exposes the split. Do not guess identity from similar labels.
+
+## 7. Check the result
+
+```ts
+import { findFeedbackLoops, getSnapshot, validateDataset } from "@cytocausal/core";
+const issues = validateDataset(versionedDataset); // []
+const result = findFeedbackLoops(getSnapshot(versionedDataset, "draft"), {
+  maxLength: 4, limit: 20,
+});
+// One balancing loop. result.complete is true for this small graph.
+```
+
+Check that every edge points in the intended direction, quotes remain attached to their claims and renamed nodes stay matched across versions. For large graphs, set search bounds and surface `complete: false`; analysis may otherwise become expensive.
+
+## Common import problems
+
+| Symptom | Check |
+| --- | --- |
+| Missing or disappearing elements | Duplicate ids, including collisions between node and edge ids |
+| Missing-node validation errors | Whitespace, inconsistent prefixes, an edge whose endpoint was omitted |
+| Every node appears new after a review | Changed ids without a complete correspondence |
+| Loop type is `unknown` | At least one edge has no polarity |
+| Blank or collapsed graph | Container height, browser-only loading and stylesheet import |
+| Empty contributor view | Evidence must attribute the links, not only their endpoints |
+
+Next: [compose your interface](/en/example-compose/), [inspect the core API](/en/api-core/), or [choose styles](/en/theming/).

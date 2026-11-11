@@ -37,6 +37,8 @@ The full benchmark isn't published here. It's [available on request](https://git
 
 ## Logo
 
+The cytocausal identity assets in `apps/docs/public/brand/` and `apps/docs/src/app/icon.svg` are original project assets covered by the repository MIT license. This does not apply to the third-party logo below.
+
 The Monash University logo in `apps/explorer/public/monash.png` belongs to Monash University, and neither the MIT license nor this notice grants any rights to it.
 
 ## Contact

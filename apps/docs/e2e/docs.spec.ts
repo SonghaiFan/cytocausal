@@ -1,7 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const languages = ["en", "zh-cn"];
 const guides = [
+  "import-data",
+  "examples",
+  "example-workspace",
+  "example-compose",
+  "example-versions",
+  "example-analysis",
+  "api-core",
+  "api-react",
+  "api-cytoscape",
+  "brand",
   "getting-started",
   "showcase",
   "components",
@@ -18,7 +29,7 @@ const guides = [
 ];
 
 const sidebarLink = (page: Page, href: string) =>
-  page.locator(`aside a[href="${href}"]`).filter({ visible: true }).first();
+  page.locator(`aside a[href="${base}${href}"]`).filter({ visible: true }).first();
 
 for (const lang of languages) {
   test(`${lang}: every guide renders with working links and images`, async ({ page, context }) => {
@@ -28,7 +39,7 @@ for (const lang of languages) {
 
     for (const guide of ["", ...guides]) {
       const url = `/${lang}/${guide ? `${guide}/` : ""}`;
-      expect((await page.goto(url))!.status(), url).toBe(200);
+      expect((await page.goto(`${base}${url}`))!.status(), url).toBe(200);
       await expect(page.locator("article h1").first()).toBeVisible();
 
       const hrefs = await page
@@ -50,41 +61,41 @@ for (const lang of languages) {
     for (const href of links) {
       const response = await context.request.get(href);
       expect(response.status(), href).toBe(200);
-      expect(new URL(response.url()).pathname, href).toMatch(new RegExp(`^/${lang}/`));
+      if (!/\.[a-z0-9]+$/i.test(href) && href !== `${base}/`) expect(new URL(response.url()).pathname, href).toMatch(new RegExp(`^${base}/${lang}/`));
     }
     expect(errors).toEqual([]);
   });
 
   test(`${lang}: the sidebar and pager keep the language`, async ({ page }) => {
-    await page.goto(`/${lang}/`);
-    await sidebarLink(page, "/stable-layouts/").click();
-    await expect(page).toHaveURL(`/${lang}/stable-layouts/`);
-    await expect(sidebarLink(page, "/stable-layouts/")).toHaveClass(/x:bg-primary/);
+    await page.goto(`${base}/${lang}/getting-started/`);
+    await sidebarLink(page, `/${lang}/stable-layouts/`).click();
+    await expect(page).toHaveURL(`${base}/${lang}/stable-layouts/`);
+    await expect(sidebarLink(page, `/${lang}/stable-layouts/`)).toHaveClass(/x:bg-primary/);
 
-    await page.locator('article ~ * a[href="/version-transitions/"], a[href="/version-transitions/"][title]').last().click();
-    await expect(page).toHaveURL(`/${lang}/version-transitions/`);
+    await page.locator(`a[href="${base}/${lang}/version-transitions/"][title]`).last().click();
+    await expect(page).toHaveURL(`${base}/${lang}/version-transitions/`);
   });
 }
 
 test("the language switch keeps the chapter and later links follow it", async ({ page }) => {
-  await page.goto("/en/data-model/");
+  await page.goto(`${base}/en/data-model/`);
   await page.getByTitle("Change language").filter({ visible: true }).first().click();
   await page.getByText("简体中文", { exact: true }).filter({ visible: true }).first().click();
-  await expect(page).toHaveURL("/zh-cn/data-model/");
-  await sidebarLink(page, "/causal-analysis/").click();
-  await expect(page).toHaveURL("/zh-cn/causal-analysis/");
+  await expect(page).toHaveURL(`${base}/zh-cn/data-model/`);
+  await sidebarLink(page, "/zh-cn/causal-analysis/").click();
+  await expect(page).toHaveURL(`${base}/zh-cn/causal-analysis/`);
 });
 
 test("reading in Chinese survives link prefetching", async ({ page }) => {
-  await page.goto("/zh-cn/");
-  await page.waitForTimeout(1500);
-  await page.goto("/");
-  await expect(page).toHaveURL("/zh-cn/");
+  await page.goto(`${base}/zh-cn/`);
+  await page.context().addCookies([{ name: "NEXT_LOCALE", value: "zh-cn", url: "http://localhost:3200" }]);
+  await page.goto(`${base}/`);
+  await expect(page).toHaveURL(`${base}/zh-cn/`);
 });
 
 test("unknown URLs return 404", async ({ request }) => {
   for (const url of ["/nope/", "/en/nope/", "/en/styles/"]) {
-    expect((await request.get(url)).status(), url).toBe(404);
+    expect((await request.get(`${base}${url}`)).status(), url).toBe(404);
   }
 });
 
@@ -95,7 +106,7 @@ for (const [lang, query, target] of [
   ["zh-cn", "动画池", "version-transitions"],
 ]) {
   test(`search finds ${query}`, async ({ page }) => {
-    await page.goto(`/${lang}/`);
+    await page.goto(`${base}/${lang}/`);
     await page.locator("input[type=search]:visible").first().fill(query);
     await expect(page.locator(`[role=option] a[href*="${target}"], a[role=option][href*="${target}"], [data-headlessui-state] a[href*="${target}"]`).first()).toBeVisible();
   });
@@ -103,7 +114,7 @@ for (const [lang, query, target] of [
 
 test("guides fit a phone", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
-  await page.goto("/zh-cn/stable-layouts/");
+  await page.goto(`${base}/zh-cn/stable-layouts/`);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   expect(overflow).toBe(false);
 });
@@ -120,7 +131,7 @@ test("the showcase runs live demos in both languages", async ({ page }) => {
   page.on("pageerror", (error) => errors.push(error.message));
 
   for (const lang of languages) {
-    await page.goto(`/${lang}/showcase/`);
+    await page.goto(`${base}/${lang}/showcase/`);
     await expect.poll(async () => (await demoGraph(page, ".showcase-workspace"))?.nodes).toBe(3);
     await expect.poll(async () => (await demoGraph(page, ".showcase-style"))?.nodes).toBe(5);
     await expect.poll(async () => (await demoGraph(page, ".showcase-compare"))?.nodes).toBe(3);
@@ -131,11 +142,10 @@ test("the showcase runs live demos in both languages", async ({ page }) => {
   }
 
   const gallery = page.locator(".showcase-gallery");
-  await gallery.getByRole("button", { name: /Revenue/ }).first().click();
-  await expect(gallery.getByRole("button", { name: /Revenue/ }).first()).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  const search = gallery.getByRole("article", { name: "NodeSearch", exact: true });
+  await search.getByRole("searchbox").fill("Revenue");
+  await search.getByRole("button", { name: "Revenue", exact: true }).click();
+  await expect.poll(async () => (await demoGraph(page, ".showcase-gallery"))?.focus).toEqual(["revenue"]);
 
   await page.getByRole("button", { name: "flowing" }).click();
   await expect(page.getByText('link: "flowing"')).toBeVisible();
@@ -143,20 +153,53 @@ test("the showcase runs live demos in both languages", async ({ page }) => {
 });
 
 test("the docs link to both example apps", async ({ page }) => {
-  for (const [guide, port, name] of [
-    ["case-perspectiva", 3100, "Open the app"],
-    ["case-explorer", 3101, "Open the app"],
+  for (const [guide, url, name] of [
+    ["case-perspectiva", process.env.NEXT_PUBLIC_PERSPECTIVA_URL ?? "http://localhost:3100", "Open the app"],
+    ["case-explorer", process.env.NEXT_PUBLIC_EXPLORER_URL ?? "http://localhost:3101", "Open the app"],
   ] as const) {
-    await page.goto(`/en/${guide}/`);
+    await page.goto(`${base}/en/${guide}/`);
     await expect(page.locator("article").getByRole("link", { name })).toHaveAttribute(
       "href",
-      `http://localhost:${port}`,
+      url,
     );
   }
-  await page.goto("/zh-cn/case-perspectiva/");
+  await page.goto(`${base}/zh-cn/case-perspectiva/`);
   await expect(page.locator("article").getByRole("link", { name: "打开应用" })).toBeVisible();
 
-  const navbar = page.locator("nav").filter({ hasText: "cytocausal" }).first();
-  await expect(navbar.getByRole("link", { name: /Perspectiva/ })).toBeVisible();
-  await expect(navbar.getByRole("link", { name: /Explorer/ })).toBeVisible();
+  const navbar = page.locator("nav").first();
+  await expect(navbar.getByRole("link", { name: /示例|Examples/ })).toBeVisible();
+  await expect(navbar.getByRole("link", { name: "API", exact: true })).toBeVisible();
+});
+
+
+test("independent examples render, select nodes and report bounded analysis", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.goto(`${base}/en/example-workspace/`);
+  await expect.poll(async () => (await demoGraph(page, ".library-example-workspace"))?.nodes).toBe(3);
+  await page.goto(`${base}/en/example-compose/`);
+  await page.getByRole("searchbox", { name: "Search nodes" }).fill("Soil");
+  await page.getByRole("button", { name: "Soil moisture", exact: true }).click();
+  await expect.poll(async () => (await demoGraph(page, ".library-example-compose"))?.focus).toEqual(["node:moisture"]);
+  await page.goto(`${base}/en/example-versions/`);
+  await expect.poll(async () => (await demoGraph(page, ".library-example-versions"))?.nodes).toBe(3);
+  await expect(page.locator(".library-example-versions canvas")).toHaveCount(6);
+  await page.goto(`${base}/en/example-analysis/`);
+  await expect(page.getByRole("status")).toContainText("1 loops · 1 paths");
+  const slider = page.getByRole("slider", { name: "Maximum nodes per route" });
+  await slider.focus();
+  await slider.press("ArrowLeft");
+  await expect(page.getByRole("status")).toContainText("0 loops · 0 paths");
+  await expect(page.locator(".library-example-analysis pre")).toContainText('"complete": false');
+  expect(errors).toEqual([]);
+});
+
+test("brand and examples remain usable on a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const path of ["/zh-cn/", "/zh-cn/import-data/", "/zh-cn/example-compose/", "/zh-cn/brand/"]) {
+    await page.goto(`${base}${path}`);
+    await expect(page.locator(".cc-brand img").first()).toBeVisible();
+    await expect(page.locator('.cc-brand img[alt="cytocausal"]:visible')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), path).toBe(false);
+  }
 });

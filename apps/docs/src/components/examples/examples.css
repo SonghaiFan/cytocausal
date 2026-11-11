@@ -1,0 +1,11 @@
+.library-example { height: 560px; margin: 24px 0; border: 1px solid #b7b7af; border-radius: 8px; overflow: hidden; }
+.library-example > .cc-workspace { height: 100%; min-height: 0; }
+.library-example .cc-graph { min-height: 0; }
+.library-example .cc-sidebar { max-height: 100%; }
+.library-example-analysis { height: auto; padding: 24px; }
+.library-example-analysis input { display: block; width: min(100%, 320px); accent-color: #a87900; margin: 16px 0; }
+.library-example-analysis pre { max-height: 420px; font-size: .8rem; }
+.example-source { margin: 20px 0; }
+.example-source summary { cursor: pointer; font-weight: 600; }
+.example-source pre { overflow: auto; max-height: 520px; padding: 20px; border: 1px solid #b7b7af; border-radius: 6px; font-size: .8rem; line-height: 1.6; }
+@media (max-width: 900px) { .library-example:not(.library-example-versions):not(.library-example-analysis) { height: auto; } .library-example .cc-graph { height: 340px; } .library-example .cc-sidebar { max-height: 380px; } }

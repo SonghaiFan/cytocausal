@@ -1,0 +1,28 @@
+---
+title: "Analysis without a renderer"
+---
+
+# Analysis without a renderer
+
+import { LibraryExample } from "../../components/examples/index.tsx";
+import { ExampleSource } from "../../components/examples/ExampleSource.tsx";
+
+Set the maximum route length to 2, then 3. The three-node loop appears at 3. Inspect complete rather than treating a bounded search as exhaustive. This example imports only core for analysis; React is used to display the controls.
+
+<LibraryExample name="analysis" />
+
+## Complete source
+
+Expand and copy these three files into the same directory. The component file exports the example as its default export.
+
+<ExampleSource name="AnalysisExample.tsx" />
+<ExampleSource name="data.ts" />
+<ExampleSource name="garden.json" />
+
+## Run in your project
+
+Put the files in the repository starter’s `src/examples/`, then import the component from `src/components/App.tsx` and return `<Example />`. Keep the starter’s existing client-only loading boundary. Give graph containers a height, for example `height: 560px`; stack graph and sidebar at narrow widths.
+
+These examples cover viewing and analysis, not graph editing, persistence or collaborative synchronisation.
+
+[Data tutorial](/en/import-data/) · [API](/en/api-core/) · [All examples](/en/examples/)

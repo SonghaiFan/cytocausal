@@ -1,0 +1,10 @@
+import { readFile, writeFile } from "node:fs/promises";
+import assert from "node:assert/strict";
+const dir = new URL("../src/components/examples/", import.meta.url);
+const names = ["garden.json", "data.ts", "WorkspaceExample.tsx", "ComposeExample.tsx", "VersionsExample.tsx", "AnalysisExample.tsx"];
+const sources = Object.fromEntries(await Promise.all(names.map(async name => [name, await readFile(new URL(name, dir), "utf8")])));
+const output = JSON.stringify(sources, null, 2) + "\n";
+const target = new URL("sources.json", dir);
+if (process.argv.includes("--write")) await writeFile(target, output);
+else assert.equal(await readFile(target, "utf8"), output, "Example source display is stale; run node scripts/sync-examples.mjs --write in apps/docs");
+console.log("Example source display matches the runnable files.");

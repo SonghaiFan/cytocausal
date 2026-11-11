@@ -4,6 +4,8 @@ title: "快速开始"
 
 # 快速开始
 
+cytocausal 是基于 Cytoscape.js 的因果图 library。当前可以通过 React / Next.js starter 构建自己的应用。各 package 仍为工作区内的私有包；npm 发布属于后续规划。Studio 是独立的浏览器本地绘图应用。
+
 需要 Node.js 22.18 或更高版本。
 
 ```sh
@@ -14,6 +16,8 @@ npm run dev
 ```
 
 打开 `http://localhost:3102`，可以看到一个虚构的咖啡店小模型，它有两个版本，并列出了反馈回路。
+
+可选基础知识：[Cytoscape.js 基础与扩展](/zh-cn/cytoscape-basics/)使用同一张小因果图对照原生 Cytoscape.js 和 cytocausal，适合需要自定义样式或交互时阅读。
 
 ## 改成你自己的应用
 
@@ -69,3 +73,10 @@ export const dataset: CausalDataset = {
 ## 参与贡献
 
 请参阅 [CONTRIBUTING.md](https://github.com/SonghaiFan/cytocausal/blob/main/CONTRIBUTING.md)。仓库中的数据集有单独的条款，复用前请先阅读 [DATA.md](https://github.com/SonghaiFan/cytocausal/blob/main/DATA.md)。
+
+
+## 下一步
+
+- [接入自己的数据](/zh-cn/import-data/)
+- [独立示例](/zh-cn/examples/)
+- [Core API](/zh-cn/api-core/) · [React API](/zh-cn/api-react/) · [Cytoscape API](/zh-cn/api-cytoscape/)

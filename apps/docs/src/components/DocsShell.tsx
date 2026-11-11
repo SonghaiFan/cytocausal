@@ -1,9 +1,13 @@
+import { appLinks } from "./app-links.ts";
+import Link from "next/link";
+import { assetPath } from "./site-path.ts";
 import type { ReactNode } from "react";
 import { Head, Search } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import { Footer, Layout, LocaleSwitch, Navbar } from "nextra-theme-docs";
 import "nextra-theme-docs/style.css";
-import { appLinks } from "./app-links.ts";
+import "./shell.css";
+
 
 export type Language = "en" | "zh-cn";
 
@@ -16,17 +20,20 @@ export async function DocsShell({ lang, children }: { lang: Language; children: 
   const chinese = lang === "zh-cn";
   return (
     <html lang={chinese ? "zh-CN" : "en"} dir="ltr" suppressHydrationWarning>
-      <Head />
+      <Head color={{ hue: 46, saturation: 85, lightness: { light: 30, dark: 65 } }} />
       <body>
         <Layout
           navbar={
-            <Navbar logo={<b>cytocausal</b>} projectLink="https://github.com/SonghaiFan/cytocausal">
-              <a href={appLinks.perspectiva} target="_blank" rel="noreferrer">
-                Perspectiva ↗
-              </a>
-              <a href={appLinks.explorer} target="_blank" rel="noreferrer">
-                Explorer ↗
-              </a>
+            <Navbar logoLink={`/${lang}/`} logo={<span className="cc-brand"><img src={assetPath("/brand/mark.svg")} width="30" height="30" alt="" /><img className="cc-wordmark-light" src={assetPath("/brand/wordmark.svg")} width="156" height="30" alt="cytocausal" /><img className="cc-wordmark-dark" src={assetPath("/brand/wordmark-dark.svg")} width="156" height="30" alt="cytocausal" /></span>} projectLink="https://github.com/SonghaiFan/cytocausal">
+              <Link className="cc-nav-link" href={`/${lang}/getting-started/`}>{chinese ? "文档" : "Docs"}</Link>
+              <Link className="cc-nav-link" href={`/${lang}/showcase/`}>Showcase</Link>
+              <Link className="cc-nav-link" href={`/${lang}/examples/`}>
+                {chinese ? "示例" : "Examples"}
+              </Link>
+              <Link className="cc-nav-link" href={`/${lang}/api-core/`}>
+                API
+              </Link>
+              <Link className="cc-nav-link cc-nav-studio" href={appLinks.studio}>Studio ↗</Link>
               <LocaleSwitch lite />
             </Navbar>
           }

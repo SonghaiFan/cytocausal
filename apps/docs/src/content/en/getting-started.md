@@ -4,6 +4,8 @@ title: "Getting started"
 
 # Getting started
 
+cytocausal is a causal graph library built on Cytoscape.js. The React / Next.js starter is the current way to build your own application with it. Packages are private workspace packages; an npm release is planned. Studio is a separate browser-local drawing app.
+
 You need Node.js 22.18 or later.
 
 ```sh
@@ -14,6 +16,8 @@ npm run dev
 ```
 
 Open `http://localhost:3102`. You'll see a small made-up model of a coffee shop, with two versions and its feedback loops listed.
+
+Optional background: [Cytoscape.js basics and extensions](/en/cytoscape-basics/) compares native Cytoscape.js and cytocausal using the same small causal graph. Read it when you want to customise styles or interactions.
 
 ## Make it yours
 
@@ -69,3 +73,10 @@ Run the examples with `npm run dev:perspectiva` and `npm run dev:explorer`.
 ## Contribute
 
 See [CONTRIBUTING.md](https://github.com/SonghaiFan/cytocausal/blob/main/CONTRIBUTING.md). The datasets in this repo have their own terms, so read [DATA.md](https://github.com/SonghaiFan/cytocausal/blob/main/DATA.md) before reusing them.
+
+
+## Next steps
+
+- [Bring your own data](/en/import-data/)
+- [Independent examples](/en/examples/)
+- [Core API](/en/api-core/) · [React API](/en/api-react/) · [Cytoscape API](/en/api-cytoscape/)

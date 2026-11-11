@@ -1,0 +1,14 @@
+@media (max-width: 767px) {
+  .cc-nav-link { display: none; }
+}
+
+:root { --brand-yellow: #fbc92b; --brand-ink: #20201b; --brand-paper: #f7f6f0; --nextra-primary-hue: 45deg; --nextra-primary-saturation: 85%; --nextra-primary-lightness: 30%; }
+.dark { --nextra-primary-lightness: 65%; }
+.cc-brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; letter-spacing: -.025em; }
+.cc-brand img { flex: none; }
+
+.cc-nav-studio { background: var(--brand-yellow); color: var(--brand-ink); padding: 6px 10px; border-radius: 5px; }
+
+.cc-wordmark-dark { display: none; }
+.dark .cc-wordmark-light { display: none; }
+.dark .cc-wordmark-dark { display: inline-block; }

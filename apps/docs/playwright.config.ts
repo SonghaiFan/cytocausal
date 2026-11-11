@@ -10,7 +10,7 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run start -- -p 3200",
-    url: "http://localhost:3200/en/",
+    url: `http://localhost:3200${process.env.NEXT_PUBLIC_BASE_PATH || ""}/en/`,
     reuseExistingServer: true,
   },
 });

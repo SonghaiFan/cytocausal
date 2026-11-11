@@ -1,0 +1,45 @@
+name: Deploy library site to GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.18.0'
+          cache: npm
+      - uses: actions/configure-pages@v5
+        id: pages
+      - run: npm ci
+      - run: npm run check:content
+      - run: npm run test:examples -w @cytocausal/docs
+      - run: npm run build -w @cytocausal/docs
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          NEXT_PUBLIC_STUDIO_URL: https://cytocausal-studio.vercel.app
+          NEXT_PUBLIC_PERSPECTIVA_URL: https://cytocausal-perspectiva.vercel.app
+          NEXT_PUBLIC_EXPLORER_URL: https://cytocausal-explorer.vercel.app
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: apps/docs/out
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

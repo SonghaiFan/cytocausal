@@ -27,12 +27,13 @@ function useDocsScheme() {
   return useTheme().resolvedTheme === "dark" ? ("dark" as const) : ("light" as const);
 }
 
-export function WorkspaceDemo() {
+export function WorkspaceDemo({ initialSelected }: { initialSelected?: string[] } = {}) {
   return (
     <div className="showcase-frame showcase-workspace">
       <CausalWorkspace
         dataset={dataset}
         title="Coffee shop"
+        initialSelected={initialSelected}
         scheme={useDocsScheme()}
         shareInUrl={false}
       />

@@ -1,0 +1,42 @@
+{
+  "variables": [
+    {
+      "id": "moisture",
+      "label": "Soil moisture"
+    },
+    {
+      "id": "growth",
+      "label": "Plant growth"
+    },
+    {
+      "id": "use",
+      "label": "Water use"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "moisture-growth",
+      "from": "moisture",
+      "to": "growth",
+      "sign": "+",
+      "statement": "In this fictional model, moist soil supports growth.",
+      "person": "gardener"
+    },
+    {
+      "id": "growth-use",
+      "from": "growth",
+      "to": "use",
+      "sign": "+",
+      "statement": "Larger plants use more water.",
+      "person": "gardener"
+    },
+    {
+      "id": "use-moisture",
+      "from": "use",
+      "to": "moisture",
+      "sign": "-",
+      "statement": "Water use reduces soil moisture.",
+      "person": "reviewer"
+    }
+  ]
+}

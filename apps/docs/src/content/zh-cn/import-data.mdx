@@ -1,0 +1,104 @@
+---
+title: "接入自己的数据"
+---
+
+# 接入自己的数据
+
+import { ExampleSource } from "../../components/examples/ExampleSource.tsx";
+
+本教程从外部 JSON 表格开始，完成解析、转换、校验、显示、证据追溯和版本比较。完整代码与[工作区示例](/zh-cn/example-workspace/)共用，数据是虚构的花园模型。
+
+## 1. 先运行 Starter
+
+按照[快速开始](/zh-cn/getting-started/)运行 `npm run dev`。当前通过仓库中的 React / Next.js starter 接入，不是 npm 安装。把下面的 `garden.json` 和 `data.ts` 放入 `apps/starter/src/`，替换原有数据模块；现有 `App.tsx` 会导入它导出的 `dataset`。
+
+## 2. 整理变量与关系
+
+源 ID 表示稳定身份，标签负责显示。关系使用独立表格和独立 ID。以下数据有三个变量，以及一个平衡反馈回路。
+
+<ExampleSource name="garden.json" />
+
+| 外部字段 | Library 字段 | 规则 |
+| --- | --- | --- |
+| `variables[].id` | 节点 `id` | 稳定身份，不用标签或数组下标代替 |
+| `variables[].label` | 节点 `label` | 可读的变量或事件名称 |
+| `relationships[].id` | 连线 `id` | 每条关系的独立 ID |
+| `from`、`to` | `source`、`target` | 从原因指向结果 |
+| `sign` | `polarity` | `+` → `positive`；`-` → `negative`；空或省略 → 未知 |
+| `statement`、`person` | `evidence[].text`、`.contributor` | 保留陈述与提出者 |
+
+正负极性表示影响方向，不表示好坏或统计确定性。未知极性保持未知。CSV 数据可以在解析后使用同样的转换规则；不要直接按逗号分割，因为带引号的字段也可能包含逗号。
+
+## 3. 先解析，再转换和校验
+
+<ExampleSource name="data.ts" />
+
+`importGarden(input: unknown)` 先检查外部字段类型，再生成标准数据，最后调用 `validateDataset`。不要把任意 JSON 直接断言为 `CausalDataset`：TypeScript 不会在运行时检查网络数据。
+
+示例使用 `node:` 与 `edge:` 前缀，避免节点和连线共享 ID。Cytoscape 使用统一的元素 ID 空间，而当前校验器分别检查节点和连线内部重复，不能发现跨类型的 ID 冲突。
+
+`validateDataset` 检查已经符合类型结构的数据中的引用与身份问题。它不是 JSON schema 校验器，也不要求快照数组非空；React workspace 至少需要一个快照。示例 importer 额外要求至少一个变量，以便展示。
+
+网络数据也经过同一个 importer：
+
+```ts
+const response = await fetch("/garden.json");
+if (!response.ok) throw new Error(`Data request failed: ${response.status}`);
+const dataset = importGarden(await response.json());
+```
+
+加载完成前显示加载状态；解析或校验失败时显示错误，不挂载图，也不静默丢弃有问题的连线。
+
+## 4. 显示图
+
+Starter 已处理浏览器端加载与样式导入，最小组件如下：
+
+```tsx
+"use client";
+import { CausalWorkspace } from "@cytocausal/react";
+import { dataset } from "../data.ts";
+
+export function App() {
+  return <CausalWorkspace dataset={dataset} title="Garden model" />;
+}
+```
+
+在应用入口导入一次 `@cytocausal/react/styles.css`。脱离 starter 时，要为图提供明确高度，并在浏览器中加载；Next.js 的 `"use client"` 不等于禁止服务端预渲染，详见 [React 生命周期](/zh-cn/react-lifecycle/)。运行时更换整个数据集时，用标识本次加载的 `key` 重新挂载 workspace，让初始版本与选择状态重置。
+
+## 5. 查看证据
+
+点击节点，再点击详情里的连线，查看导入的陈述与贡献者。可以只有贡献者而没有引文，也可以只有引文而不知道贡献者，不应为了补全字段而编造信息。
+
+两名贡献者的图可以使用 `ContributorFilter` 查看各自内容。按贡献者过滤时，无署名连线会被排除。支持度统计独立贡献者，不是置信度，也不是证据条数。参见[证据与贡献者](/zh-cn/provenance/)。
+
+## 6. 添加修订版本
+
+`data.ts` 还导出了 `versionedDataset`：保留初稿，生成修订快照，用 `correspondences` 记录改名后的 ID。把 `dataset={dataset}` 换为 `dataset={versionedDataset}` 即可切换版本，或运行[版本比较示例](/zh-cn/example-versions/)。
+
+快照数组顺序就是版本顺序。身份不变时保留 ID。一旦某对版本有显式 correspondence，它就替代该版本对的按 ID 匹配，因此未变化的节点也必须包含在映射中。多个源节点映射到一个目标表示合并，反向读取会得到拆分。不要根据标签相似度猜测身份。
+
+## 7. 检查结果
+
+```ts
+import { findFeedbackLoops, getSnapshot, validateDataset } from "@cytocausal/core";
+const issues = validateDataset(versionedDataset); // []
+const result = findFeedbackLoops(getSnapshot(versionedDataset, "draft"), {
+  maxLength: 4, limit: 20,
+});
+// 一个平衡回路；在这张小图上 result.complete 为 true。
+```
+
+检查连线方向、证据归属以及跨版本对应关系。大图应限制搜索长度与数量，并显示 `complete: false` 的状态；分析可能产生很高的计算开销。
+
+## 常见问题
+
+| 表现 | 检查 |
+| --- | --- |
+| 元素消失 | 重复 ID，包括节点与连线之间的 ID 冲突 |
+| 提示缺失节点 | 空白字符、前缀不一致、关系端点没有导入 |
+| 修订后所有节点都显示新增 | ID 改变后缺少完整对应表 |
+| 回路类型为 `unknown` | 至少一条边没有极性 |
+| 图为空白或高度为零 | 容器高度、浏览器端加载和样式导入 |
+| 按贡献者过滤后没有内容 | 证据需要署名到连线，而不只是端点 |
+
+下一步：[组合界面](/zh-cn/example-compose/)、[Core API](/zh-cn/api-core/)或[主题与样式](/zh-cn/theming/)。

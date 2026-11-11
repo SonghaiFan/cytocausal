@@ -1,0 +1,28 @@
+---
+title: "无渲染器分析"
+---
+
+# 无渲染器分析
+
+import { LibraryExample } from "../../components/examples/index.tsx";
+import { ExampleSource } from "../../components/examples/ExampleSource.tsx";
+
+把最大路径节点数从 2 调到 3，三节点回路会出现。查看 complete，不能把有限搜索视为全部结果。分析只依赖 core，React 仅用于演示控件。
+
+<LibraryExample name="analysis" />
+
+## 完整源码
+
+展开并复制以下三个文件，放在同一目录。组件文件默认导出示例。
+
+<ExampleSource name="AnalysisExample.tsx" />
+<ExampleSource name="data.ts" />
+<ExampleSource name="garden.json" />
+
+## 在自己的项目中运行
+
+在仓库 starter 的 `src/examples/` 中放入这些文件，在 `src/components/App.tsx` 中导入组件并返回 `<Example />`。保留 starter 的客户端加载边界。为图容器设置高度，例如 `height: 560px`；在窄屏下让图和侧栏纵向排列。
+
+这些示例是图的浏览与分析，不提供节点编辑、保存或多人同步。
+
+[数据接入教程](/zh-cn/import-data/) · [API](/zh-cn/api-core/) · [全部示例](/zh-cn/examples/)

@@ -1,19 +1,34 @@
-import { readFile, access } from 'node:fs/promises';
+import { readFile, readdir, access } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
-const guides = ['getting-started', 'showcase', 'components', 'theming', 'interactions', 'data-model', 'provenance', 'react-lifecycle', 'stable-layouts', 'version-transitions', 'causal-analysis', 'scale-performance', 'case-perspectiva', 'case-explorer'];
-
-for (const lang of ['en', 'zh-cn']) {
-  const meta = await readFile(`src/content/${lang}/_meta.ts`, 'utf8');
-  for (const guide of guides) {
-    const file = `src/content/${lang}/${guide}.${/showcase|case-/.test(guide) ? 'mdx' : 'md'}`;
-    const text = await readFile(file, 'utf8');
+const root = new URL('../', import.meta.url);
+const languages = ['en', 'zh-cn'];
+const pages = new Map();
+for (const lang of languages) {
+  const names = (await readdir(new URL(`src/content/${lang}/`, root))).filter(name => /\.mdx?$/.test(name));
+  pages.set(lang, new Map(names.map(name => [name.replace(/\.mdx?$/, ''), name])));
+}
+assert.deepEqual([...pages.get('en').keys()].sort(), [...pages.get('zh-cn').keys()].sort(), 'Language page sets differ');
+let count = 0;
+for (const lang of languages) {
+  const meta = await readFile(new URL(`src/content/${lang}/_meta.ts`, root), 'utf8');
+  for (const [slug, name] of pages.get(lang)) {
+    const file = `src/content/${lang}/${name}`;
+    const text = await readFile(new URL(file, root), 'utf8');
     assert(text.startsWith('---\ntitle:'), `${file}: missing title`);
-    assert(meta.includes(`"${guide}"`), `${file}: missing from _meta.ts`);
-    for (const [, image] of text.matchAll(/!\[[^\]]*\]\((\/images\/[^)]+)\)/g)) await access(`public${image}`);
-    for (const [, link] of text.matchAll(/\]\(\/([a-z-]+)\/([a-z-]+)\/\)/g)) {
-      assert.equal(link, lang, `${file}: link to the wrong language`);
+    assert(meta.includes(`"${slug}"`), `${file}: missing from _meta.ts`);
+    for (const [, path] of text.matchAll(/\]\((\/[^)]+)\)/g)) {
+      const [clean] = path.split('#');
+      const [, destination, target = ''] = clean.split('/');
+      if (languages.includes(destination)) {
+        assert.equal(destination, lang, `${file}: link to the wrong language`);
+        assert(pages.get(lang).has(target || 'index'), `${file}: unknown page ${path}`);
+      } else {
+        await access(new URL(`public${clean}`, root));
+      }
     }
+    count++;
   }
 }
-console.log(`${guides.length * 2} guides verified.`);
+await import('./sync-examples.mjs');
+console.log(`${count} pages verified, including local links, assets and language parity.`);

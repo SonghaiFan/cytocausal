@@ -2,12 +2,14 @@
 
 ## Decisions
 
-- **Purpose:** cytocausal is a React web app starter for causal graphs that other people can build on. It is not a Cytoscape tutorial, so `apps/starter` is the entry point and the two demos are examples.
+- **Purpose:** cytocausal is a causal graph library built on Cytoscape.js, providing causal-specific UX, React components and APIs. The library supports two application paths: the browser-local Studio authoring app, and custom projects built from `apps/starter`. The starter is the current adoption path; the two research apps demonstrate the library.
+- **Package boundaries:** `@cytocausal/core` is the renderer-independent data and analysis layer; Cytoscape.js integration lives in `@cytocausal/cytoscape`, and React UX lives in `@cytocausal/react`. The library extends Cytoscape.js through integration rather than maintaining a fork.
+- **Availability:** packages are currently private source-workspace packages. Studio supports basic creation/editing and local JSON persistence. Standalone npm distribution and cloud collaboration remain future work.
 - **Stack:** the apps and docs all run on Next.js, and graphs render in the browser with Cytoscape.js.
 - **Docs:** built with Nextra.
 - **One renderer:** both demos use Cytoscape.js, replacing Sigma in Explorer. Explorer's graph (725 nodes, 1,494 edges) ran at 60 fps on the canvas renderer on an M4 Mac, even with every label drawn. WebGL gave no benefit at this size.
 - **Precomputed positions:** a full fcose layout of Explorer's graph blocks the page for 1-4 s, so it stays out of page load.
-- **Separate apps:** each demo keeps its own URL and links to the docs.
+- **Deployment:** the homepage and bilingual docs are statically exported to GitHub Pages under `/cytocausal`. Studio, Perspectiva and Explorer are separate Vercel projects, each linking to the docs.
 - **Cytoscape version:** pinned to 3.31.0 across the workspace. 3.34 ships its own types without `Stylesheet`, so upgrading is a separate change.
 - **Zod version:** pinned to 4.1.12. Nextra 4.6.1 rejects every page under newer Zod (tested with 4.6.7), so remove the pin only after testing a newer Nextra.
 - **Extraction rule:** a feature joins a package only once both demos use it, or when it is core to the framework. Importers stay in `core` beside the tests that check them.
@@ -53,3 +55,14 @@ Switch each live site over only once the new app matches the old one.
 | Contributors | Participants | Not applicable |
 
 Polarity, snapshots and contributors are optional.
+
+
+## Library documentation and identity
+
+- Navigation follows Start → Concepts → Guides → Examples → API reference → Case studies, preserving existing guide URLs.
+- `import-data.mdx` walks through parsing external JSON, identity, structural validation, evidence, rendering and version correspondence.
+- Four independent examples in `apps/docs/src/components/examples/` are compiled with the site. Their displayed source is checked against the executable files; importer and graph-result checks run with `npm run test:examples -w @cytocausal/docs`.
+- The API reference covers the main integration surface of core, React and Cytoscape packages, with source links for the wider export surface. It does not imply a published npm release.
+- The visual identity is the yellow causal sunburst: `#F4CD3C` with ink `#20201C`, a yellow focus node, stepped radial sectors and directed causal paths. Canonical SVGs live in `apps/docs/public/brand/`; the brand guides define usage. Graph semantic colours remain separate.
+
+- **Visual hammer correction:** sunburst exploration + causal graph + yellow. The identity uses a yellow focal node, radial sectors and directed paths; the real radial-menu interaction supplies the behaviour.
