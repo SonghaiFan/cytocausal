@@ -4,7 +4,7 @@ title: "Getting started"
 
 # Getting started
 
-cytocausal is a causal graph library built on Cytoscape.js. The React / Next.js starter is the current way to build your own application with it. Packages are private workspace packages; an npm release is planned. Studio is a separate browser-local drawing app.
+cytocausal is a React library for causal graph interfaces, built on Cytoscape.js. The React / Next.js starter is the current way to build your own application with it. Packages are private workspace packages; an npm release is planned. Start with `@cytocausal/react` for the workspace and composable interactions. Studio is a browser-local drawing app built on the library; its authoring controls come from `CausalEditor`, while Studio handles saving and file operations. Run the starter and open `/editor` for a minimal editable React example.
 
 You need Node.js 22.18 or later.
 

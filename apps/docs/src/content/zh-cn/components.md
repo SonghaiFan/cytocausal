@@ -192,3 +192,28 @@ export function App({ dataset }: { dataset: CausalDataset }) {
 ## 组件样式
 
 组件使用 `cc-*` 类名和主题的 `--cc-*` 变量，所以不需要 Tailwind。大多数组件都接受 `className`。要修改样式，在你自己的 CSS 中覆盖对应的类即可。
+
+## 可编辑的因果图
+
+使用 `CausalEditor` 获得 Author / Explore 模式、编辑径向菜单、画布内改名、创建或连接原因与结果、极性编辑、节点移动及撤销重做。
+
+```tsx
+"use client";
+import { CausalEditor } from "@cytocausal/react";
+import type { CausalDataset } from "@cytocausal/core";
+import "@cytocausal/react/styles.css";
+import "@cytocausal/react/editor.css";
+
+export function EditableGraph({ dataset, onChange }: {
+  dataset: CausalDataset;
+  onChange: (next: CausalDataset) => void;
+}) {
+  return <div style={{ height: 720 }}>
+    <CausalEditor initialDataset={dataset} onChange={onChange} />
+  </div>;
+}
+```
+
+使用 starter 的仅客户端加载边界。`initialDataset` 只初始化编辑器内部文档，不是受控属性；后续加载使用 ref 的 `replaceDataset`。编辑、撤销、重做后，`onChange` 返回独立文档副本，由宿主决定如何保存。编辑器不使用 localStorage 或文件对话框。
+
+通过 `header`、`toolbar` 和 `footer` 添加应用控件。首版使用英文标签和浅色主题，暂不暴露独立的无界面创作 hooks。约定见 [React API](/zh-cn/api-react/)。运行 starter 后访问 `/editor`；源码位于 `apps/starter/src/components/EditorExample.tsx`。

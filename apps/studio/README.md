@@ -51,3 +51,7 @@ Each colour and line style keeps one meaning across modes:
 - **Blue** is being added: the provisional link while authoring, added elements in a version comparison.
 - **Red** is being removed: the Delete sector and buttons, removed elements in a version comparison.
 - **Dashes** mean negative polarity only, so a link in progress is solid. Arrows always run from cause to effect.
+
+### Library boundary
+
+Studio consumes CausalEditor from @cytocausal/react. The library owns editing, mode transitions, selection/camera continuity and in-memory undo/redo. Studio owns localStorage, file import/export, document naming and branding through editor slots. The minimal non-Studio host is the starter's /editor route.

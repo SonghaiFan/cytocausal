@@ -80,7 +80,7 @@ test('node movement is undoable; exploration movement is temporary', async ({pag
 });
 
 test('save, reload, export evidence, invalid import, deletion and mobile menu', async ({page}) => {
-  await seed(page);await radial(page,'a','Add effect');await clickNode(page,'b');await expect(page.locator('.save-status')).toHaveText('Saved in this browser.');
+  await seed(page);await radial(page,'a','Add effect');await clickNode(page,'b');await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cytocausal-studio-v1')!).snapshots[0].edges.length)).toBe(1);await expect(page.locator('.save-status')).toHaveText('Saved in this browser.');
   await page.reload();await expect.poll(async()=> (await state(page))?.edges.length).toBe(1);
   const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export JSON'}).click();const file=await download;const stream=await file.createReadStream();const chunks=[];for await(const chunk of stream!) chunks.push(chunk);const data=JSON.parse(Buffer.concat(chunks).toString());expect(data.snapshots[0].nodes[0].evidence[0].text).toBe('Interview claim');
   await page.locator('input[type=file]').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('{"snapshots":[]}')});await expect(page.locator('.studio-error')).toContainText('dataset needs');expect((await state(page))!.nodes.length).toBe(3);

@@ -37,3 +37,7 @@ Use the [documentation audience guide](docs/maintenance/documentation.md) to cho
 ## Data
 
 Datasets have their own terms, so read [DATA.md](DATA.md) first. Don't commit the full ACCESS benchmark: `apps/explorer/public/dataset.json` must stay a sample, and a test checks this.
+
+## npm packages
+
+Run the release:verify npm script to compile and pack the libraries, install the archives in independent React/Vite and Next.js consumers, and check types, editing and workers. This does not publish. See [npm release preparation](docs/maintenance/npm-release.md) for artifacts and the first-publication checklist.

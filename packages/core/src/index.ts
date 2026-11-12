@@ -11,3 +11,5 @@ export * from "./search.ts";
 export * from "./provenance.ts";
 export * from "./importers/perspectiva.ts";
 export * from "./importers/explorer.ts";
+
+export { parseDataset as parseEditorDataset, emptyDataset as createEmptyDataset, deleteNode as deleteCausalNode } from "./editing.ts";

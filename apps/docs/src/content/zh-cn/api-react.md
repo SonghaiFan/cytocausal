@@ -87,3 +87,27 @@ Hook 的 `maxSelected` 默认不限制，`selectable` 默认 true，`maxDepth` �
 需要两个快照 ID。用 `followNodes` 匹配节点，将右图对齐左图，默认同步视图移动（`sync=true`）。`format(id)` 设置面板标签，`onReady(cy, snapshotId)` 暴露实例。也接受共享的 layout、stylesheet、motion、maxZoom 与 positionCache。
 
 [CausalProvider.tsx](https://github.com/SonghaiFan/cytocausal/blob/main/packages/react/src/CausalProvider.tsx) · [GraphView.tsx](https://github.com/SonghaiFan/cytocausal/blob/main/packages/react/src/GraphView.tsx) · [CompareView.tsx](https://github.com/SonghaiFan/cytocausal/blob/main/packages/react/src/CompareView.tsx)
+
+## CausalEditor
+
+仅浏览器渲染的 Author / Explore 编辑器。除共享样式外引入 `@cytocausal/react/editor.css`。为宿主设置高度（例如 720px）；桌面最小高度为 560px。
+
+| 属性 | 约定 |
+| --- | --- |
+| `initialDataset` | 必填，至少一个快照；只校验并克隆一次。后续属性变化会被忽略。 |
+| `onChange(dataset)` | 编辑、撤销、重做后返回独立文档副本。初始化、仅选择、仅切换模式或快照不通知。不执行保存。 |
+| `initialNodeStyle` | 默认 `"text"`，可选 `"dot"`；仅作为初始值。 |
+| `onNodeStyleChange(style)` | 外观偏好回调，不是文档编辑。 |
+| `header(api)`、`toolbar(api)` | 通过当前 `CausalEditorApi` 渲染宿主控件。 |
+| `footer`、`className` | 可选 React 内容和编辑器外层类名。 |
+| `ref` | 暴露 `CausalEditorApi` 的 React 19 ref。 |
+
+API 提供：
+
+- `getDataset()`：返回包含创作位置的独立文档副本。
+- `replaceDataset(dataset)`：校验、取消待完成手势，将替换作为一次可撤销编辑。触发 `onChange`，选择首个快照。
+- `replaceDataset(dataset, { resetHistory: true })`：开始新会话，清除待完成编辑、选择、视角和历史，保留节点外观。不触发 `onChange`，因为宿主已拥有加载数据。无效输入在替换前抛错。
+- `renameDataset(name)`：提交去除首尾空白后的非空名称。
+- `undo()`、`redo()`、`canUndo`、`canRedo`：Author 模式可用的文档历史。最多保留 50 步已提交编辑；新编辑清除重做分支。
+
+选择、视角和历史属于各自挂载的编辑器。切换模式保留选择与视角；Explore 中的临时位置在返回时恢复为创作位置。历史不持久化。不要在每次 `onChange` 后调用 `replaceDataset`：更新宿主状态或在外部保存即可，不必重置编辑会话。

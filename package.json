@@ -22,10 +22,17 @@
     "test:e2e": "npm run test:e2e --workspaces --if-present",
     "dev:explorer": "npm run dev -w @cytocausal/explorer",
     "dev:docs": "npm run dev -w @cytocausal/docs",
-    "dev:studio": "npm run dev -w @cytocausal/studio"
+    "dev:studio": "npm run dev -w @cytocausal/studio",
+    "release:build": "node scripts/release/build.mjs",
+    "release:pack": "npm run release:build && node scripts/release/pack.mjs",
+    "release:verify": "npm run release:pack && node scripts/release/verify.mjs"
   },
   "overrides": {
     "cytoscape": "3.31.0",
     "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
   }
 }

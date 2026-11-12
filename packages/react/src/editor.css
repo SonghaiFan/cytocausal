@@ -1,0 +1,93 @@
+.cc-editor-provider { height: 100%; }
+.cc-editor { --yellow: var(--cc-accent); --ink: var(--cc-ink); --line: var(--cc-border); color-scheme: light; font: 14px/1.5 var(--cc-font-family); }
+.cc-editor * { box-sizing: border-box; }
+.cc-editor button, .cc-editor input, .cc-editor select { font: inherit; }
+.cc-editor button { display: inline-flex; justify-content: center; align-items: center; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); cursor: pointer; }
+.cc-editor button:hover { background: #f1f0e8; }
+.cc-editor button:disabled { opacity: .45; cursor: default; }
+.cc-editor button:focus-visible, .cc-editor a:focus-visible, .cc-editor input:focus-visible, .cc-editor select:focus-visible, .cc-editor summary:focus-visible { outline: 2px solid #947000; outline-offset: 3px; }
+.cc-editor button.primary { background: var(--yellow); border-color: #d9b429; color: var(--ink); font-weight: 600; }
+.cc-editor a { color: inherit; text-underline-offset: 3px; }
+.cc-editor { display: flex; flex-direction: column; height: 100%; min-height: 560px; }
+.cc-editor .cc-editor-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cc-editor .cc-editor-bar { padding: 10px 20px; border-bottom: 1px solid var(--line); }
+.cc-editor .cc-editor-main { display: grid; grid-template-columns: minmax(0, 1fr) 310px; flex: 1; min-height: 0; }
+.cc-editor .cc-editor-canvas { position: relative; min-width: 0; min-height: 0; background: #fff; }
+.cc-editor .cc-editor-canvas > .cc-graph-view { height: 100%; }
+.cc-editor .canvas-controls { position: absolute; bottom: 14px; left: 16px; right: 16px; display: flex; align-items: center; gap: 10px; pointer-events: none; }
+.cc-editor .canvas-controls > * { pointer-events: auto; }
+.cc-editor .canvas-controls > span { padding: 6px 10px; background: #fff; border: 1px solid var(--line); border-radius: 4px; font-size: 12px; }
+.cc-editor .empty-canvas { position: absolute; top: 34%; left: 20px; right: 20px; text-align: center; pointer-events: none; }
+.cc-editor .empty-canvas h1 { font-size: clamp(24px, 3vw, 40px); margin: 16px 0 10px; letter-spacing: -.03em; }
+.cc-editor .empty-canvas p { color: #6b6b5e; }
+.cc-editor .cc-editor-inspector { border-left: 1px solid var(--line); padding: 22px; overflow-y: auto; }
+.cc-editor .cc-editor-inspector h2 { font-size: 14px; margin: 0 0 14px; }
+.cc-editor .cc-editor-inspector > form, .cc-editor .cc-editor-inspector > section { margin-bottom: 26px; }
+.cc-editor .cc-editor-inspector label { display: block; font-size: 12px; color: #5b5b4f; margin: 10px 0; }
+.cc-editor .cc-editor-inspector input, .cc-editor .cc-editor-inspector select { display: block; width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--ink); margin-top: 5px; }
+.cc-editor .cc-editor-inspector button { margin-right: 6px; margin-bottom: 7px; }
+.cc-editor .hint { font-size: 12px; color: #68685d; line-height: 1.65; }
+.cc-editor .danger { color: var(--cc-removed, #c8400c); }
+.cc-editor .element-list { list-style: none; padding: 0; }
+.cc-editor .element-list button { max-width: 100%; text-align: left; overflow-wrap: anywhere; }
+.cc-editor .cc-editor-error { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 10px 20px; background: #fff1e9; color: #8a2d15; white-space: pre-wrap; }
+@media (max-width: 800px) { .cc-editor { height: auto; min-height: 560px; } .cc-editor .cc-editor-bar { padding: 12px; } .cc-editor .cc-editor-main { grid-template-columns: minmax(0, 1fr); } .cc-editor .cc-editor-canvas { height: 52dvh; min-height: 340px; } .cc-editor .cc-editor-inspector { border-left: 0; border-top: 1px solid var(--line); overflow: visible; } }
+.cc-editor .cc-editor-canvas { overflow: hidden; }
+.cc-editor .canvas-controls { flex-wrap: wrap; }
+.cc-editor .mode-switch { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; }
+.cc-editor .mode-switch button { border: 0; }
+.cc-editor .mode-switch button[aria-pressed="true"], .cc-editor .polarity-buttons button[aria-pressed="true"] { background: var(--yellow); color: var(--ink); }
+.cc-editor .empty-canvas button { pointer-events: auto; }
+/* The ring: neutral sectors off the edge of the yellow node, ink where pointed at. Explore draws the same shape. */
+.cc-editor .author-menu { position: absolute; width: 0; height: 0; z-index: 12; pointer-events: none; }
+.cc-editor .author-menu svg { position: absolute; overflow: visible; animation: cc-editor-ring-enter 180ms ease-out both; }
+.cc-editor .sector-plate { fill: var(--cc-ink); fill-opacity: .14; pointer-events: visiblePainted; cursor: pointer; outline: none; transition: fill-opacity 150ms ease-out; }
+.cc-editor .sector-plate:hover, .cc-editor .sector-plate:focus-visible { fill-opacity: 1; }
+.cc-editor .sector-delete .sector-plate:hover, .cc-editor .sector-delete .sector-plate:focus-visible { fill: var(--cc-removed); }
+.cc-editor .sector-glyph { pointer-events: none; fill: none; stroke: var(--cc-ink); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.cc-editor .sector-glyph text { fill: var(--cc-ink); stroke: none; font: 700 11px var(--cc-font-family, sans-serif); }
+.cc-editor .sector-plate:hover + .sector-glyph, .cc-editor .sector-plate:focus-visible + .sector-glyph { stroke: var(--cc-background); }
+.cc-editor .sector-plate:hover + .sector-glyph text, .cc-editor .sector-plate:focus-visible + .sector-glyph text { fill: var(--cc-background); }
+.cc-editor .sector-label { pointer-events: none; user-select: none; fill: var(--cc-ink); font: 600 12px var(--cc-font-family, sans-serif); paint-order: stroke; stroke: var(--cc-background); stroke-width: 4px; stroke-linejoin: round; }
+@keyframes cc-editor-ring-enter { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .cc-editor .author-menu svg { animation: none; } .cc-editor .sector-plate { transition: none; } }
+.cc-editor .gesture-hint { position: absolute; z-index: 5; left: 50%; bottom: 64px; transform: translateX(-50%); display: flex; gap: 14px; margin: 0; padding: 6px 12px; border-radius: 999px; background: var(--cc-background, #fff); box-shadow: 0 0 0 1px var(--line), 0 2px 8px #0001; color: #5b5b4f; font-size: 12px; white-space: nowrap; pointer-events: none; animation: cc-editor-hint-enter 160ms ease-out both; }
+.cc-editor .gesture-hint kbd { font: 600 12px var(--cc-font-family, sans-serif); color: var(--ink); }
+@keyframes cc-editor-hint-enter { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .cc-editor .gesture-hint { animation: none; } }
+/* A variable being named is already a node: the yellow pill you type into, where it will stand. Blue rings what is new. */
+.cc-editor .ghost-node { position: absolute; z-index: 15; transform: translate(-50%, -13px); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+.cc-editor .ghost-pill { display: inline-grid; pointer-events: auto; padding: 5px 9px; border-radius: 6px; background: var(--cc-accent); box-shadow: 0 0 0 2px var(--cc-ink), 0 6px 18px #0002; }
+.cc-editor .is-new .ghost-pill { box-shadow: 0 0 0 2px var(--cc-added), 0 6px 18px #0002; }
+.cc-editor .ghost-pill::after, .cc-editor .ghost-pill input { grid-area: 1 / 1; font: 600 12px/16px var(--cc-font-family, sans-serif); min-width: 44px; max-width: 240px; padding: 0; text-align: center; white-space: pre; }
+.cc-editor .ghost-pill::after { content: attr(data-value); visibility: hidden; overflow: hidden; }
+.cc-editor .ghost-pill input { width: 100%; border: 0; outline: 0; background: transparent; color: #20201b; }
+.cc-editor .ghost-pill input::placeholder { color: #20201b; opacity: .45; }
+/* With names beside dots, the ghost is a dot too, with its name typed above it */
+.cc-editor .ghost-node.is-dot { transform: translate(-50%, -38px); gap: 2px; }
+.cc-editor .is-dot .ghost-pill, .cc-editor .is-dot.is-new .ghost-pill { background: none; box-shadow: none; padding: 5px 4px; }
+.cc-editor .is-dot .ghost-pill input { text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff; }
+.cc-editor .ghost-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--cc-accent); box-shadow: 0 0 0 2px var(--cc-ink); }
+.cc-editor .is-new .ghost-dot { box-shadow: 0 0 0 2px var(--cc-added); }
+.cc-editor .is-dot small { margin-top: 6px; }
+.cc-editor .mode-switch svg { margin-right: 6px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+.cc-editor .ghost-node small { padding: 2px 6px; border-radius: 4px; background: var(--cc-background, #fff); color: #68685d; font-size: 11px; white-space: nowrap; }
+.cc-editor .connection-hint { position: absolute; z-index: 10; top: 12px; left: 12px; right: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; padding: 10px 12px; border: 1px solid #d6b64f; border-radius: 8px; background: #fff6ce; font-size: 12px; }
+.cc-editor .connection-hint span { flex: 1; }
+.cc-editor .connection-preview { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
+/* A link not yet made is drawn as an addition. Never dashed: dashes mean negative polarity. */
+.cc-editor .connection-preview line { stroke: var(--cc-added); stroke-width: 2; }
+.cc-editor .connection-preview marker { fill: var(--cc-added); }
+.cc-editor .is-connecting canvas { cursor: crosshair; }
+.cc-editor .quick-polarity { position: absolute; z-index: 8; top: 12px; left: 12px; right: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px; background: #fffdf5; border: 1px solid var(--line); border-radius: 8px; }
+.cc-editor .quick-polarity > span { font-size: 12px; overflow-wrap: anywhere; }
+.cc-editor .polarity-buttons { display: flex; flex-wrap: wrap; gap: 4px; }
+.cc-editor .polarity-buttons button { font-size: 12px; padding: 5px 8px; margin: 0; }
+@media (max-width: 800px) { .cc-editor .canvas-controls { bottom: 8px; left: 8px; right: 8px; gap: 4px; } .cc-editor .canvas-controls > span { font-size: 10px; } }
+
+.cc-editor .interaction-key { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+.cc-editor .interaction-key svg { flex: none; }
+.cc-editor .interaction-key p { margin: 0; }
+.cc-editor .interaction-key strong { display: block; color: var(--ink); }
+.cc-editor .key-node { fill: var(--cc-accent); }
+.cc-editor .key-sector { fill: var(--cc-ink); fill-opacity: .28; }

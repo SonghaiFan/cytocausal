@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { historyReducer, unselected, type History, type DocumentState } from "../src/history.ts";
-import { emptyDataset } from "../src/model.ts";
+import { historyReducer, unselected, type History, type DocumentState } from "../src/editor-history.ts";
+import { createEmptyDataset as emptyDataset } from "@cytocausal/core";
 const initial = (): DocumentState => ({ dataset: emptyDataset(), version: "draft", selection: unselected() });
 test("one relationship creation undoes its endpoint too and redo preserves the IDs", () => {
   const before = initial(); const after = structuredClone(before);

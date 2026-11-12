@@ -192,3 +192,28 @@ If you aren't using `CausalWorkspace`, wrap your components in `CausalLabelsProv
 ## Style the components
 
 Components use `cc-*` classes and the theme's `--cc-*` variables, so you don't need Tailwind. Most accept a `className`. To restyle one, override its class in your own CSS.
+
+## An editable graph
+
+Use `CausalEditor` for Author / Explore modes, the edit ring, inline naming, cause/effect connections, polarity editing, node movement and undo/redo.
+
+```tsx
+"use client";
+import { CausalEditor } from "@cytocausal/react";
+import type { CausalDataset } from "@cytocausal/core";
+import "@cytocausal/react/styles.css";
+import "@cytocausal/react/editor.css";
+
+export function EditableGraph({ dataset, onChange }: {
+  dataset: CausalDataset;
+  onChange: (next: CausalDataset) => void;
+}) {
+  return <div style={{ height: 720 }}>
+    <CausalEditor initialDataset={dataset} onChange={onChange} />
+  </div>;
+}
+```
+
+Use the starter's browser-only loading boundary. `initialDataset` seeds an internally managed document, not a controlled prop. Later data is loaded through a ref's `replaceDataset`. `onChange` returns a detached document after editing, undo and redo; the host chooses how to save it. The editor does not use localStorage or file dialogs.
+
+Add application controls with `header`, `toolbar` and `footer`. This first editor uses English labels and a light theme; separate headless authoring hooks are not yet exposed. See [React API](/en/api-react/) for the contract. Run the starter and visit `/editor`; source: `apps/starter/src/components/EditorExample.tsx`.

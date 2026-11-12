@@ -1,0 +1,32 @@
+name: Validate npm packages
+on:
+  pull_request:
+    paths: ['packages/**', 'scripts/release/**', 'tests/package-consumers/**', 'package*.json', '.github/workflows/packages.yml']
+  push:
+    branches: [main]
+    paths: ['packages/**', 'scripts/release/**', 'tests/package-consumers/**', 'package*.json', '.github/workflows/packages.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.18.0'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test -w @cytocausal/core
+      - run: npm run test -w @cytocausal/react
+      - run: npm run release:verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cytocausal-npm-preview
+          path: |
+            .release/tarballs/*.tgz
+            .release/tarballs/manifest.json
+            .release/verification.json

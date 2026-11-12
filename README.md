@@ -2,9 +2,9 @@
 
 # cytocausal
 
-**A causal graph library built on Cytoscape.js, with purpose-built interactions, React components and causal analysis APIs.**
+**A React library for causal graph interfaces, built on Cytoscape.js.**
 
-Build interfaces where people can explore causes and effects, trace the evidence behind a relationship, and compare how a model changes. Use the complete workspace or compose your own interface from its components.
+Build React interfaces where people can explore causes and effects, trace the evidence behind a relationship, and compare how a model changes. Use the complete workspace or compose your own interface from its components.
 
 [Documentation](https://songhaifan.github.io/cytocausal/en/) · [Showcase](https://songhaifan.github.io/cytocausal/en/showcase/) · [Draw a graph](https://cytocausal-studio.vercel.app) · [中文文档](https://songhaifan.github.io/cytocausal/zh-cn/)
 
@@ -25,7 +25,11 @@ There are two application paths:
 - **Your own project — available now.** Start with the React / Next.js starter, replace its data and compose the interface you need.
 - **Online drawing — Studio.** Add nodes and directed links, edit labels and polarity, then explore the graph. Work is saved in your browser, with JSON import/export for backups. No account or cloud synchronisation.
 
-The library is organised into three packages:
+Start with `@cytocausal/react`: use the complete workspace or compose components. Cytoscape.js supplies the graph engine; cytocausal supplies causal semantics, analysis and React interactions. Next.js is used by the starter and applications, rather than being the library’s required UI framework.
+
+For authoring, use `CausalEditor`: edit rings, inline naming, cause/effect connections, polarity, and undo/redo with an `onChange` callback. Studio uses this same component and adds local saving and file operations. The minimal host example is at `apps/starter/src/components/EditorExample.tsx`; run the starter and open `/editor`. Import both `@cytocausal/react/styles.css` and `@cytocausal/react/editor.css`.
+
+The implementation is organised into three packages:
 
 | Package | Responsibility |
 | --- | --- |

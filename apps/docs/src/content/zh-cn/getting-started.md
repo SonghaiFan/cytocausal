@@ -4,7 +4,7 @@ title: "快速开始"
 
 # 快速开始
 
-cytocausal 是基于 Cytoscape.js 的因果图 library。当前可以通过 React / Next.js starter 构建自己的应用。各 package 仍为工作区内的私有包；npm 发布属于后续规划。Studio 是独立的浏览器本地绘图应用。
+cytocausal 是基于 Cytoscape.js 的因果图 React 库。当前可以通过 React / Next.js starter 构建自己的应用。各 package 仍为工作区内的私有包；npm 发布属于后续规划。从 `@cytocausal/react` 使用完整工作区或可组合的交互组件。Studio 是基于库构建的浏览器本地绘图应用；其创作交互由 `CausalEditor` 提供，Studio 负责保存与文件操作。运行 starter 后打开 `/editor`，可体验最小 React 编辑器示例。
 
 需要 Node.js 22.18 或更高版本。
 

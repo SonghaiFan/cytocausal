@@ -20,3 +20,6 @@ apps/explorer/public/dataset.full.json
 # Deployment output and local project links
 out/
 .vercel/
+
+# Compiled npm staging packages and tarballs
+.release/

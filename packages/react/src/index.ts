@@ -26,3 +26,5 @@ export * from "./useCausalGraph.ts";
 export * from "./LoopSearch.tsx";
 
 export * from "./CyclePanel.tsx";
+
+export { CausalEditor, type CausalEditorApi, type CausalEditorProps, type EditorNodeStyle } from "./CausalEditor.tsx";

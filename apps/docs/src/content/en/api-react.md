@@ -87,3 +87,27 @@ Hook options: `maxSelected` defaults to unlimited, `selectable` to true, `maxDep
 Requires both snapshot ids. Matches nodes with `followNodes`, aligns the right graph to the left and synchronises view movement by default (`sync=true`). `format(id)` labels the panes; `onReady(cy, snapshotId)` exposes instances. Also accepts shared layout, stylesheet, motion, maxZoom and positionCache props.
 
 [CausalProvider.tsx](https://github.com/SonghaiFan/cytocausal/blob/main/packages/react/src/CausalProvider.tsx) · [GraphView.tsx](https://github.com/SonghaiFan/cytocausal/blob/main/packages/react/src/GraphView.tsx) · [CompareView.tsx](https://github.com/SonghaiFan/cytocausal/blob/main/packages/react/src/CompareView.tsx)
+
+## CausalEditor
+
+A browser-only Author / Explore editor. Import `@cytocausal/react/editor.css` alongside shared styles. Give its host a height (for example 720px); desktop minimum height is 560px.
+
+| Prop | Contract |
+| --- | --- |
+| `initialDataset` | Required; validated and cloned once. At least one snapshot. Later prop changes are ignored. |
+| `onChange(dataset)` | Detached document after edits, undo or redo. No initial, selection-only, mode-only or snapshot-navigation notification. No persistence. |
+| `initialNodeStyle` | `"text"` (default) or `"dot"`; initial value only. |
+| `onNodeStyleChange(style)` | Appearance preference callback; not a document edit. |
+| `header(api)`, `toolbar(api)` | Render host controls with the current `CausalEditorApi`. |
+| `footer`, `className` | Optional React content and editor surface class. |
+| `ref` | React 19 ref exposing `CausalEditorApi`. |
+
+The API exposes:
+
+- `getDataset()`: detached copy including authored positions.
+- `replaceDataset(dataset)`: validate, cancel pending gestures and replace as one undoable edit. Emits `onChange` and selects the first snapshot.
+- `replaceDataset(dataset, { resetHistory: true })`: start a new session, clearing pending edits, selection, camera and history. Retains node style. No `onChange` notification: the host already owns the loaded data. Invalid input throws before replacement.
+- `renameDataset(name)`: commit a trimmed, nonempty name.
+- `undo()`, `redo()`, `canUndo`, `canRedo`: document history available in Author mode. Up to 50 committed undo steps; a new edit clears redo.
+
+Selection, camera and history belong to each mounted editor. Switching modes preserves selection and camera; temporary Explore positions are restored to authored positions on return. History is not persisted. Do not call `replaceDataset` for every `onChange` echo: update host state or save externally without resetting the session.

@@ -1,107 +1,18 @@
-:root { color-scheme: light; --yellow: #fbc92b; --ink: #20201b; --line: #deded6; }
-* { box-sizing: border-box; }
-body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: #fafaf7; }
-button, input, select { font: inherit; }
-button, .file-button { display: inline-flex; justify-content: center; align-items: center; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); cursor: pointer; }
-button:hover, .file-button:hover { background: #f1f0e8; }
-button:disabled { opacity: .45; cursor: default; }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid #947000; outline-offset: 3px; }
-button.primary { background: var(--yellow); border-color: #d9b429; color: var(--ink); font-weight: 600; }
-a { color: inherit; text-underline-offset: 3px; }
-.studio { display: flex; flex-direction: column; height: 100dvh; }
+
+body { margin: 0; background: #fafaf7; }
+.cc-editor.studio { height: 100dvh; }
 .studio-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
 .studio-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 17px; }
 .studio-brand span { font-size: 13px; color: #6c6c60; border-left: 1px solid var(--line); padding-left: 10px; }
-.studio-tools, .studio-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.file-button { position: relative; overflow: hidden; }
-.file-button input { position: absolute; opacity: 0; width: 100%; height: 100%; inset: 0; cursor: pointer; }
-.file-button:focus-within { outline: 2px solid #947000; outline-offset: 3px; }
-.studio-bar { padding: 10px 20px; border-bottom: 1px solid var(--line); }
+.studio-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .graph-title { display: flex; align-items: center; gap: 10px; }
 .graph-title input { width: 210px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; background: #fff; }
 .save-status { flex: 1; color: #6b6b5e; font-size: 12px; }
-.studio-main { display: grid; grid-template-columns: minmax(0, 1fr) 310px; flex: 1; min-height: 0; }
-.studio-canvas { position: relative; min-width: 0; min-height: 0; background: #fff; }
-.studio-canvas > .cc-graph-view { height: 100%; }
-.canvas-controls { position: absolute; bottom: 14px; left: 16px; right: 16px; display: flex; align-items: center; gap: 10px; pointer-events: none; }
-.canvas-controls > * { pointer-events: auto; }
-.canvas-controls > span { padding: 6px 10px; background: #fff; border: 1px solid var(--line); border-radius: 4px; font-size: 12px; }
-.empty-canvas { position: absolute; top: 34%; left: 20px; right: 20px; text-align: center; pointer-events: none; }
-.empty-canvas h1 { font-size: clamp(24px, 3vw, 40px); margin: 16px 0 10px; letter-spacing: -.03em; }
-.empty-canvas p { color: #6b6b5e; }
-.studio-inspector { border-left: 1px solid var(--line); padding: 22px; overflow-y: auto; }
-.studio-inspector h2 { font-size: 14px; margin: 0 0 14px; }
-.studio-inspector > form, .studio-inspector > section { margin-bottom: 26px; }
-.studio-inspector label { display: block; font-size: 12px; color: #5b5b4f; margin: 10px 0; }
-.studio-inspector input, .studio-inspector select { display: block; width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--ink); margin-top: 5px; }
-.studio-inspector button { margin-right: 6px; margin-bottom: 7px; }
-.hint { font-size: 12px; color: #68685d; line-height: 1.65; }
-.privacy { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 16px; }
-.danger { color: var(--cc-removed, #c8400c); }
-.element-list { list-style: none; padding: 0; }
-.element-list button { max-width: 100%; text-align: left; overflow-wrap: anywhere; }
+.file-button { position: relative; overflow: hidden; }
+.file-button input { position: absolute; opacity: 0; width: 100%; height: 100%; inset: 0; cursor: pointer; }
 .studio-error { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 10px 20px; background: #fff1e9; color: #8a2d15; white-space: pre-wrap; }
-.studio-explore { flex: 1; min-height: 0; position: relative; }
-.studio-explore > .cc-workspace { height: 100%; min-height: 0; }
-.explore-note { position: absolute; left: 16px; bottom: 0; font-size: 11px; background: white; padding: 3px 6px; pointer-events: none; }
 .loading { padding: 40px; }
-@media (max-width: 800px) { .studio { height: auto; min-height: 100dvh; } .studio-header { flex-wrap: wrap; padding: 12px; } .studio-bar { padding: 12px; } .studio-main { grid-template-columns: minmax(0, 1fr); } .studio-canvas { height: 52dvh; min-height: 340px; } .studio-inspector { border-left: 0; border-top: 1px solid var(--line); overflow: visible; } .save-status { flex-basis: 100%; } .studio-explore > .cc-workspace { min-height: 700px; } .studio-explore .cc-graph { height: 400px; } }
-.studio-canvas { overflow: hidden; }
-.canvas-controls { flex-wrap: wrap; }
-.mode-switch { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; }
-.mode-switch button { border: 0; }
-.mode-switch button[aria-pressed="true"], .polarity-buttons button[aria-pressed="true"] { background: var(--yellow); color: var(--ink); }
-.empty-canvas button { pointer-events: auto; }
-/* The ring: neutral sectors off the edge of the yellow node, ink where pointed at. Explore draws the same shape. */
-.author-menu { position: absolute; width: 0; height: 0; z-index: 12; pointer-events: none; }
-.author-menu svg { position: absolute; overflow: visible; animation: ring-enter 180ms ease-out both; }
-.sector-plate { fill: var(--cc-ink); fill-opacity: .14; pointer-events: visiblePainted; cursor: pointer; outline: none; transition: fill-opacity 150ms ease-out; }
-.sector-plate:hover, .sector-plate:focus-visible { fill-opacity: 1; }
-.sector-delete .sector-plate:hover, .sector-delete .sector-plate:focus-visible { fill: var(--cc-removed); }
-.sector-glyph { pointer-events: none; fill: none; stroke: var(--cc-ink); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
-.sector-glyph text { fill: var(--cc-ink); stroke: none; font: 700 11px var(--cc-font-family, sans-serif); }
-.sector-plate:hover + .sector-glyph, .sector-plate:focus-visible + .sector-glyph { stroke: var(--cc-background); }
-.sector-plate:hover + .sector-glyph text, .sector-plate:focus-visible + .sector-glyph text { fill: var(--cc-background); }
-.sector-label { pointer-events: none; user-select: none; fill: var(--cc-ink); font: 600 12px var(--cc-font-family, sans-serif); paint-order: stroke; stroke: var(--cc-background); stroke-width: 4px; stroke-linejoin: round; }
-@keyframes ring-enter { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
-@media (prefers-reduced-motion: reduce) { .author-menu svg { animation: none; } .sector-plate { transition: none; } }
-.gesture-hint { position: absolute; z-index: 5; left: 50%; bottom: 64px; transform: translateX(-50%); display: flex; gap: 14px; margin: 0; padding: 6px 12px; border-radius: 999px; background: var(--cc-background, #fff); box-shadow: 0 0 0 1px var(--line), 0 2px 8px #0001; color: #5b5b4f; font-size: 12px; white-space: nowrap; pointer-events: none; animation: hint-enter 160ms ease-out both; }
-.gesture-hint kbd { font: 600 12px var(--cc-font-family, sans-serif); color: var(--ink); }
-@keyframes hint-enter { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }
-@media (prefers-reduced-motion: reduce) { .gesture-hint { animation: none; } }
-/* A variable being named is already a node: the yellow pill you type into, where it will stand. Blue rings what is new. */
-.ghost-node { position: absolute; z-index: 15; transform: translate(-50%, -13px); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
-.ghost-pill { display: inline-grid; pointer-events: auto; padding: 5px 9px; border-radius: 6px; background: var(--cc-accent); box-shadow: 0 0 0 2px var(--cc-ink), 0 6px 18px #0002; }
-.is-new .ghost-pill { box-shadow: 0 0 0 2px var(--cc-added), 0 6px 18px #0002; }
-.ghost-pill::after, .ghost-pill input { grid-area: 1 / 1; font: 600 12px/16px var(--cc-font-family, sans-serif); min-width: 44px; max-width: 240px; padding: 0; text-align: center; white-space: pre; }
-.ghost-pill::after { content: attr(data-value); visibility: hidden; overflow: hidden; }
-.ghost-pill input { width: 100%; border: 0; outline: 0; background: transparent; color: #20201b; }
-.ghost-pill input::placeholder { color: #20201b; opacity: .45; }
-/* With names beside dots, the ghost is a dot too, with its name typed above it */
-.ghost-node.is-dot { transform: translate(-50%, -38px); gap: 2px; }
-.is-dot .ghost-pill, .is-dot.is-new .ghost-pill { background: none; box-shadow: none; padding: 5px 4px; }
-.is-dot .ghost-pill input { text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff; }
-.ghost-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--cc-accent); box-shadow: 0 0 0 2px var(--cc-ink); }
-.is-new .ghost-dot { box-shadow: 0 0 0 2px var(--cc-added); }
-.is-dot small { margin-top: 6px; }
-.mode-switch svg { margin-right: 6px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
-.ghost-node small { padding: 2px 6px; border-radius: 4px; background: var(--cc-background, #fff); color: #68685d; font-size: 11px; white-space: nowrap; }
-.connection-hint { position: absolute; z-index: 10; top: 12px; left: 12px; right: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; padding: 10px 12px; border: 1px solid #d6b64f; border-radius: 8px; background: #fff6ce; font-size: 12px; }
-.connection-hint span { flex: 1; }
-.connection-preview { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
-/* A link not yet made is drawn as an addition. Never dashed: dashes mean negative polarity. */
-.connection-preview line { stroke: var(--cc-added); stroke-width: 2; }
-.connection-preview marker { fill: var(--cc-added); }
-.is-connecting canvas { cursor: crosshair; }
-.quick-polarity { position: absolute; z-index: 8; top: 12px; left: 12px; right: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px; background: #fffdf5; border: 1px solid var(--line); border-radius: 8px; }
-.quick-polarity > span { font-size: 12px; overflow-wrap: anywhere; }
-.polarity-buttons { display: flex; flex-wrap: wrap; gap: 4px; }
-.polarity-buttons button { font-size: 12px; padding: 5px 8px; margin: 0; }
-@media (max-width: 800px) { .canvas-controls { bottom: 8px; left: 8px; right: 8px; gap: 4px; } .canvas-controls > span { font-size: 10px; } }
-
-.interaction-key { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
-.interaction-key svg { flex: none; }
-.interaction-key p { margin: 0; }
-.interaction-key strong { display: block; color: var(--ink); }
-.key-node { fill: var(--cc-accent); }
-.key-sector { fill: var(--cc-ink); fill-opacity: .28; }
+@media (max-width: 800px) { .cc-editor.studio { height: auto; min-height: 100dvh; } .studio-header { flex-wrap: wrap; padding: 12px; } .save-status { flex-basis: 100%; } }
+.cc-editor .file-button { display: inline-flex; justify-content: center; align-items: center; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); cursor: pointer; }
+.file-button:focus-within { outline: 2px solid #947000; outline-offset: 3px; }
+.file-button:hover { background: #f1f0e8; }
