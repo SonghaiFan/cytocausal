@@ -173,6 +173,153 @@ Queries return collections, including a zero-or-one-element collection for `getE
 
 The native example's `cy.on("tap", "node", handler)` listens for taps on nodes; `event.target` is the tapped node. Remove listeners with the same handler when your integration no longer needs them.
 
+## Native API tour
+
+The rest of this page condenses a seven-part Cytoscape.js tutorial into the calls you are most likely to meet when extending cytocausal. Every snippet assumes a live `cy` instance, such as the one in the native example above or the instance `GraphView` passes to `onReady`. In a cytocausal app, use these calls for views, effects and read-only queries; keep model edits in the dataset, as explained in [Where to extend in React](#where-to-extend-in-react).
+
+### Setup and initialisation
+
+Install Cytoscape.js from npm (`npm install cytoscape`) or load it from a CDN in a plain HTML page. The container must have a non-zero size before you call `cytoscape({...})`. Options other than `container`, `elements`, `style` and `layout` that you will use most often:
+
+| Option | Effect |
+| :--- | :--- |
+| `minZoom`, `maxZoom` | Bound the zoom level |
+| `wheelSensitivity` | Scale mouse-wheel zoom; leave at the default unless users report problems |
+| `boxSelectionEnabled` | Allow drag-to-select a region |
+| `autoungrabify`, `autounselectify` | Stop users dragging or selecting nodes |
+| `textureOnViewport`, `hideEdgesOnViewport` | Trade rendering quality for speed while panning and zooming large graphs |
+
+See [Scale and performance](/en/scale-performance/) for how cytocausal configures large graphs.
+
+### Elements and collections
+
+```ts
+cy.add({ group: "nodes", data: { id: "sun", label: "Sunlight" } });
+cy.add([
+  { group: "nodes", data: { id: "growth", label: "Growth" } },
+  { group: "edges", data: { id: "sun-growth", source: "sun", target: "growth" } },
+]);
+cy.getElementById("sun").data("label", "Sunshine");
+cy.$("#growth").position({ x: 200, y: 100 });
+cy.remove(cy.$(":selected"));
+cy.batch(() => {
+  cy.nodes().forEach((node) => {
+    node.data("visited", false);
+  });
+});
+```
+
+`cy.add` accepts one element or an array; add nodes before edges that reference them. `data(key, value)` writes and `data(key)` reads. Wrap many changes in `cy.batch` so the renderer redraws once.
+
+Traversal methods return new collections and follow edge direction where it matters:
+
+| Call | Returns |
+| :--- | :--- |
+| `node.outgoers()`, `node.incomers()` | Edges and nodes one step downstream / upstream |
+| `node.successors()`, `node.predecessors()` | Everything reachable downstream / upstream |
+| `node.neighborhood()` | Adjacent nodes and edges, ignoring direction |
+| `a.union(b)`, `a.difference(b)`, `a.intersection(b)` | Set operations on collections |
+| `eles.filter(fn)` or `eles.filter(selector)` | A subset |
+
+For causal questions, prefer `causesOf`, `effectsOf` and `findCausalPaths` from `@cytocausal/core`: they work on the dataset and need no renderer.
+
+### Layouts and the viewport
+
+| Layout | Use it for |
+| :--- | :--- |
+| `preset` | Positions you already have, including saved positions |
+| `grid`, `circle`, `concentric` | Quick overviews of small graphs |
+| `breadthfirst` | Hierarchies and mostly acyclic causal chains (`directed: true`) |
+| `cose` | Force-directed layout for general networks |
+
+Extensions such as `cytoscape-dagre` and `cytoscape-fcose` register more layouts with `cytoscape.use(...)`.
+
+```ts
+const layout = cy.layout({ name: "cose", animate: true });
+layout.one("layoutstop", () => cy.fit(undefined, 40));
+layout.run();
+
+cy.$("#rain").closedNeighborhood().layout({ name: "circle" }).run(); // lay out a subgraph only
+cy.zoom({ level: 1.5, renderedPosition: { x: 200, y: 200 } });
+cy.panBy({ x: 50, y: 0 });
+cy.center(cy.$("#water"));
+cy.animate({ fit: { eles: cy.$("#stress"), padding: 60 } }, { duration: 400 });
+```
+
+Listen for `layoutstop` before reading final positions. [Stable layouts](/en/stable-layouts/) explains how cytocausal keeps positions steady between updates.
+
+### Styles, classes and animation
+
+Prefer classes over writing style values onto individual elements. A class is matched by a `.name` selector, so the appearance stays in the stylesheet:
+
+```ts
+cy.style().selector(".highlighted").style({ "background-color": "#f5b800" }).update();
+cy.$("#rain").addClass("highlighted");
+cy.$("#rain").removeClass("highlighted");
+
+cy.$("#water").animate(
+  { style: { width: 60, height: 60 }, position: { x: 300, y: 120 } },
+  { duration: 300, easing: "ease-in-out-cubic" },
+);
+```
+
+Useful style properties include `shape` (`ellipse`, `round-rectangle`, `diamond` and others), `background-color`, `border-width`, `line-style` (`solid`, `dashed`, `dotted`), `curve-style` (`bezier`, `straight`, `taxi`) and `target-arrow-shape`. Calls to `ele.animate` queue per element; pass `{ queue: false }` to run animations in parallel, and call `ele.stop()` to cancel. In cytocausal, add rules through `styleOptions.baseRules` rather than replacing the stylesheet, so interaction states keep working; see [Themes and styles](/en/theming/).
+
+### Events
+
+```ts
+const onOver = (event: cytoscape.EventObject) => event.target.addClass("hover");
+cy.on("mouseover", "node", onOver);
+cy.on("mouseout", "node", (event) => event.target.removeClass("hover"));
+cy.one("tap", () => console.log("first tap anywhere"));
+cy.on("dragfree", "node", (event) => console.log(event.target.position()));
+cy.off("mouseover", "node", onOver);
+```
+
+| Event | Fires when |
+| :--- | :--- |
+| `tap`, `dbltap`, `cxttap` | Click or touch, double, and right-click or long press |
+| `mouseover`, `mouseout` | The pointer enters or leaves an element |
+| `grab`, `drag`, `free`, `dragfree` | A node is grabbed, moved and released |
+| `select`, `unselect` | Native selection changes |
+| `add`, `remove`, `data` | Elements change |
+| `viewport`, `zoom`, `pan` | The view changes |
+
+Pass a selector as the second argument to delegate to matching elements; without it, the listener receives events on the core too, where `event.target === cy`. cytocausal's own selection and highlighting are exposed through [Graph interactions](/en/interactions/).
+
+### Graph algorithms
+
+Cytoscape.js includes algorithms that run on any collection:
+
+```ts
+const eles = cy.elements();
+const rank = eles.pageRank({});
+const water = cy.$("#water");
+const between = eles.betweennessCentrality({ directed: true });
+const { pathTo, distanceTo } = eles.dijkstra({ root: "#rain", directed: true });
+eles.bfs({ roots: "#rain", directed: true, visit: (node) => console.log(node.id()) });
+const groups = eles.components();
+
+console.log(rank.rank(cy.$("#stress")), water.indegree(false), water.outdegree(false), between.betweenness(water));
+console.log(distanceTo(cy.$("#stress")), pathTo(cy.$("#stress")).map((ele) => ele.id()));
+console.log(groups.length);
+```
+
+Pass `directed: true` whenever direction carries meaning, as it does in causal graphs. `dijkstra` and `aStar` accept a `weight` function for weighted edges. `analyzeSnapshot` in `@cytocausal/core` runs directed betweenness and feedback-loop detection for you; see [Causal analysis](/en/causal-analysis/).
+
+### Import and export
+
+```ts
+const saved = cy.json();                    // elements, style, viewport and options
+const elementJson = cy.elements().jsons();  // plain element objects
+cy.json({ elements: elementJson });         // restore elements, matched by ID
+const png = cy.png({ full: true, scale: 2, output: "blob" });
+```
+
+`cy.json()` captures renderer state, not a cytocausal dataset. To load spreadsheets, CSV or JSON into cytocausal, follow [Bring your own data](/en/import-data/); `toElements` covers the reverse direction.
+
+The original tutorial, with runnable single-file HTML demos for each topic, is archived at [frankfsh/learning_cytospace](https://github.com/frankfsh/learning_cytospace). It targets an older Cytoscape.js release, so prefer this page and the official reference where they differ.
+
 ## Where to extend in React
 
 | Task | Preferred entry point |

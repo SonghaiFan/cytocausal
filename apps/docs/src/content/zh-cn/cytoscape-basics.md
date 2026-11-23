@@ -173,6 +173,153 @@ cy.layout({ name: "breadthfirst", directed: true }).run();
 
 原生示例中的 `cy.on("tap", "node", handler)` 监听节点点击或触摸，`event.target` 是被点击的节点。不再需要监听时，使用同一个 handler 引用移除监听。
 
+## 原生 API 速览
+
+本页其余部分把一套七章的 Cytoscape.js 教程浓缩为扩展 cytocausal 时最常用的调用。所有片段都假设你已持有一个有效的 `cy` 实例，例如上文原生示例中的实例，或 `GraphView` 通过 `onReady` 传入的实例。在 cytocausal 应用中，这些调用适合用于视图、效果和只读查询；模型编辑应保留在 dataset 中，见[在 React 中从哪里扩展](#在-react-中从哪里扩展)。
+
+### 环境与初始化
+
+可以通过 npm 安装 Cytoscape.js（`npm install cytoscape`），也可以在普通 HTML 页面中从 CDN 加载。调用 `cytoscape({...})` 之前，容器必须具有非零尺寸。除 `container`、`elements`、`style` 和 `layout` 外，最常用的选项包括：
+
+| 选项 | 作用 |
+| :--- | :--- |
+| `minZoom`、`maxZoom` | 限制缩放范围 |
+| `wheelSensitivity` | 调整鼠标滚轮缩放幅度；除非用户反馈问题，否则保留默认值 |
+| `boxSelectionEnabled` | 允许拖拽框选区域 |
+| `autoungrabify`、`autounselectify` | 禁止用户拖动或选择节点 |
+| `textureOnViewport`、`hideEdgesOnViewport` | 平移和缩放大图时，以渲染质量换取速度 |
+
+cytocausal 如何配置大图，见[规模与性能](/zh-cn/scale-performance/)。
+
+### 元素与集合
+
+```ts
+cy.add({ group: "nodes", data: { id: "sun", label: "Sunlight" } });
+cy.add([
+  { group: "nodes", data: { id: "growth", label: "Growth" } },
+  { group: "edges", data: { id: "sun-growth", source: "sun", target: "growth" } },
+]);
+cy.getElementById("sun").data("label", "Sunshine");
+cy.$("#growth").position({ x: 200, y: 100 });
+cy.remove(cy.$(":selected"));
+cy.batch(() => {
+  cy.nodes().forEach((node) => {
+    node.data("visited", false);
+  });
+});
+```
+
+`cy.add` 接受单个元素或数组；先添加节点，再添加引用它们的边。`data(key, value)` 写入，`data(key)` 读取。大量修改放在 `cy.batch` 中，渲染器只需重绘一次。
+
+遍历方法返回新的集合，并在需要时遵循边的方向：
+
+| 调用 | 返回 |
+| :--- | :--- |
+| `node.outgoers()`、`node.incomers()` | 下游 / 上游一步的边和节点 |
+| `node.successors()`、`node.predecessors()` | 下游 / 上游所有可达元素 |
+| `node.neighborhood()` | 相邻的节点和边，不区分方向 |
+| `a.union(b)`、`a.difference(b)`、`a.intersection(b)` | 集合运算 |
+| `eles.filter(fn)` 或 `eles.filter(selector)` | 子集 |
+
+对于因果问题，优先使用 `@cytocausal/core` 中的 `causesOf`、`effectsOf` 和 `findCausalPaths`：它们直接作用于 dataset，不需要渲染器。
+
+### 布局与视口
+
+| 布局 | 适用场景 |
+| :--- | :--- |
+| `preset` | 已有坐标，包括保存过的位置 |
+| `grid`、`circle`、`concentric` | 快速浏览小图 |
+| `breadthfirst` | 层级结构和以无环为主的因果链（`directed: true`） |
+| `cose` | 通用网络的力导向布局 |
+
+`cytoscape-dagre`、`cytoscape-fcose` 等扩展通过 `cytoscape.use(...)` 注册更多布局。
+
+```ts
+const layout = cy.layout({ name: "cose", animate: true });
+layout.one("layoutstop", () => cy.fit(undefined, 40));
+layout.run();
+
+cy.$("#rain").closedNeighborhood().layout({ name: "circle" }).run(); // 只布局一个子图
+cy.zoom({ level: 1.5, renderedPosition: { x: 200, y: 200 } });
+cy.panBy({ x: 50, y: 0 });
+cy.center(cy.$("#water"));
+cy.animate({ fit: { eles: cy.$("#stress"), padding: 60 } }, { duration: 400 });
+```
+
+读取最终位置前，先监听 `layoutstop`。cytocausal 如何在更新之间保持位置稳定，见[稳定布局](/zh-cn/stable-layouts/)。
+
+### 样式、类与动画
+
+优先使用类，而不是把样式值直接写到单个元素上。类通过 `.name` 选择器匹配，外观因此仍由样式表管理：
+
+```ts
+cy.style().selector(".highlighted").style({ "background-color": "#f5b800" }).update();
+cy.$("#rain").addClass("highlighted");
+cy.$("#rain").removeClass("highlighted");
+
+cy.$("#water").animate(
+  { style: { width: 60, height: 60 }, position: { x: 300, y: 120 } },
+  { duration: 300, easing: "ease-in-out-cubic" },
+);
+```
+
+常用样式属性包括 `shape`（`ellipse`、`round-rectangle`、`diamond` 等）、`background-color`、`border-width`、`line-style`（`solid`、`dashed`、`dotted`）、`curve-style`（`bezier`、`straight`、`taxi`）和 `target-arrow-shape`。`ele.animate` 按元素排队执行；传入 `{ queue: false }` 可并行运行，调用 `ele.stop()` 可取消。在 cytocausal 中，应通过 `styleOptions.baseRules` 添加规则，而不是替换整个样式表，这样交互状态才能继续生效；见[主题与样式](/zh-cn/theming/)。
+
+### 事件
+
+```ts
+const onOver = (event: cytoscape.EventObject) => event.target.addClass("hover");
+cy.on("mouseover", "node", onOver);
+cy.on("mouseout", "node", (event) => event.target.removeClass("hover"));
+cy.one("tap", () => console.log("first tap anywhere"));
+cy.on("dragfree", "node", (event) => console.log(event.target.position()));
+cy.off("mouseover", "node", onOver);
+```
+
+| 事件 | 触发时机 |
+| :--- | :--- |
+| `tap`、`dbltap`、`cxttap` | 点击或触摸、双击、右键或长按 |
+| `mouseover`、`mouseout` | 指针进入或离开元素 |
+| `grab`、`drag`、`free`、`dragfree` | 节点被抓起、移动和释放 |
+| `select`、`unselect` | 原生选中状态变化 |
+| `add`、`remove`、`data` | 元素变化 |
+| `viewport`、`zoom`、`pan` | 视图变化 |
+
+第二个参数传入选择器时，监听委托给匹配的元素；不传时也会收到核心上的事件，此时 `event.target === cy`。cytocausal 自身的选择与高亮通过[图交互](/zh-cn/interactions/)提供。
+
+### 图算法
+
+Cytoscape.js 内置的算法可以在任意集合上运行：
+
+```ts
+const eles = cy.elements();
+const rank = eles.pageRank({});
+const water = cy.$("#water");
+const between = eles.betweennessCentrality({ directed: true });
+const { pathTo, distanceTo } = eles.dijkstra({ root: "#rain", directed: true });
+eles.bfs({ roots: "#rain", directed: true, visit: (node) => console.log(node.id()) });
+const groups = eles.components();
+
+console.log(rank.rank(cy.$("#stress")), water.indegree(false), water.outdegree(false), between.betweenness(water));
+console.log(distanceTo(cy.$("#stress")), pathTo(cy.$("#stress")).map((ele) => ele.id()));
+console.log(groups.length);
+```
+
+只要方向有意义（因果图正是如此），就传入 `directed: true`。`dijkstra` 和 `aStar` 接受 `weight` 函数以处理带权边。`@cytocausal/core` 中的 `analyzeSnapshot` 会替你计算有向介数中心性并检测反馈回路；见[因果分析](/zh-cn/causal-analysis/)。
+
+### 导入与导出
+
+```ts
+const saved = cy.json();                    // 元素、样式、视口和选项
+const elementJson = cy.elements().jsons();  // 普通元素对象
+cy.json({ elements: elementJson });         // 按 ID 恢复元素
+const png = cy.png({ full: true, scale: 2, output: "blob" });
+```
+
+`cy.json()` 保存的是渲染器状态，而不是 cytocausal dataset。要把表格、CSV 或 JSON 导入 cytocausal，请参阅[接入自己的数据](/zh-cn/import-data/)；反方向的转换使用 `toElements`。
+
+原教程为每个主题提供可直接运行的单文件 HTML 示例，已归档在 [frankfsh/learning_cytospace](https://github.com/frankfsh/learning_cytospace)。它基于较旧的 Cytoscape.js 版本，与本页或官方文档不一致时，以后者为准。
+
 ## 在 React 中从哪里扩展
 
 | 需求 | 优先使用的入口 |
