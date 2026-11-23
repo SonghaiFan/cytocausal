@@ -9,7 +9,7 @@
 .cc-editor button.primary { background: var(--yellow); border-color: #d9b429; color: var(--ink); font-weight: 600; }
 .cc-editor a { color: inherit; text-underline-offset: 3px; }
 .cc-editor { display: flex; flex-direction: column; height: 100%; min-height: 560px; }
-.cc-editor .cc-editor-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cc-editor .cc-editor-bar { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; }
 .cc-editor .cc-editor-bar { padding: 10px 20px; border-bottom: 1px solid var(--line); }
 .cc-editor .cc-editor-main { display: grid; grid-template-columns: minmax(0, 1fr) 310px; flex: 1; min-height: 0; }
 .cc-editor .cc-editor-canvas { position: relative; min-width: 0; min-height: 0; background: #fff; }
@@ -21,7 +21,7 @@
 .cc-editor .empty-canvas h1 { font-size: clamp(24px, 3vw, 40px); margin: 16px 0 10px; letter-spacing: -.03em; }
 .cc-editor .empty-canvas p { color: #6b6b5e; }
 .cc-editor .cc-editor-inspector { border-left: 1px solid var(--line); padding: 22px; overflow-y: auto; }
-.cc-editor .cc-editor-inspector h2 { font-size: 14px; margin: 0 0 14px; }
+.cc-editor .cc-editor-inspector h2 { font-size: 16px; font-weight: 600; line-height: 1.3; letter-spacing: -.01em; margin: 0 0 14px; overflow-wrap: anywhere; }
 .cc-editor .cc-editor-inspector > form, .cc-editor .cc-editor-inspector > section { margin-bottom: 26px; }
 .cc-editor .cc-editor-inspector label { display: block; font-size: 12px; color: #5b5b4f; margin: 10px 0; }
 .cc-editor .cc-editor-inspector input, .cc-editor .cc-editor-inspector select { display: block; width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--ink); margin-top: 5px; }
@@ -34,9 +34,11 @@
 @media (max-width: 800px) { .cc-editor { height: auto; min-height: 560px; } .cc-editor .cc-editor-bar { padding: 12px; } .cc-editor .cc-editor-main { grid-template-columns: minmax(0, 1fr); } .cc-editor .cc-editor-canvas { height: 52dvh; min-height: 340px; } .cc-editor .cc-editor-inspector { border-left: 0; border-top: 1px solid var(--line); overflow: visible; } }
 .cc-editor .cc-editor-canvas { overflow: hidden; }
 .cc-editor .canvas-controls { flex-wrap: wrap; }
-.cc-editor .mode-switch { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; }
-.cc-editor .mode-switch button { border: 0; }
-.cc-editor .mode-switch button[aria-pressed="true"], .cc-editor .polarity-buttons button[aria-pressed="true"] { background: var(--yellow); color: var(--ink); }
+/* Segmented tracks: every toolbar group and the polarity choice share one 36px track, so they line up with plain buttons and inputs */
+.cc-editor .mode-switch, .cc-editor .button-group, .cc-editor .polarity-buttons { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--cc-background, #fff); }
+.cc-editor .mode-switch button, .cc-editor .button-group button, .cc-editor .polarity-buttons button { min-height: 30px; padding: 4px 12px; margin: 0; border: 0; border-radius: 6px; white-space: nowrap; }
+/* Pressed is yellow plus a darker inner edge, so it still reads where yellow on white is too faint */
+.cc-editor .mode-switch button[aria-pressed="true"], .cc-editor .polarity-buttons button[aria-pressed="true"] { background: var(--yellow); color: var(--ink); font-weight: 600; box-shadow: inset 0 0 0 1px #a07c00; }
 .cc-editor .empty-canvas button { pointer-events: auto; }
 /* The ring: neutral sectors off the edge of the yellow node, ink where pointed at. Explore draws the same shape. */
 .cc-editor .author-menu { position: absolute; width: 0; height: 0; z-index: 12; pointer-events: none; }
@@ -81,8 +83,10 @@
 .cc-editor .is-connecting canvas { cursor: crosshair; }
 .cc-editor .quick-polarity { position: absolute; z-index: 8; top: 12px; left: 12px; right: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px; background: #fffdf5; border: 1px solid var(--line); border-radius: 8px; }
 .cc-editor .quick-polarity > span { font-size: 12px; overflow-wrap: anywhere; }
-.cc-editor .polarity-buttons { display: flex; flex-wrap: wrap; gap: 4px; }
-.cc-editor .polarity-buttons button { font-size: 12px; padding: 5px 8px; margin: 0; }
+/* Three equal segments that fit the inspector without wrapping; on the canvas each takes its own width */
+.cc-editor .polarity-buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cc-editor .polarity-buttons button { padding: 4px 6px; font-size: 12px; }
+.cc-editor .quick-polarity .polarity-buttons { grid-template-columns: repeat(3, auto); }
 @media (max-width: 800px) { .cc-editor .canvas-controls { bottom: 8px; left: 8px; right: 8px; gap: 4px; } .cc-editor .canvas-controls > span { font-size: 10px; } }
 
 .cc-editor .interaction-key { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
@@ -91,3 +95,30 @@
 .cc-editor .interaction-key strong { display: block; color: var(--ink); }
 .cc-editor .key-node { fill: var(--cc-accent); }
 .cc-editor .key-sector { fill: var(--cc-ink); fill-opacity: .28; }
+
+/* Toolbar: the host's document controls at the start, editing controls pushed to the end */
+.cc-editor .cc-editor-bar { container-type: inline-size; }
+.cc-editor .cc-editor-bar-start { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; flex: 1 1 320px; min-width: 0; }
+.cc-editor .cc-editor-bar-end { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+.cc-editor .button-group button:disabled { background: none; }
+/* In a narrow bar the two short groups share a row and the wider node-style switch takes the next */
+@container (max-width: 520px) { .cc-editor .cc-editor-bar-end { margin-left: 0; } .cc-editor .node-style-switch { order: 1; } }
+@media (hover: hover) { .cc-editor .mode-switch button:not([aria-pressed="true"]):hover, .cc-editor .button-group button:enabled:hover, .cc-editor .polarity-buttons button:not([aria-pressed="true"]):hover { background: #f1f0e8; } }
+@media (forced-colors: active) { .cc-editor .mode-switch button[aria-pressed="true"], .cc-editor .polarity-buttons button[aria-pressed="true"] { background: Highlight; color: HighlightText; } }
+
+/* Inspector: subject, fields, then a separated place for the destructive action */
+.cc-editor .inspector-subject { margin: -8px 0 18px; font-size: 13px; color: var(--ink); overflow-wrap: anywhere; }
+.cc-editor .inspector-field { display: grid; gap: 8px; margin-bottom: 4px; }
+.cc-editor .inspector-field .hint { margin: 0; }
+.cc-editor .inspector-label { font-size: 12px; font-weight: 600; color: #5b5b4f; }
+.cc-editor .inspector-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 4px; }
+.cc-editor .inspector-actions .is-wide { grid-column: 1 / -1; }
+.cc-editor .cc-editor-inspector .inspector-actions button, .cc-editor .cc-editor-inspector .inspector-danger button { margin: 0; }
+.cc-editor .inspector-danger { margin: 18px 0 4px; padding-top: 16px; border-top: 1px solid var(--line); }
+.cc-editor .inspector-danger .danger { width: 100%; border-color: #ebc2b0; }
+@media (hover: hover) { .cc-editor .inspector-danger .danger:hover { background: #fff1e9; border-color: var(--cc-removed, #c8400c); } }
+.cc-editor .cc-editor-inspector details { margin: 18px 0; padding-top: 14px; border-top: 1px solid var(--line); }
+.cc-editor .cc-editor-inspector summary { font-size: 13px; font-weight: 600; cursor: pointer; }
+.cc-editor .element-list { display: grid; gap: 2px; margin: 10px 0 0; }
+.cc-editor .cc-editor-inspector .element-list button { width: 100%; justify-content: flex-start; min-height: 32px; margin: 0; padding: 5px 8px; border-color: transparent; background: none; font-size: 13px; }
+@media (hover: hover) { .cc-editor .cc-editor-inspector .element-list button:hover { background: #f1f0e8; } }

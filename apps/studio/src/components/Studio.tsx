@@ -62,8 +62,8 @@ export default function Studio() {
     header={api => <><header className="studio-header"><a className="studio-brand" href={docs}><img src="/mark.svg" width="32" height="32" alt="" /><img src="/wordmark.svg" width="138" height="30" alt="cytocausal" /><span>Studio</span></a><div className="studio-tools">
       <button onClick={() => { if (confirm("Start a new graph? You can undo this.")) { api.replaceDataset(emptyDataset()); setError(""); } }}>New graph</button>
       <label className="file-button">Import JSON<input type="file" accept=".json,application/json" onChange={e => { void imported(api, e.target.files?.[0]); e.target.value = ""; }} /></label>
-      <button onClick={() => download(api.getDataset())}>Export JSON</button><a href={docs}>Docs ↗</a>
-    </div></header>{error && <div role="alert" className="studio-error">{error}<button onClick={() => setError("")}>Dismiss</button></div>}</>}
+      <button onClick={() => download(api.getDataset())}>Export JSON</button>
+    </div><a className="studio-docs" href={docs}>Docs ↗</a></header>{error && <div role="alert" className="studio-error">{error}<button onClick={() => setError("")}>Dismiss</button></div>}</>}
     toolbar={api => <><GraphName editor={api}/><span role="status" className="save-status">{status}</span></>}
   />;
 }
