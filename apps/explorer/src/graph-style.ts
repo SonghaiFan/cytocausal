@@ -22,8 +22,7 @@ export const styleOptions = Object.fromEntries(
 ) as Record<ZoomMode, CausalStyleOptions>;
 
 /**
- * Ways to lay the sample out. `original` keeps the positions from the source data, which were
- * worked out for the full benchmark. `force` refines them for the nodes shown, `centrality` puts
+ * Ways to lay the graph out. `original` keeps the positions from the source data. `force` refines them for the nodes shown, `centrality` puts
  * the most central events in the middle, and `flow` runs causes into effects from left to right.
  */
 export const layoutChoices: Record<LayoutChoice, LayoutOptions> = {
