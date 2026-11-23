@@ -10,7 +10,7 @@ type Node = {
   position: { x: number; y: number };
 };
 
-// Expected values come from the data, so these tests also pass on a regenerated sample
+// Expected values come from the data, so these tests also pass on regenerated data
 const dataset: { id: string; snapshots: { nodes: Node[]; edges: unknown[] }[] } = JSON.parse(
   readFileSync(path.resolve(import.meta.dirname, "../public/dataset.json"), "utf8"),
 );
@@ -80,16 +80,15 @@ const clickNode = async (page: Page, id: string, { add = false } = {}) => {
 const search = (page: Page) => page.getByLabel("Search events and descriptions");
 const panels = (page: Page) => page.locator('section[aria-label^="Node "]');
 
-test("the published data stays a sample", () => {
-  expect(dataset.id).toBe("access-sample");
-  expect(nodes.length).toBeLessThanOrEqual(100);
-  expect(Math.max(...nodes.map((node) => node.evidence.length))).toBeLessThanOrEqual(5);
+test("publishes the full ACCESS graph", () => {
+  expect(dataset.id).toBe("access");
+  expect(nodes.length).toBe(725);
+  expect(edges.length).toBe(1494);
 });
 
-test("shows the sample and says the full benchmark is on request", async ({ page }) => {
+test("shows the whole graph", async ({ page }) => {
   await ready(page);
   await expect(page.getByText(`${nodes.length} nodes, ${edges.length} edges`)).toBeVisible();
-  await expect(page.getByRole("link", { name: "available on request" })).toBeVisible();
 });
 
 test("search finds words anywhere in labels", async ({ page }) => {
@@ -392,7 +391,8 @@ test("the header links back to the docs", async ({ page }) => {
 test("a highlight labels what it reaches without stacking labels", async ({ page }) => {
   await ready(page);
   await clickNode(page, first.id);
-  await withCy(page, "cy.fit();");
+  // Frame what the highlight reaches: across the whole graph, its labels would rightly be hidden
+  await withCy(page, `cy.fit(cy.getElementById("${first.id}").closedNeighborhood(), 30);`);
   const measure = () =>
     withCy<{ labels: number; overlapping: number; dimmed: number; selected: number; outline: number }>(
       page,
