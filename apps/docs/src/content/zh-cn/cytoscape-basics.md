@@ -318,8 +318,6 @@ const png = cy.png({ full: true, scale: 2, output: "blob" });
 
 `cy.json()` 保存的是渲染器状态，而不是 cytocausal dataset。要把表格、CSV 或 JSON 导入 cytocausal，请参阅[接入自己的数据](/zh-cn/import-data/)；反方向的转换使用 `toElements`。
 
-原教程为每个主题提供可直接运行的单文件 HTML 示例，已归档在 [frankfsh/learning_cytospace](https://github.com/frankfsh/learning_cytospace)。它基于较旧的 Cytoscape.js 版本，与本页或官方文档不一致时，以后者为准。
-
 ## 在 React 中从哪里扩展
 
 | 需求 | 优先使用的入口 |

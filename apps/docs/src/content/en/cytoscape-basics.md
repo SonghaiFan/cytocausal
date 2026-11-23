@@ -318,8 +318,6 @@ const png = cy.png({ full: true, scale: 2, output: "blob" });
 
 `cy.json()` captures renderer state, not a cytocausal dataset. To load spreadsheets, CSV or JSON into cytocausal, follow [Bring your own data](/en/import-data/); `toElements` covers the reverse direction.
 
-The original tutorial, with runnable single-file HTML demos for each topic, is archived at [frankfsh/learning_cytospace](https://github.com/frankfsh/learning_cytospace). It targets an older Cytoscape.js release, so prefer this page and the official reference where they differ.
-
 ## Where to extend in React
 
 | Task | Preferred entry point |
