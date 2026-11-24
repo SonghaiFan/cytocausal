@@ -4,6 +4,8 @@ title: "Data model"
 
 # Data model
 
+Use this structure when creating a dataset or converting imported data. Add evidence and cross-version identity only when your model needs them.
+
 cytocausal stores every causal graph in one shape, so the same views and analysis work on a small workshop diagram and a large event network. The types are in `@cytocausal/core`, which has no UI code and no dependencies, so it also runs in Node and in workers.
 
 | Concept | Meaning | Perspectiva | Causal Explorer |

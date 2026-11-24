@@ -13,3 +13,7 @@ export * from "./importers/perspectiva.ts";
 export * from "./importers/explorer.ts";
 
 export { parseDataset as parseEditorDataset, emptyDataset as createEmptyDataset, deleteNode as deleteCausalNode } from "./editing.ts";
+
+export * from "./document.ts";
+export * from "./json.ts";
+export * from "./query.ts";

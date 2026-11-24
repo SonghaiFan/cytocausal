@@ -4,7 +4,9 @@ title: "React 生命周期"
 
 # React 生命周期
 
-`GraphView` 根据 React props 管理 Cytoscape 实例，包括创建、更新和清理。需要在 `CausalWorkspace` 之外组合界面时，可使用该组件。
+直接集成 GraphView、绑定原生监听器或处理服务端渲染时阅读本页。CausalWorkspace 会为其浏览界面管理图生命周期。
+
+`GraphView` 根据 React props 创建、更新并销毁 Cytoscape 实例。将数据集与视图配置保留在 React 中，把自定义监听器绑定到当前实例。
 
 ## 只在浏览器中渲染
 
@@ -94,3 +96,5 @@ export function useNodeClicks(cy: Core | null, onClick: (id: string) => void) {
 ## 隐藏的页面会暂停动画
 
 浏览器可能暂停隐藏标签页的动画帧，动画完成时间会延后到页面可见时。与动画无关的应用操作应避免依赖动画完成回调。
+
+[添加原生 Cytoscape.js 行为](/zh-cn/cytoscape-integration/)

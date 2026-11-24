@@ -24,19 +24,19 @@ export function toElements({ nodes, edges }: Snapshot) {
     nodes: nodes.map(
       ({ id, label, position, metadata }, index): ElementDefinition => ({
         data: {
-          ...metadata,
+          ...(metadata ? structuredClone(metadata) : {}),
           id,
           label,
           support: nodeSupport[index],
           supportShare: shareOf(nodeSupport[index], mostNodeSupport),
         },
-        position,
+        position: position ? { ...position } : undefined,
       }),
     ),
     edges: edges.map(
       ({ id, source, target, polarity, metadata }, index): ElementDefinition => ({
         data: {
-          ...metadata,
+          ...(metadata ? structuredClone(metadata) : {}),
           id,
           source,
           target,

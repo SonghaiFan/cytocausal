@@ -4,6 +4,8 @@ title: "React API"
 
 # React API
 
+Create editable data with `useCausalDocument({ initialDataset, onChange? })` and pass `document` instead of `dataset`. `useCausalDocumentState(document)` subscribes to revisions and history availability. `useCausal()` adds `edit`, `selection`, `query`, `view` and dataset-JSON `io`; `edit` is null in legacy dataset mode. `CausalEditor` accepts a shared document and exposes `api.edit` and `api.selection`. See [document commands](/en/commands/) for current contracts and limitations.
+
 This reference covers the primary integration APIs in the current source workspace. Packages are not yet published to npm. The linked TypeScript source is the authority for additional exports.
 
 `import { … } from "@cytocausal/react"`
@@ -16,7 +18,7 @@ Import `@cytocausal/react/styles.css` once. Current package peer dependency: Rea
 
 | Prop | Default and contract |
 | --- | --- |
-| `dataset` | Required; at least one snapshot |
+| `dataset` / `document` | Exactly one; legacy dataset mode is read-only for commands |
 | `initialVersion` | First snapshot |
 | `initialSelected`, `initialLink` | No selection; link overrides nodes |
 | `maxSelected` | `Infinity` |

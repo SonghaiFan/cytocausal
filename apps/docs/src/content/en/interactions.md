@@ -1,8 +1,8 @@
 ---
-title: "Interactions"
+title: "Graph interactions"
 ---
 
-# Interactions
+# Graph interactions
 
 `useCausalGraph` gives a graph the interactions people expect: selecting and hovering nodes, highlighting causes, effects and loops, and moving the view. Connect it by passing `attach` to `onReady`:
 
@@ -100,3 +100,5 @@ Each hook controls one graph. For a comparison, use one hook per graph and conne
 ### Layout loading
 
 Initial drawing and layout changes show an “Arranging graph…” status before computation starts. It clears when the layout settles. Switching again supersedes the previous job; failures offer Retry. Saved positions are reused when returning to a layout. Layouts with at least 50 visible nodes compute in a dedicated Web Worker; only position application and animation run on the main thread. Cancel layout terminates the worker, while switching layouts discards the old result. Preset and cached positions skip computation. Bundled layouts preserve node dimensions, spacing and centrality callbacks; unsupported custom worker options report an error instead of silently blocking the main thread.
+
+[Instance lifecycle and native listeners](/en/react-lifecycle/)

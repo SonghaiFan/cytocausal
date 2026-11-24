@@ -4,6 +4,8 @@ title: "React API"
 
 # React API
 
+用 `useCausalDocument({ initialDataset, onChange? })` 创建可编辑文档，再传入 `document`，不同时传入 `dataset`。通过 `useCausalDocumentState(document)` 订阅修订号与历史状态。`useCausal()` 新增 `edit`、`selection`、`query`、`view` 与数据集 JSON `io`；旧 dataset 模式下 `edit` 为 null。`CausalEditor` 接受共享文档，并暴露 `api.edit` 和 `api.selection`。当前契约与限制见[文档命令](/zh-cn/commands/)。
+
 本参考覆盖当前源码工作区的主要接入 API，package 尚未发布到 npm。其他导出与完整类型以链接的 TypeScript 源码为准。
 
 `import { … } from "@cytocausal/react"`
@@ -16,7 +18,7 @@ title: "React API"
 
 | Prop | 默认与含义 |
 | --- | --- |
-| `dataset` | 必填，至少一个快照 |
+| `dataset` / `document` | 二选一；旧 dataset 模式不提供数据编辑命令 |
 | `initialVersion` | 第一个快照 |
 | `initialSelected`, `initialLink` | 默认未选；连线选择优先于节点 |
 | `maxSelected` | `Infinity` |

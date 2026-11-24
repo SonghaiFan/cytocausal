@@ -1,11 +1,17 @@
 "use client";
 import {
   changeMarks,
+  causalFailure,
+  parseCausalJSON,
+  querySnapshot,
+  serializeCausalJSON,
   diffSnapshots,
   getSnapshot,
   listContributors,
   validateDataset,
   type CausalDataset,
+  type CausalDocument,
+  type CausalQuery,
   type LoopOptions,
 } from "@cytocausal/core";
 import {
@@ -35,15 +41,17 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useCausalDocumentState } from "./useCausalDocument.ts";
+import { useCausalView } from "./useCausalView.ts";
+import { useCausalSelection } from "./useCausalSelection.ts";
 import { CausalLabelsProvider, type CausalLabels } from "./labels.tsx";
 import { CausalRoot, useColorScheme, type ColorScheme } from "./theme.tsx";
 import { useCausalGraph, type CausalGraphOptions } from "./useCausalGraph.ts";
 
 import { LoopSettingsProvider, useLoopSearch, type LoopSettings } from "./LoopSearch.tsx";
 
-export interface CausalProviderProps {
+export interface CausalProviderOptions {
   loopSettings?: LoopSettings;
-  dataset: CausalDataset;
   /** Text to replace, such as to translate the interface. Keep this stable between renders. */
   labels?: Partial<CausalLabels>;
   /** Keep this stable between renders. */
@@ -85,6 +93,10 @@ export interface CausalProviderProps {
   children: ReactNode;
 }
 
+export type CausalProviderInput = { dataset: CausalDataset; document?: never } | { document: CausalDocument; dataset?: never };
+export type CausalProviderProps = CausalProviderOptions & CausalProviderInput;
+type StateOptions = Omit<CausalProviderOptions, "labels" | "className" | "children"> & { dataset: CausalDataset; document?: CausalDocument };
+
 const defaultThemes = { light: lightTheme, dark: darkTheme };
 
 /**
@@ -110,6 +122,7 @@ export function resolveComparison(dataset: CausalDataset, version: string, basel
 
 function useCausalState({
   dataset,
+  document,
   themes = defaultThemes,
   scheme: chosenScheme,
   styleOptions,
@@ -124,7 +137,7 @@ function useCausalState({
   graphOptions,
   shareInUrl = false,
   loopOptions,
-}: Omit<CausalProviderProps, "labels" | "className" | "children">) {
+}: StateOptions) {
   const system = useColorScheme();
   const scheme = chosenScheme ?? system.scheme;
   const theme = themes[scheme];
@@ -137,12 +150,16 @@ function useCausalState({
   );
 
   const [shared] = useState(() => new URLSearchParams(shareInUrl ? location.search : ""));
-  const [version, setShownVersion] = useState(() => {
+  const [chosenVersion, setShownVersion] = useState(() => {
     const requested = shared.get("version") ?? initialVersion;
     const known = dataset.snapshots.some(({ id }) => id === requested);
     return known ? requested! : dataset.snapshots[0].id;
   });
+  const version = dataset.snapshots.some(s => s.id === chosenVersion) ? chosenVersion : dataset.snapshots[0].id;
   const snapshot = getSnapshot(dataset, version);
+  useEffect(() => {
+    if (chosenVersion !== version) setShownVersion(version);
+  }, [chosenVersion, version]);
 
   const layoutNames = useMemo(() => Object.keys(layouts ?? {}), [layouts]);
   const [chosenLayout, setChosenLayout] = useState(() => {
@@ -164,6 +181,24 @@ function useCausalState({
     ),
   });
   const { cy, selected, selectedLink, clear } = graph;
+  const revision = document?.getState().revision ?? 0;
+  const selection = useCausalSelection(graph, snapshot, revision, maxSelected, document);
+  const { view, applyViewControls } = useCausalView(graph);
+  const query = useMemo<CausalQuery>(() => {
+    let captured: CausalQuery | undefined;
+    const read = () => captured ??= querySnapshot(snapshot, revision);
+    return {
+      node: id => read().node(id), edge: id => read().edge(id),
+      nodes: filter => read().nodes(filter), edges: filter => read().edges(filter),
+      union: (...sets) => read().union(...sets), intersection: (...sets) => read().intersection(...sets),
+      difference: (first, ...sets) => read().difference(first, ...sets), filter: (set, predicate) => read().filter(set, predicate),
+    };
+  }, [snapshot, revision]);
+  const io = {
+    parse: ({ format, text }: { format: "dataset-json"; text: string }) => format === "dataset-json" ? parseCausalJSON(text) : causalFailure("InvalidInput", "Only dataset-json is supported."),
+    export: ({ format }: { format: "dataset-json" }) => format === "dataset-json" ? serializeCausalJSON(document?.getState().dataset ?? dataset) : causalFailure("InvalidInput", "Only dataset-json is supported."),
+  };
+  const edit = useMemo(() => document?.edit(version) ?? null, [document, version]);
 
   /** Whose nodes and links are shown. Null shows everyone's. It stays across versions. */
   const [contributors, setContributors] = useState<string[] | null>(null);
@@ -271,6 +306,14 @@ function useCausalState({
   }, [cy, dataset, comparison, showChanges, version, theme]);
 
   return {
+    document: document ?? null,
+    revision,
+    edit,
+    selection,
+    view,
+    applyViewControls,
+    query,
+    io,
     dataset,
     snapshot,
     version,
@@ -348,7 +391,11 @@ function Provider({
   children,
   ...options
 }: Omit<CausalProviderProps, "labels">) {
-  const state = useCausalState(options);
+  const documentState = useCausalDocumentState(options.document);
+  if (options.document && options.dataset) throw new Error("Pass document or dataset, not both.");
+  const dataset = documentState?.dataset ?? options.dataset;
+  if (!dataset?.snapshots.length) throw new Error("CausalProvider requires a document or a dataset with a snapshot.");
+  const state = useCausalState({ ...options, dataset });
   return (
     <CausalContext.Provider value={state}>
       <CausalRoot theme={state.theme} className={className} onKeyDown={(event) => {

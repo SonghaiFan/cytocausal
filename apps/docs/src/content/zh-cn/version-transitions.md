@@ -53,3 +53,5 @@ export function VersionSwitcher({ dataset }: { dataset: CausalDataset }) {
 选择另一个快照可以打断正在进行的过渡。`GraphView` 管理过渡生命周期，更新 `snapshotId` 即可，无需自行移除并重建图元素。返回已访问的版本时会复用缓存位置。
 
 直接管理 Cytoscape 实例时，可使用 `transitionToSnapshot`。底层接口见 [Cytoscape 集成 API](/zh-cn/api-cytoscape/)。
+
+[可运行的版本比较](/zh-cn/example-versions/)

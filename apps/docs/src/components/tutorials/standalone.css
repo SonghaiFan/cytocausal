@@ -1,0 +1,27 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #fafaf9; color: #272723; font: 15px/1.6 system-ui,sans-serif; }
+a { color: inherit; }
+button,select { font: inherit; color: inherit; background: white; border: 1px solid #c5c5bd; padding: .4rem .7rem; border-radius: 4px; }
+button { cursor: pointer; }
+button:focus-visible,select:focus-visible,a:focus-visible { outline: 2px solid #a87900; outline-offset: 3px; }
+[hidden] { display: none !important; }
+.demo-header { display: flex; align-items: center; gap: 1rem; padding: 1rem 2rem; border-bottom: 1px solid #deded6; }
+.demo-header > a:first-child { font-size: 1.2rem; font-weight: 700; text-decoration: none; }
+.demo-header > a:last-child { margin-left: auto; }
+.demo-header span { color: #6b6b61; }
+.demo-shell { display: grid; grid-template-columns: 230px minmax(0,1fr); max-width: 1500px; margin: auto; }
+.demo-shell aside { padding: 2rem 1rem; }
+.demo-shell aside nav { display: grid; gap: .3rem; position: sticky; top: 1rem; }
+.demo-shell aside a { text-decoration: none; padding: .5rem .7rem; border-radius: 4px; }
+.demo-shell [aria-current=page] { background: #fceab0; font-weight: 600; }
+.demo-shell main { padding: 1.5rem 2rem 3rem; min-width: 0; }
+h1 { font-size: clamp(1.5rem,3vw,2rem); letter-spacing: -.03em; margin: 0 0 1rem; }
+.demo-navigation { display: flex; gap: .5rem; flex-wrap: wrap; border-bottom: 1px solid #deded6; padding-bottom: 1rem; }
+.demo-navigation a { padding: .35rem .7rem; border-radius: 4px; text-decoration: none; }
+.demo-view-tabs { display: flex; gap: .4rem; margin: 1rem 0; }
+.demo-view-tabs [aria-selected=true] { background: #272723; color: white; border-color: #272723; }
+.source-file-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; margin: 1rem 0; }
+.source-file-controls label { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; min-width: 0; }
+.source-file-controls select { max-width: min(100%,550px); min-width: 0; }
+#code-panel pre { background: #f0f0eb; border: 1px solid #deded6; border-radius: 6px; padding: 1rem; overflow: auto; max-height: 75vh; font: 13px/1.7 ui-monospace,monospace; }
+@media(max-width: 800px) { .demo-header { padding: .75rem 1rem; } .demo-header span { display: none; } .demo-shell { grid-template-columns: minmax(0,1fr); } .demo-shell aside { padding: .75rem 1rem 0; } .demo-shell aside nav { display:flex; overflow:auto; position:static; } .demo-shell aside a { flex:none; } .demo-shell main { padding: 1rem; } }

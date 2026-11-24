@@ -1,24 +1,23 @@
-import type { CausalDataset } from "@cytocausal/core";
-
+import type { CausalDataset, CausalDocument, EditResult } from "@cytocausal/core";
 export interface Selection { nodes: string[]; link: string | null }
 export interface DocumentState { dataset: CausalDataset; version: string; selection: Selection }
-export interface History { present: DocumentState; past: DocumentState[]; future: DocumentState[]; revision: number }
+export type EditorSession = Pick<DocumentState, "version" | "selection">;
 export type HistoryAction =
   | { type: "restore"; document: DocumentState }
   | { type: "navigate"; document: DocumentState }
   | { type: "commit"; before: DocumentState; after: DocumentState }
   | { type: "undo" | "redo"; current: DocumentState };
 export const unselected = (): Selection => ({ nodes: [], link: null });
-export function historyReducer(state: History, action: HistoryAction): History {
-  if (action.type === "restore") return { present: action.document, past: [], future: [], revision: 0 };
-  if (action.type === "navigate") return { ...state, present: action.document };
-  if (action.type === "commit") {
-    if (JSON.stringify(action.before.dataset) === JSON.stringify(action.after.dataset)) return state;
-    return { present: action.after, past: [...state.past.slice(-49), action.before], future: [], revision: state.revision + 1 };
-  }
-  const source = action.type === "undo" ? state.past : state.future;
-  if (!source.length) return state;
-  return action.type === "undo"
-    ? { present: source.at(-1)!, past: source.slice(0, -1), future: [...state.future, action.current], revision: state.revision + 1 }
-    : { present: source.at(-1)!, past: [...state.past, action.current], future: source.slice(0, -1), revision: state.revision + 1 };
+/** UI checkpoints belong only to the editor that made them. Dataset history lives in Core. */
+export function applyEditorAction(document: CausalDocument, editorId: string, action: HistoryAction): { result: EditResult; session?: EditorSession } {
+  const session = (value: DocumentState): EditorSession => ({ version: value.version, selection: value.selection });
+  if (action.type === "navigate") return { result: { ok: true, value: { changed: false, revision: document.getState().revision, value: undefined } }, session: session(action.document) };
+  if (action.type === "restore") return { result: document.load(action.document.dataset), session: session(action.document) };
+  if (action.type === "commit") return {
+    result: document.replaceDataset(action.after.dataset, { checkpoint: { before: { editorId, session: session(action.before) }, after: { editorId, session: session(action.after) } } }),
+    session: session(action.after),
+  };
+  const result = action.type === "undo" ? document.undo() : document.redo();
+  const checkpoint = result.ok ? result.value.checkpoint as { editorId?: unknown; session?: EditorSession } | undefined : undefined;
+  return { result, session: checkpoint?.editorId === editorId ? checkpoint.session : undefined };
 }

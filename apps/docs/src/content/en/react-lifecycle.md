@@ -4,7 +4,9 @@ title: "React lifecycle"
 
 # React lifecycle
 
-`GraphView` manages a Cytoscape instance from React props, including creation, updates and cleanup. Use it when composing an interface below the `CausalWorkspace` level.
+Use this guide when integrating GraphView directly, adding native listeners or handling server rendering. CausalWorkspace manages the graph lifecycle for its own viewer.
+
+`GraphView` creates, updates and destroys the Cytoscape instance from React props. Keep the dataset and view configuration in React; attach custom listeners to the current instance.
 
 ## Render in the browser only
 
@@ -94,3 +96,5 @@ For the usual selection and view controls, use [`useCausalGraph`](/en/interactio
 ## Hidden tabs stop animations
 
 Browsers may pause animation frames in hidden tabs. Animation completion can be delayed until the page is visible; avoid depending on it for unrelated application work.
+
+[Add native Cytoscape.js behaviour](/en/cytoscape-integration/)

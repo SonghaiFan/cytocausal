@@ -28,3 +28,8 @@ export * from "./LoopSearch.tsx";
 export * from "./CyclePanel.tsx";
 
 export { CausalEditor, type CausalEditorApi, type CausalEditorProps, type EditorNodeStyle } from "./CausalEditor.tsx";
+
+export { useCausalDocument, useCausalDocumentState } from "./useCausalDocument.ts";
+
+export type { CausalSelection, SelectionScope } from "./useCausalSelection.ts";
+export type { CausalView, ViewControls } from "./useCausalView.ts";

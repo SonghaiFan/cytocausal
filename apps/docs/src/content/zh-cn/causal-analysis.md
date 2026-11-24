@@ -4,7 +4,9 @@ title: "因果分析"
 
 # 因果分析
 
-在因果图中，方向就是边的含义。“下雨导致地面变湿”与反过来并不相同，所以分析必须遵循边的方向。`@cytocausal/core` 中的 `analyzeSnapshot` 用无浏览器模式的 Cytoscape 做到这一点：
+查询快照中的路径、原因、结果与反馈回路。Core 分析直接使用数据集，不依赖渲染器；需要在界面中展示结果时，再使用 React 面板。
+
+在因果图中，方向就是边的含义。“下雨导致地面变湿”与反过来并不相同，所以分析必须遵循边的方向。`@cytocausal/core` 中的 `analyzeSnapshot` 直接根据快照计算有向中心性与强连通分组：
 
 ```ts
 import { analyzeSnapshot, type Snapshot } from "@cytocausal/core";

@@ -1,27 +1,29 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { historyReducer, unselected, type History, type DocumentState } from "../src/editor-history.ts";
-import { createEmptyDataset as emptyDataset } from "@cytocausal/core";
-const initial = (): DocumentState => ({ dataset: emptyDataset(), version: "draft", selection: unselected() });
-test("one relationship creation undoes its endpoint too and redo preserves the IDs", () => {
-  const before = initial(); const after = structuredClone(before);
-  after.dataset.snapshots[0].nodes = [{ id: "cause", label: "Cause" }, { id: "effect", label: "Effect" }];
-  after.dataset.snapshots[0].edges = [{ id: "link", source: "cause", target: "effect" }];
-  after.selection.nodes = ["effect"];
-  let h: History = { present: before, past: [], future: [], revision: 0 };
-  h = historyReducer(h, { type: "commit", before, after });
-  assert.equal(h.past.length, 1);
-  h = historyReducer(h, { type: "undo", current: after }); assert.deepEqual(h.present, before);
-  h = historyReducer(h, { type: "redo", current: before }); assert.deepEqual(h.present, after);
+import { applyEditorAction, unselected, type DocumentState } from "../src/editor-history.ts";
+import { createCausalDocument, createEmptyDataset } from "@cytocausal/core";
+const initial = (): DocumentState => ({ dataset: createEmptyDataset(), version: "draft", selection: unselected() });
+test("editor and public commands use one history, with stable IDs on redo", () => {
+  const before = initial(), doc = createCausalDocument(before.dataset), after = structuredClone(before);
+  after.dataset.snapshots[0].nodes = [{ id: "a", label: "A" }, { id: "b", label: "B" }];
+  after.dataset.snapshots[0].edges = [{ id: "ab", source: "a", target: "b" }]; after.selection.nodes = ["b"];
+  applyEditorAction(doc, "editor", { type: "commit", before, after });
+  const undo = applyEditorAction(doc, "editor", { type: "undo", current: after });
+  assert.deepEqual(doc.getState().dataset, before.dataset); assert.deepEqual(undo.session, { version: "draft", selection: unselected() });
+  const redo = applyEditorAction(doc, "editor", { type: "redo", current: before });
+  assert.deepEqual(doc.getState().dataset, after.dataset); assert.deepEqual(redo.session?.selection.nodes, ["b"]);
+  doc.edit("draft").updateNode("b", { label: "Public edit" });
+  applyEditorAction(doc, "editor", { type: "undo", current: after });
+  assert.equal(doc.getState().dataset.snapshots[0].nodes[1].label, "B");
 });
-test("no-op edits preserve redo and a new edit starts a new branch", () => {
-  const before = initial(); const after = { ...before, dataset: { ...before.dataset, id: "Changed" } };
-  let h: History = { present: before, past: [], future: [after], revision: 1 };
-  assert.equal(historyReducer(h, { type: "commit", before, after: structuredClone(before) }), h);
-  h = historyReducer(h, { type: "commit", before, after }); assert.equal(h.future.length, 0);
+test("navigation does not commit positions or mutate document history", () => {
+  const before = initial(), doc = createCausalDocument(before.dataset), state = doc.getState();
+  const navigation = applyEditorAction(doc, "editor", { type: "navigate", document: { ...before, version: "review" } });
+  assert.equal(doc.getState(), state); assert.equal(navigation.session?.version, "review");
 });
-test("snapshot navigation retains undo and persistence revision", () => {
-  const before = initial(); const h: History = { present: before, past: [before], future: [], revision: 3 };
-  const next = historyReducer(h, { type: "navigate", document: { ...before, version: "review" } });
-  assert.equal(next.revision, 3); assert.equal(next.past.length, 1); assert.equal(next.present.version, "review");
+test("undo from another editor does not adopt the first editor's selection", () => {
+  const before = initial(), doc = createCausalDocument(before.dataset), after = { ...before, dataset: { ...before.dataset, id: "Changed" } };
+  applyEditorAction(doc, "one", { type: "commit", before, after });
+  const result = applyEditorAction(doc, "two", { type: "undo", current: after });
+  assert.equal(result.session, undefined); assert.equal(doc.getState().dataset.id, before.dataset.id);
 });

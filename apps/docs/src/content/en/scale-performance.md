@@ -29,3 +29,5 @@ Label placement avoids other nodes and labels where space permits. The selected 
 ## Check readability
 
 Review the initial view, zoomed views and selections with many neighbours. Check whether labels overlap, selected nodes remain identifiable and interactions respond promptly. A high frame rate alone does not establish readability.
+
+[Layout and position reuse](/en/stable-layouts/)

@@ -1,8 +1,10 @@
 ---
-title: "Provenance and agreement"
+title: "Evidence and contributors"
 ---
 
-# Provenance and agreement
+# Evidence and contributors
+
+Keep claims traceable to their contributors and evidence. This guide extends the basic dataset with provenance and explains how agreement is displayed.
 
 A causal graph from research is a set of claims: someone said that A leads to B. cytocausal keeps who said each node and link, and what they said, so a reader can check any part of the graph against its source. When several people's graphs are combined, the same evidence shows how far they agree.
 

@@ -53,3 +53,5 @@ When a version's positions are cached, `transitionToSnapshot` animates straight 
 A new snapshot selection can interrupt an active transition. `GraphView` manages the transition lifecycle; pass the latest `snapshotId` rather than removing and recreating graph elements yourself. Cached positions are reused when returning to a version.
 
 If you manage a Cytoscape instance directly, use `transitionToSnapshot`. See the [Cytoscape integration API](/en/api-cytoscape/) for the lower-level interface.
+
+[Runnable version comparison](/en/example-versions/)

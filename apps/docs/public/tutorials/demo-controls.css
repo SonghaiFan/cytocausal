@@ -1,0 +1,37 @@
+/* Shared controls for React, source-view tabs, and vanilla iframe demos. */
+:is(.react-demo, .viewer-toolbar, .source-toolbar, .demo-frame-body) button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 2rem;
+  margin: 0;
+  padding: .375rem .75rem;
+  border: 1px solid var(--sl-color-hairline-light, var(--demo-border, #d9dde5));
+  border-radius: .3rem;
+  background: var(--sl-color-bg, var(--demo-bg, #fff));
+  color: var(--sl-color-text, var(--demo-text, #262b35));
+  font-family: inherit;
+  font-size: .8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  vertical-align: middle;
+  cursor: pointer;
+}
+:is(.react-demo, .viewer-toolbar, .source-toolbar, .demo-frame-body) button:hover {
+  background: var(--sl-color-accent-low, var(--demo-panel, #f6f7f9));
+  color: var(--sl-color-text-accent, #0369a1);
+  border-color: var(--sl-color-accent, #0284c7);
+}
+:is(.react-demo, .viewer-toolbar, .source-toolbar, .demo-frame-body) button:focus-visible {
+  outline: 2px solid var(--sl-color-accent, #0284c7);
+  outline-offset: 2px;
+}
+:is(.react-demo, .viewer-toolbar, .source-toolbar, .demo-frame-body) button:disabled { opacity: .5; cursor: not-allowed; }
+.viewer-toolbar { align-items: center; }
+.viewer-toolbar button[aria-selected='true'] {
+  background: var(--sl-color-accent-low);
+  color: var(--sl-color-text-accent);
+  border-color: var(--sl-color-accent);
+}
+.demo-frame-body button { margin: .15rem; }

@@ -4,6 +4,8 @@ title: "Core API"
 
 # Core API
 
+`createCausalDocument(dataset)` provides immutable state, subscriptions and shared undo/redo. Its `edit(snapshotId)` provides CRUD, position commits and atomic synchronous batches. Commands return Results. `querySnapshot(snapshot, revision)` provides detached reads and checked collections; `parseCausalJSON` and `serializeCausalJSON` convert dataset JSON without applying or saving it. See [document commands](/en/commands/).
+
 This reference covers the primary integration APIs in the current source workspace. Packages are not yet published to npm. The linked TypeScript source is the authority for additional exports.
 
 `import { … } from "@cytocausal/core"`

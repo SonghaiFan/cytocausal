@@ -4,7 +4,9 @@ title: "Causal analysis"
 
 # Causal analysis
 
-In a causal graph, direction is the meaning of an edge. "Rain causes wet ground" isn't the same as the reverse, so analysis has to follow edge direction. `analyzeSnapshot` in `@cytocausal/core` does that, using Cytoscape without a browser:
+Query a snapshot for paths, causes, effects and feedback loops. Core analysis works on the dataset without a renderer; use the React panels when presenting those results in an interface.
+
+In a causal graph, direction is the meaning of an edge. "Rain causes wet ground" isn't the same as the reverse, so analysis has to follow edge direction. `analyzeSnapshot` in `@cytocausal/core` computes directed centrality and strongly connected groups directly from a snapshot:
 
 ```ts
 import { analyzeSnapshot, type Snapshot } from "@cytocausal/core";

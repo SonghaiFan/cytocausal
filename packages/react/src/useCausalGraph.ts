@@ -93,7 +93,11 @@ export function useCausalGraph({
   const [selected, setSelected] = useState(initialLink ? [] : initialSelected);
   const [menuVisible, setMenuVisible] = useState(false);
   const [multiSelecting, setMultiSelecting] = useState(false);
-  const [selectedLink, setSelectedLink] = useState<string | null>(initialLink);
+  const [selectedEdges, setSelectedEdges] = useState<string[]>(initialLink ? [initialLink] : []);
+  const selectedLink = selected.length === 0 && selectedEdges.length === 1 ? selectedEdges[0] : null;
+  const setSelectedLink = useCallback((id: string | null) => setSelectedEdges(id ? [id] : []), []);
+  const selectionNow = useRef({ nodes: selected, edges: selectedEdges });
+  selectionNow.current = { nodes: selected, edges: selectedEdges };
   const [hovered, setHovered] = useState<string | null>(null);
   const [activeRoute, setActiveRoute] = useState<Route | null>(null);
   const [previewedRoute, setPreviewedRoute] = useState<Route | null>(null);
@@ -136,6 +140,7 @@ export function useCausalGraph({
 
   const latest = useRef({
     selected,
+    selectedEdges,
     multiSelecting,
     selectedLink,
     hovered,
@@ -154,7 +159,7 @@ export function useCausalGraph({
   const applyHighlight = useCallback(() => {
     const instance = cy.current;
     if (!instance || instance.destroyed()) return;
-    const { selected, hovered, activeRoute, previewedRoute, depth } = latest.current;
+    const { selected, selectedEdges, hovered, activeRoute, previewedRoute, depth } = latest.current;
     const route = previewedRoute ?? activeRoute;
     const change = () => {
       if (route) {
@@ -175,6 +180,7 @@ export function useCausalGraph({
         const ids = selected.length ? selected : hovered ? [hovered] : [];
         highlightCausalNeighbours(instance, ids, depth);
       }
+      selectedEdges.forEach(id => instance.getElementById(id).removeClass("dimmed").addClass("route-link"));
     };
     // A snapshot change is animating these elements already
     if (isTransitioning(instance)) change();
@@ -186,6 +192,7 @@ export function useCausalGraph({
   useEffect(() => {
     latest.current = {
       selected,
+      selectedEdges,
       multiSelecting,
       selectedLink,
       hovered,
@@ -193,14 +200,14 @@ export function useCausalGraph({
       previewedRoute,
       depth: previewedDepth ?? depth,
     };
-  }, [selected, multiSelecting, selectedLink, hovered, activeRoute, previewedRoute, depth, previewedDepth]);
+  }, [selected, selectedEdges, multiSelecting, selectedLink, hovered, activeRoute, previewedRoute, depth, previewedDepth]);
 
   // A selection or route owns the highlight. Keep the hover state for consumers,
   // but do not reread/reapply the entire graph's styles when it cannot change it.
-  const highlightedHover = selected.length || activeRoute || previewedRoute ? null : hovered;
+  const highlightedHover = selected.length || selectedEdges.length || activeRoute || previewedRoute ? null : hovered;
   useEffect(() => {
     applyHighlight();
-  }, [selected, multiSelecting, selectedLink, highlightedHover, activeRoute, previewedRoute, depth, previewedDepth, applyHighlight]);
+  }, [selected, selectedEdges, multiSelecting, selectedLink, highlightedHover, activeRoute, previewedRoute, depth, previewedDepth, applyHighlight]);
 
   const add = useCallback(
     (ids: string[], id: string) => (ids.includes(id) ? ids : [...ids, id].slice(-maxSelected)),
@@ -249,9 +256,9 @@ export function useCausalGraph({
     instance.batch(() => {
       instance.elements(":selected").unselect();
       selected.forEach((id) => instance.getElementById(id).select());
-      if (selectedLink) instance.getElementById(selectedLink).select();
+      selectedEdges.forEach(id => instance.getElementById(id).select());
     });
-  }, [selected, selectedLink, multiSelecting, tracing, instanceCount]);
+  }, [selected, selectedEdges, multiSelecting, tracing, instanceCount]);
 
   /**
    * Selects a link and highlights it with the nodes it joins, or deselects it. It takes the
@@ -474,7 +481,7 @@ export function useCausalGraph({
             // Drop native edge picks and ignored box gestures as well as stale picks.
             instance.elements(":selected").unselect();
             latest.current.selected.forEach((id) => instance.getElementById(id).select());
-            if (latest.current.selectedLink) instance.getElementById(latest.current.selectedLink).select();
+            latest.current.selectedEdges.forEach(id => instance.getElementById(id).select());
             if (!instance.destroyed() && collected?.size && !menuArea(instance)) {
               selectMultiple([...collected].sort());
             }
@@ -549,8 +556,27 @@ export function useCausalGraph({
     [applyHighlight, beginMarking, choose, clear, dismiss, moveCursor, readableLabels, routeOf, selectable, selectMultiple, stopTracing, toggleLink, walkTo],
   );
 
+  const replaceSelection = useCallback((target: { nodes?: readonly string[]; edges?: readonly string[] }) => {
+    const nodes = [...(target.nodes ?? [])], edges = [...(target.edges ?? [])];
+    selectionNow.current = { nodes, edges };
+    stopTracing(); setMenuVisible(false); setMultiSelecting(nodes.length > 1 || edges.length > 1);
+    setActiveRoute(null); setSelected(nodes); setSelectedEdges(edges);
+  }, [stopTracing]);
+
   return {
     attach,
+    selectedEdges,
+    currentSelection: () => ({ nodes: [...selectionNow.current.nodes], edges: [...selectionNow.current.edges] }),
+    replaceSelection,
+    refresh: () => {
+      const instance = cy.current;
+      if (!instance || instance.destroyed()) return;
+      instance.batch(() => {
+        instance.elements(":selected").unselect();
+        [...selectionNow.current.nodes, ...selectionNow.current.edges].forEach(id => instance.getElementById(id).select());
+      });
+      applyHighlight();
+    },
     /** The connected Cytoscape instance, for anything this hook doesn't cover. */
     cy,
     selected,

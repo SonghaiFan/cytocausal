@@ -4,6 +4,8 @@ title: "Stable layouts and anchoring"
 
 # Stable layouts and anchoring
 
+Use this guide for side-by-side comparisons and reusable node positions. For switching one graph between snapshots, continue with version transitions.
+
 To compare two versions of a graph, a reader needs matching nodes in matching places. A force-directed layout won't give you that on its own, because it arranges each graph independently. Anchoring fixes the layout of one version and places the other around it.
 
 `CompareView` does all of this:
@@ -130,3 +132,5 @@ Causal Explorer offers four: its original positions, a force layout for the node
 ## Limits
 
 Anchored positions are exact, but some overlap can remain. A label that grew between versions makes its node wider, and it can't move without losing its place. The two graphs also fit their own bounds, so they can open at different zoom levels even when coordinates match.
+
+[Animate between snapshots](/en/version-transitions/)

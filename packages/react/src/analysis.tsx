@@ -154,6 +154,14 @@ export function SelectionPanel({
   const history = Boolean(causal && !chosen);
   const routes = { active: graph.activeRoute, onToggle: graph.toggleRoute };
 
+  if (graph.selectedEdges.length && (selected.length > 0 || graph.selectedEdges.length > 1)) {
+    return <section className={`cc-panel ${className}`}>
+      <h3 className="cc-heading">{labels.selected}</h3>
+      <ul>{selected.map(id => <li key={`node:${id}`}>{snapshot.nodes.find(n => n.id === id)?.label ?? id}</li>)}
+        {graph.selectedEdges.map(id => { const edge = snapshot.edges.find(e => e.id === id); return edge ? <li key={`edge:${id}`}>{edge.source} → {edge.target}</li> : null; })}</ul>
+      <button type="button" className="cc-link" onClick={clear}>{labels.clearSelection}</button>
+    </section>;
+  }
   if (graph.selectedLink) {
     return (
       <>

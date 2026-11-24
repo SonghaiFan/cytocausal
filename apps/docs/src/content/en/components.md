@@ -1,8 +1,8 @@
 ---
-title: "Components"
+title: "Compose an interface"
 ---
 
-# Components
+# Compose an interface
 
 `CausalWorkspace` gives you a complete interface in one line. Every part of it is also a component you can use on its own.
 
@@ -26,14 +26,14 @@ import "@cytocausal/react/styles.css";
 
 | Prop | Default | What it does |
 | :--- | :--- | :--- |
-| `dataset` | Required | The graph to show |
+| `dataset` / `document` | One required | Read-only data or a shared editable document |
 | `title` | None | Text at the top of the sidebar |
 | `labels` | English | Text to replace |
 | `themes` | `lightTheme`, `darkTheme` | The light and dark [themes](/en/theming/) |
 | `styleOptions` | None | Options for `createCausalStyle` |
 | `layout` | Automatic | Saved positions if every node has one, or else an automatic layout |
 | `layouts`, `initialLayout` | None, the first | Named layouts to choose between, in place of `layout`. The workspace shows a switch, and a shared link keeps the choice |
-| `maxSelected` | `2` | How many nodes can be selected. A click selects one; ⤳ in the radial menu adds a second and lists the paths between them |
+| `maxSelected` | `Infinity` | Maximum selected nodes. A click selects one; the radial menu can add nodes to the selection |
 | `scheme` | System | Sets `light` or `dark`, and hides the switch button |
 | `initialVersion`, `initialSelected` | First snapshot, none | Where to start |
 | `shareInUrl` | `true` | Keeps the version and selection in the page address, so a link reopens the same view |
@@ -41,7 +41,7 @@ import "@cytocausal/react/styles.css";
 
 Define `labels`, `themes` and `styleOptions` outside your component, so they stay the same between renders.
 
-On graphs of more than 60 nodes, the workspace only lists loops of up to six nodes, because the full list can be enormous. A `+` after the count means there may be more. Pass `loopOptions`, such as `{ maxLength: 8, limit: 200 }`, to set your own limits.
+Configure the cycle panel with `loopSettings`: its title, description, maximum cycle length and result limit. Without an override, the initial bounds are four nodes and 1000 results; readers can adjust the search range in the panel. Applications can override those defaults: the starter initially leaves cycle length unlimited. See [Causal analysis](/en/causal-analysis/).
 
 ## Choose your own parts
 
@@ -217,3 +217,5 @@ export function EditableGraph({ dataset, onChange }: {
 Use the starter's browser-only loading boundary. `initialDataset` seeds an internally managed document, not a controlled prop. Later data is loaded through a ref's `replaceDataset`. `onChange` returns a detached document after editing, undo and redo; the host chooses how to save it. The editor does not use localStorage or file dialogs.
 
 Add application controls with `header`, `toolbar` and `footer`. This first editor uses English labels and a light theme; separate headless authoring hooks are not yet exposed. See [React API](/en/api-react/) for the contract. Run the starter and visit `/editor`; source: `apps/starter/src/components/EditorExample.tsx`.
+
+[Runnable composition example](/en/example-compose/)

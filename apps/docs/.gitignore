@@ -5,3 +5,12 @@ dist/
 .DS_Store
 *.tsbuildinfo
 .env*
+
+# Generated tutorial bundles and source display
+/public/tutorials/cytoscape.min.js
+/public/tutorials/cytoscape-LICENSE.txt
+/public/tutorials/layouts.js*
+/public/tutorials/dependency-LICENSES.txt
+/src/components/tutorials/sources.json
+
+/public/tutorials/source-files/

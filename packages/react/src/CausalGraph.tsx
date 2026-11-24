@@ -47,7 +47,7 @@ export function CausalGraph({
   children?: ReactNode;
 }) {
   const labels = useCausalLabels();
-  const { dataset, version, layout, stylesheet, theme, positionCache, graph, applyFilter } =
+  const { dataset, version, layout, stylesheet, theme, positionCache, graph, applyFilter, applyViewControls, document } =
     useCausal();
   return (
     <div className={`cc-graph ${className}`}>
@@ -60,11 +60,14 @@ export function CausalGraph({
         positionCache={positionCache}
         maxZoom={maxZoom}
         animateSnapshots
+        syncData={Boolean(document)}
+        onDataUpdate={(instance) => { graph.refresh(); applyFilter(instance); applyViewControls(); }}
         animateLayouts
         renderLinkTooltip={renderLinkTooltip}
         onReady={(instance) => {
           graph.attach(instance);
           applyFilter(instance);
+          applyViewControls();
           instance.container()!.setAttribute("aria-label", labels.graph);
         }}
       />

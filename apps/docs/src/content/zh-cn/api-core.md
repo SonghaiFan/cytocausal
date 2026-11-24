@@ -4,6 +4,8 @@ title: "Core API"
 
 # Core API
 
+`createCausalDocument(dataset)` 提供不可变状态、订阅与共享撤销／重做；其 `edit(snapshotId)` 提供 CRUD、位置提交与同步原子事务，命令返回 Result。`querySnapshot(snapshot, revision)` 提供脱离文档的读取和带校验的集合；`parseCausalJSON` 与 `serializeCausalJSON` 转换数据集 JSON，不自动应用或保存。详见[文档命令](/zh-cn/commands/)。
+
 本参考覆盖当前源码工作区的主要接入 API，package 尚未发布到 npm。其他导出与完整类型以链接的 TypeScript 源码为准。
 
 `import { … } from "@cytocausal/core"`

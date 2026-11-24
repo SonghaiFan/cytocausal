@@ -57,6 +57,9 @@ export interface GraphViewProps {
   positionCache?: PositionCache;
   /** Animate between snapshots of a dataset instead of rebuilding the graph. */
   animateSnapshots?: boolean;
+  /** Reconcile document edits in place, preserving the camera and unedited node positions. */
+  syncData?: boolean;
+  onDataUpdate?: (cy: Core) => void;
   /**
    * Move nodes into a new `layout` instead of rebuilding the graph. Positions each layout gave
    * are kept, so switching back returns every node to where it was.
@@ -112,6 +115,8 @@ export function GraphView({
   anchorPositions,
   onLayoutComplete,
   onReady,
+  syncData = false,
+  onDataUpdate,
   renderTooltip,
   renderLinkTooltip,
   tooltipDelay = 300,
@@ -122,6 +127,7 @@ export function GraphView({
   const container = useRef<HTMLDivElement>(null);
   const cy = useRef<Core | null>(null);
   const anchoredLayout = useRef<Layouts | null>(null);
+  const drawnSnapshot = useRef<Snapshot | null>(null);
   const shown = useRef<{ dataset: string; layout: LayoutOptions; snapshot: string } | null>(null);
   const [layoutStatus, setLayoutStatus] = useState<"loading" | "ready" | "error" | "cancelled">("loading");
   const cancelJob = useRef<(() => void) | null>(null);
@@ -136,9 +142,9 @@ export function GraphView({
   const cacheKey = cacheKeyOf(dataset.id, layout, snapshotId);
 
   // Listeners outlive a snapshot change, so they read the latest values
-  const latest = useRef({ cacheKey, snapshot, stylesheet, motion, onLayoutComplete, onReady });
+  const latest = useRef({ cacheKey, snapshot, stylesheet, motion, onLayoutComplete, onReady, onDataUpdate });
   useEffect(() => {
-    latest.current = { cacheKey, snapshot, stylesheet, motion, onLayoutComplete, onReady };
+    latest.current = { cacheKey, snapshot, stylesheet, motion, onLayoutComplete, onReady, onDataUpdate };
   });
 
   const rememberPositions = useCallback(() => {
@@ -178,6 +184,31 @@ export function GraphView({
       if (cancelled) return;
       try {
         const current = shown.current;
+        if (syncData && cy.current && !cy.current.destroyed() && current?.dataset === dataset.id && current.snapshot === snapshotId && current.layout === layout && retry === 0) {
+          const instance = cy.current;
+          const camera = { zoom: instance.zoom(), pan: { ...instance.pan() } };
+          const before = new Map(drawnSnapshot.current?.nodes.map(node => [node.id, node]));
+          const extent = instance.extent();
+          const elements = toElements(snapshot);
+          const nextNodes = new Map(snapshot.nodes.map(node => [node.id, node]));
+          let added = 0;
+          for (const node of elements.nodes) {
+            const old = instance.getElementById(node.data.id!);
+            const was = before.get(node.data.id!);
+            const next = nextNodes.get(node.data.id!)!;
+            const moved = next.position && (!was?.position || was.position.x !== next.position.x || was.position.y !== next.position.y);
+            if (old.nonempty() && !moved) node.position = { ...old.position() };
+            else if (!next.position) { const offset = added++ * 28 / instance.zoom(); node.position = { x: (extent.x1 + extent.x2) / 2 + offset, y: (extent.y1 + extent.y2) / 2 + offset }; }
+          }
+          instance.json({ elements });
+          instance.viewport(camera);
+          drawnSnapshot.current = snapshot;
+          rememberPositions();
+          latest.current.onDataUpdate?.(instance);
+          latest.current.onLayoutComplete?.(snapshotPositions(instance, snapshot));
+          finish();
+          return;
+        }
         if (
           animateLayouts &&
           !waitForAnchors &&
@@ -207,6 +238,7 @@ export function GraphView({
               }
             },
           });
+          drawnSnapshot.current = snapshot;
           shown.current = { dataset: dataset.id, layout, snapshot: snapshotId };
           return;
         }
@@ -233,6 +265,7 @@ export function GraphView({
             motion: latest.current.motion,
             onSettled: () => { if (!cancelled) { rememberPositions(); finish(); } },
           });
+          drawnSnapshot.current = snapshot;
           shown.current = { dataset: dataset.id, layout, snapshot: snapshotId };
           return;
         }
@@ -307,7 +340,8 @@ export function GraphView({
 
         // Attach before awaiting the worker so the existing UI can cancel or switch layouts.
         latest.current.onReady?.(instance);
-        shown.current = { dataset: dataset.id, layout, snapshot: snapshotId };
+        drawnSnapshot.current = snapshot;
+          shown.current = { dataset: dataset.id, layout, snapshot: snapshotId };
         const positions = !waitForAnchors ? await calculate(instance, initialLayout) : undefined;
         if (cancelled || instance.destroyed()) return;
         const initial = instance.layout(positions ? { name: "preset", positions, fit: true, padding: 30, animate: false } as LayoutOptions : initialLayout);
@@ -344,6 +378,7 @@ export function GraphView({
     layout,
     maxZoom,
     animateSnapshots,
+    syncData,
     animateLayouts,
     waitForAnchors,
     positionCache,
@@ -368,16 +403,22 @@ export function GraphView({
   // Keeps the graph in view when its space changes, such as on rotating a phone
   useEffect(() => {
     let previous = "";
+    let frame = 0;
     const observer = new ResizeObserver(([{ contentRect }]) => {
       const size = `${contentRect.width}x${contentRect.height}`;
-      if (previous && previous !== size && cy.current && !cy.current.destroyed()) {
-        cy.current.resize();
-        fitNodes(cy.current);
+      if (previous && previous !== size && contentRect.width > 0 && contentRect.height > 0) {
+        cancelAnimationFrame(frame);
+        // Canvas and label writes must happen after ResizeObserver delivery.
+        frame = requestAnimationFrame(() => {
+          if (!cy.current || cy.current.destroyed()) return;
+          cy.current.resize();
+          fitNodes(cy.current);
+        });
       }
       previous = size;
     });
     observer.observe(container.current!);
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
   }, []);
 
   useEffect(() => {

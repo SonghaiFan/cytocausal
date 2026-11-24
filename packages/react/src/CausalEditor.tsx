@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useReducer, useRef, useState, useId, useImperativeHandle, type ReactNode, type Ref, type Dispatch, type MutableRefObject } from "react";
+import { useEffect, useRef, useState, useId, useImperativeHandle, type ReactNode, type Ref, type MutableRefObject } from "react";
 import type { Core, EventObject } from "cytoscape";
-import type { CausalDataset, CausalEdge, Snapshot } from "@cytocausal/core";
+import type { CausalDataset, CausalEdge, CausalDocument, CausalEditing, EditResult, Snapshot } from "@cytocausal/core";
 import { savedLayout, autoLayout, relayout, keepConstantSize, lightTheme, darkTheme, type Positions } from "@cytocausal/cytoscape";
 import { CausalProvider, useCausal } from "./CausalProvider.tsx";
 import { ZoomControls } from "./controls.tsx";
@@ -12,7 +12,9 @@ import { NodeSearch } from "./NodeSearch.tsx";
 import { CyclePanel } from "./CyclePanel.tsx";
 import { ContributorFilter } from "./ContributorFilter.tsx";
 import { deleteCausalNode as deleteNode, parseEditorDataset as parseDataset } from "@cytocausal/core";
-import { historyReducer, unselected, type DocumentState, type History, type HistoryAction, type Selection } from "./editor-history.ts";
+import { applyEditorAction, unselected, type DocumentState, type HistoryAction, type Selection } from "./editor-history.ts";
+import { useCausalDocument, useCausalDocumentState } from "./useCausalDocument.ts";
+import type { CausalSelection } from "./useCausalSelection.ts";
 import { AuthorMenu, ringAround, type Direction } from "./AuthorMenu.tsx";
 
 type Point = { x: number; y: number };
@@ -34,6 +36,8 @@ const withPositions = (data: CausalDataset, version: string, positions: Position
   ...data, snapshots: data.snapshots.map(s => s.id === version ? { ...s, nodes: s.nodes.map(n => ({ ...n, position: positions[n.id] ?? n.position })) } : s),
 });
 export interface CausalEditorApi {
+  edit: CausalEditing;
+  selection: CausalSelection;
   /** A detached document, including authored node positions. */
   getDataset(): CausalDataset;
   /** Replace the document as one undoable edit; resetHistory starts a new session without emitting onChange. */
@@ -44,9 +48,7 @@ export interface CausalEditorApi {
   canUndo: boolean;
   canRedo: boolean;
 }
-export interface CausalEditorProps {
-  /** Read once on mount. Use ref.replaceDataset to load another document. */
-  initialDataset: CausalDataset;
+export interface CausalEditorOptions {
   /** Called after document edits, undo and redo. Never writes to storage. */
   onChange?: (dataset: CausalDataset) => void;
   initialNodeStyle?: EditorNodeStyle;
@@ -58,35 +60,56 @@ export interface CausalEditorProps {
   ref?: Ref<CausalEditorApi>;
 }
 
-/** A browser-rendered React editor. The host owns persistence and file operations. */
-export function CausalEditor({ initialDataset, onChange, initialNodeStyle = "text", onNodeStyleChange, ref, ...slots }: CausalEditorProps) {
-  const [history, dispatch] = useReducer(historyReducer, initialDataset, data => {
-    const dataset = parseDataset(data);
-    return { present: { dataset, version: dataset.snapshots[0].id, selection: unselected() }, past: [], future: [], revision: 0 };
-  });
+export type CausalEditorProps = CausalEditorOptions & (
+  { initialDataset: CausalDataset; document?: never } | { document: CausalDocument; initialDataset?: never }
+);
+type EditorSession = Pick<DocumentState, "version" | "selection">;
+type EditorHistoryView = { present: DocumentState; canUndo: boolean; canRedo: boolean };
+type EditorDispatch = (action: HistoryAction) => EditResult;
+
+/** The host owns persistence; all editor and application edits share one document history. */
+export function CausalEditor(props: CausalEditorProps) {
+  if (props.document && props.initialDataset) throw new Error("Pass document or initialDataset, not both.");
+  return props.document ? <DocumentEditor {...props} document={props.document} /> : <OwnedEditor {...props} initialDataset={props.initialDataset!} />;
+}
+function OwnedEditor({ initialDataset, ...props }: CausalEditorOptions & { initialDataset: CausalDataset }) {
+  const document = useCausalDocument({ initialDataset });
+  return <DocumentEditor {...props} document={document} />;
+}
+function DocumentEditor({ document, onChange, initialNodeStyle = "text", onNodeStyleChange, ref, ...slots }: CausalEditorOptions & { document: CausalDocument }) {
+  const state = useCausalDocumentState(document);
+  const [ui, setUi] = useState<EditorSession>(() => ({ version: state.dataset.snapshots[0].id, selection: unselected() }));
   const [session, setSession] = useState(0);
   const [nodeStyle, setNodeStyle] = useState<EditorNodeStyle>(initialNodeStyle);
   const viewport = useRef<View | null>(null);
   const change = useRef(onChange); change.current = onChange;
-  useEffect(() => {
-    if (history.revision) change.current?.(structuredClone(history.present.dataset));
-  }, [history.revision, session]);
-  const reset = (dataset: CausalDataset) => {
-    viewport.current = null;
-    dispatch({ type: "restore", document: { dataset, version: dataset.snapshots[0].id, selection: unselected() } });
-    setSession(n => n + 1);
+  useEffect(() => document.subscribe(() => {
+    const current = document.getState();
+    if (current.change !== "load") change.current?.(structuredClone(current.dataset));
+  }), [document]);
+  const version = state.dataset.snapshots.some(s => s.id === ui.version) ? ui.version : state.dataset.snapshots[0].id;
+  const editorId = useId();
+  const dispatch: EditorDispatch = action => {
+    const { result, session } = applyEditorAction(document, editorId, action);
+    if (result.ok && session) setUi(session);
+    return result;
   };
-  const { dataset, version, selection } = history.present;
-  return <CausalProvider className="cc-editor-provider" key={session + ":" + version} dataset={dataset} initialVersion={version} initialSelected={selection.nodes} initialLink={selection.link ?? undefined} scheme="light" themes={editorThemes} styleOptions={editorStyles[nodeStyle]} shareInUrl={false}>
+  const reset = (dataset: CausalDataset) => {
+    const result = document.load(dataset);
+    if (!result.ok) return;
+    viewport.current = null; setUi({ version: dataset.snapshots[0].id, selection: unselected() }); setSession(n => n + 1);
+  };
+  const history: EditorHistoryView = { present: { dataset: state.dataset, version, selection: ui.selection }, canUndo: state.canUndo, canRedo: state.canRedo };
+  return <CausalProvider className="cc-editor-provider" key={session + ":" + version} document={document} initialVersion={version} initialSelected={ui.selection.nodes} initialLink={ui.selection.link ?? undefined} scheme="light" themes={editorThemes} styleOptions={editorStyles[nodeStyle]} shareInUrl={false}>
     <Editor {...slots} editorRef={ref} reset={reset} nodeStyle={nodeStyle} onNodeStyle={next => { setNodeStyle(next); onNodeStyleChange?.(next); }} history={history} dispatch={dispatch} viewport={viewport} />
   </CausalProvider>;
 }
 
 function Editor({ nodeStyle, onNodeStyle, history, dispatch, viewport, editorRef, reset, header, toolbar, footer, className = "" }: {
-  nodeStyle: EditorNodeStyle; onNodeStyle: (next: EditorNodeStyle) => void; history: History; dispatch: Dispatch<HistoryAction>; viewport: MutableRefObject<View | null>;
+  nodeStyle: EditorNodeStyle; onNodeStyle: (next: EditorNodeStyle) => void; history: EditorHistoryView; dispatch: EditorDispatch; viewport: MutableRefObject<View | null>;
   editorRef: Ref<CausalEditorApi> | undefined; reset: (dataset: CausalDataset) => void;
-} & Pick<CausalEditorProps, "header" | "toolbar" | "footer" | "className">) {
-  const { dataset, snapshot, version, graph, stylesheet, applyFilter, exportImage } = useCausal();
+} & Pick<CausalEditorOptions, "header" | "toolbar" | "footer" | "className">) {
+  const { dataset, snapshot, version, graph, stylesheet, applyFilter, exportImage, edit, selection: sharedSelection } = useCausal();
   const [mode, setMode] = useState<"author" | "explore">("author");
   const [error, setError] = useState("");
   const root = useRef<HTMLDivElement>(null);
@@ -116,7 +139,7 @@ function Editor({ nodeStyle, onNodeStyle, history, dispatch, viewport, editorRef
   const focusCanvas = () => graph.cy.current?.container()?.focus();
   const selectNode = (id: string) => { graph.clear(); graph.toggle(id); };
   const commit = (data: CausalDataset, selection = selected(), before = materialize(), nextVersion = version) => {
-    dispatch({ type: "commit", before, after: { dataset: data, version: nextVersion, selection } }); setError("");
+    const result = dispatch({ type: "commit", before, after: { dataset: data, version: nextVersion, selection } }); setError(result.ok ? "" : result.error.message);
   };
   const update = (fn: (s: Snapshot) => Snapshot, selection = selected(), before = materialize()) => {
     commit({ ...before.dataset, snapshots: before.dataset.snapshots.map(s => s.id === version ? fn(s) : s) }, selection, before);
@@ -165,7 +188,11 @@ function Editor({ nodeStyle, onNodeStyle, history, dispatch, viewport, editorRef
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", cancel); window.addEventListener("blur", cancel);
   };
   const submitDraft = () => {
+    const draft = latest.current.draft;
     if (!draft?.label.trim()) return;
+    // Moving focus after Enter can blur the field before React removes it.
+    // Consume the draft first so that blur cannot submit the same edit twice.
+    latest.current.draft = null;
     if (draft.node) update(s => ({ ...s, nodes: s.nodes.map(n => n.id === draft.node ? { ...n, label: draft.label.trim() } : n) }), { nodes: [draft.node], link: null });
     else {
       const n = { id: uid("node"), label: draft.label.trim(), position: draft.position };
@@ -270,6 +297,8 @@ function Editor({ nodeStyle, onNodeStyle, history, dispatch, viewport, editorRef
     setMode(next);
   };
   const api: CausalEditorApi = {
+    edit: edit!,
+    selection: sharedSelection,
     getDataset: () => structuredClone(materialize().dataset),
     replaceDataset: (input, options) => {
       const data = parseDataset(input);
@@ -280,8 +309,8 @@ function Editor({ nodeStyle, onNodeStyle, history, dispatch, viewport, editorRef
     renameDataset: name => { if (name.trim()) commit({ ...materialize().dataset, id: name.trim() }); },
     undo: () => { if (mode === "author") undo(); },
     redo: () => { if (mode === "author") undo(true); },
-    canUndo: mode === "author" && !!history.past.length,
-    canRedo: mode === "author" && !!history.future.length,
+    canUndo: mode === "author" && history.canUndo,
+    canRedo: mode === "author" && history.canRedo,
   };
   useImperativeHandle(editorRef, () => api);
   const quick = snapshot.edges.find(e => e.id === (quickEdge ?? edge?.id));

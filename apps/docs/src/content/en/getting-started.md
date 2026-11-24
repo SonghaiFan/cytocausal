@@ -4,9 +4,11 @@ title: "Getting started"
 
 # Getting started
 
-cytocausal is a React library for causal graph interfaces, built on Cytoscape.js. The React / Next.js starter is the current way to build your own application with it. Packages are private workspace packages; an npm release is planned. Start with `@cytocausal/react` for the workspace and composable interactions. Studio is a browser-local drawing app built on the library; its authoring controls come from `CausalEditor`, while Studio handles saving and file operations. Run the starter and open `/editor` for a minimal editable React example.
+Build a causal graph interface from a dataset, then add the panels and interactions your application needs. `CausalWorkspace` supplies a complete viewer; `CausalProvider` lets you compose the pieces, and `CausalEditor` supplies authoring controls.
 
-You need Node.js 22.18 or later.
+This guide uses the source workspace. You need Node.js 22.18 or later.
+
+## Run the starter
 
 ```sh
 git clone https://github.com/SonghaiFan/cytocausal.git
@@ -15,26 +17,11 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3102`. You'll see a small made-up model of a coffee shop, with two versions and its feedback loops listed.
+Open `http://localhost:3102` for a fictional coffee-shop model with two versions. Open `http://localhost:3102/editor` for the editable example.
 
-Optional background: [Cytoscape.js basics and extensions](/en/cytoscape-basics/) compares native Cytoscape.js and cytocausal using the same small causal graph. Read it when you want to customise styles or interactions.
+## Replace the model
 
-## Make it yours
-
-Everything you need to change is in `apps/starter/src`:
-
-| File | What it does |
-| :--- | :--- |
-| `data.ts` | Your graph. Start by replacing this |
-| `components/App.tsx` | The page, which is one `CausalWorkspace` |
-
-To keep the starter as a reference, copy `apps/starter` to `apps/your-app` and change `name` in its `package.json`.
-
-## Add your data
-
-To go further, see [Components](/en/components/) and [Themes and styles](/en/theming/).
-
-Your data needs to fit the [data model](/en/data-model/). Only ids and labels are required, so a graph can be as simple as:
+Edit `apps/starter/src/data.ts`. A dataset contains snapshots; each snapshot has nodes and edges. Edges refer to node IDs, and can carry a positive or negative polarity.
 
 ```ts
 import type { CausalDataset } from "@cytocausal/core";
@@ -54,29 +41,30 @@ export const dataset: CausalDataset = {
 };
 ```
 
-The starter shows any problems `validateDataset` finds at the top of the sidebar.
+`CausalWorkspace` displays validation issues in its sidebar. For CSV, spreadsheets and existing JSON, follow [Bring your own data](/en/import-data/).
 
-## What's in the repo
+## Choose an interface
 
-| Path | Contents |
-| :--- | :--- |
-| `apps/starter` | The app to build from |
-| `apps/perspectiva` | Example: comparing versions side by side |
-| `apps/explorer` | Example: exploring a large network |
-| `apps/docs` | This site |
-| `packages/core` | Data model, validation and analysis |
-| `packages/cytoscape` | Themes, styles, layouts, transitions and highlighting |
-| `packages/react` | `CausalWorkspace`, its components and `useCausalGraph` |
+Edit `apps/starter/src/components/App.tsx` to change the viewer.
 
-Run the examples with `npm run dev:perspectiva` and `npm run dev:explorer`.
+| What you need | Start with | Read next |
+| --- | --- | --- |
+| A graph with search, details and analysis panels | `CausalWorkspace` | [Compose an interface](/en/components/) |
+| Your own arrangement of graph and panels | `CausalProvider` and `CausalGraph` | [Compose panels](/en/example-compose/) |
+| Node and relationship editing | `CausalEditor` | [Editable graph](/en/components/#an-editable-graph) |
+| A specialised renderer integration | `GraphView` | [React lifecycle](/en/react-lifecycle/) |
 
-## Contribute
+Keep the starter's browser-only loading boundary and give the graph container a height. Import `@cytocausal/react/styles.css` once; the editor also uses `@cytocausal/react/editor.css`.
 
-See [CONTRIBUTING.md](https://github.com/SonghaiFan/cytocausal/blob/main/CONTRIBUTING.md). The datasets in this repo have their own terms, so read [DATA.md](https://github.com/SonghaiFan/cytocausal/blob/main/DATA.md) before reusing them.
+Use [document commands](/en/commands/) for application-driven edits, undo/redo and shared selection.
 
+## Continue with your task
 
-## Next steps
+- **Build the interface:** [styles](/en/theming/) and [interactions](/en/interactions/).
+- **Describe and analyse the model:** [data model](/en/data-model/), [evidence](/en/provenance/) and [causal analysis](/en/causal-analysis/).
+- **Compare versions:** [stable layouts](/en/stable-layouts/) and [version transitions](/en/version-transitions/).
+- **Start from runnable code:** [choose an example](/en/examples/).
 
-- [Bring your own data](/en/import-data/)
-- [Independent examples](/en/examples/)
-- [Core API](/en/api-core/) · [React API](/en/api-react/) · [Cytoscape API](/en/api-cytoscape/)
+The separate [Cytoscape.js course](/en/cytoscape-basics/) teaches native graph APIs with standalone React and vanilla demos. You do not need to complete it before using Cytocausal. When adding native behaviour to the framework, use [Extend with Cytoscape.js](/en/cytoscape-integration/).
+
+Repository setup and contribution details are in [CONTRIBUTING.md](https://github.com/SonghaiFan/cytocausal/blob/main/CONTRIBUTING.md). Check [DATA.md](https://github.com/SonghaiFan/cytocausal/blob/main/DATA.md) before reusing the application datasets.

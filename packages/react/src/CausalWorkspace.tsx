@@ -2,14 +2,14 @@
 import type { ReactNode } from "react";
 import { DepthControl, SelectionPanel, VersionDiff } from "./analysis.tsx";
 import { CausalGraph } from "./CausalGraph.tsx";
-import { CausalProvider, useCausal, type CausalProviderProps } from "./CausalProvider.tsx";
+import { CausalProvider, useCausal, type CausalProviderOptions, type CausalProviderInput } from "./CausalProvider.tsx";
 import { LayoutSwitcher, Legend, SidebarHeader, VersionSwitcher } from "./controls.tsx";
 import { useCausalLabels } from "./labels.tsx";
 import { ContributorFilter } from "./ContributorFilter.tsx";
 import { CyclePanel } from "./CyclePanel.tsx";
 import { NodeSearch } from "./NodeSearch.tsx";
 
-export interface CausalWorkspaceProps extends Omit<CausalProviderProps, "children" | "className"> {
+export type CausalWorkspaceProps = Omit<CausalProviderOptions, "children" | "className"> & CausalProviderInput & {
   title?: string;
   /** Extra panels, shown at the end of the sidebar. */
   children?: ReactNode;

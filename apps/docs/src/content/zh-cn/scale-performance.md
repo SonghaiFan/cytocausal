@@ -29,3 +29,5 @@ export const savedLayout = { name: "preset", fit: true, padding: 30 } as LayoutO
 ## 检查可读性
 
 检查初始视图、不同缩放级别，以及邻居较多的节点选择。确认标签是否重叠、选中节点是否容易辨认、交互是否及时响应。帧率高并不代表图可读。
+
+[布局与位置复用](/zh-cn/stable-layouts/)

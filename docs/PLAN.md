@@ -48,7 +48,7 @@ Move Explorer from Create React App to Next.js. Retest performance with labels f
 Done when it matches the current app and fixes search, the sentence panel, cause and effect highlighting, and directed node sizing.
 
 ### 4. Docs
-Add guides on the data model, React lifecycle, stable layouts and anchoring, version transitions, causal analysis, and scale and performance, in English and Chinese. Add a case study for each demo. The earlier Cytoscape tutorials were removed, and remain in the `learning-cytoscape` project.
+Add guides on the data model, React lifecycle, stable layouts and anchoring, version transitions, causal analysis, and scale and performance, in English and Chinese. Add a case study for each demo. The Cytoscape.js foundations section contains the seven-part bilingual tutorial and native React and vanilla playgrounds in a dedicated sidebar section. The standalone learning repositories remain historical archives.
 
 ### 5. New capabilities and cutover
 Loop detection is done in both demos, with loops labelled as reinforcing or balancing where polarity exists. Add version comparison to Explorer only if its older data can be matched up.
@@ -78,3 +78,7 @@ Polarity, snapshots and contributors are optional.
 - The visual identity is the yellow causal sunburst: `#F4CD3C` with ink `#20201C`, a yellow focus node, stepped radial sectors and directed causal paths. Canonical SVGs live in `apps/docs/public/brand/`; the brand guides define usage. Graph semantic colours remain separate.
 
 - **Visual hammer correction:** sunburst exploration + causal graph + yellow. The identity uses a yellow focal node, radial sectors and directed paths; the real radial-menu interaction supplies the behaviour.
+
+## Demo-oriented interface design
+
+The [Cytoscape demo API design](maintenance/demo-api-design.md) inventories the native tutorial features. The initial document, editing/history, selection, collection queries, basic view and dataset-JSON interfaces are implemented in the source workspace, with Provider/Editor integration and three standalone command demos. Layout tasks, appearance, general events, algorithms and additional formats remain proposed. No release has been published.

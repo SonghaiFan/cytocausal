@@ -23,6 +23,12 @@ The site uses static export. Set `NEXT_PUBLIC_BASE_PATH=/cytocausal` for GitHub 
 
 The homepage lives in `src/components/Home.tsx`, with language entry points in `src/content/*/index.mdx`. It introduces the library, links to the showcase and case studies, and distinguishes the available starter from the browser-local Studio application.
 
+## Documentation navigation
+
+The English and Chinese sidebars share the same task order: start the app, build an interface, model and analyse data, compare versions, then handle advanced integration. Examples, API references and case studies follow; the native Cytoscape.js course remains a separate section. Navigation is defined in each locale's `_meta.ts`, while existing page slugs remain stable.
+
+`getting-started.md` describes the starter and the available integration levels. `examples.md` distinguishes framework examples from the standalone native demos. `cytoscape-integration.md` covers framework boundaries and links to the native course for API instruction rather than duplicating that course.
+
 ## Examples and reference
 
 Runnable examples live in `src/components/examples/`. After editing their source, run `node scripts/sync-examples.mjs --write` to refresh the source displayed in the docs. `npm run check:examples` checks for drift; `npm run test:examples` checks the importer and documented graph results. The docs typecheck compiles all four example components.
@@ -32,3 +38,15 @@ Navigation groups preserve existing guide URLs. `import-data.mdx` is the end-to-
 ## Deployment
 
 The public site is [songhaifan.github.io/cytocausal](https://songhaifan.github.io/cytocausal/). See [deployment instructions](../../docs/deployment/README.md) for the automatic GitHub Actions publishing workflow.
+
+## Cytoscape.js foundations course
+
+The bilingual course lives in `src/content/{en,zh-cn}/cytoscape-basics/`. The overview retains `/en/cytoscape-basics/` and `/zh-cn/cytoscape-basics/`; its seven chapters share the topic slugs `setup`, `elements`, `layouts`, `styles`, `events`, `algorithms`, and `data`. The course has its own top-level sidebar section. Each chapter links to standalone demo pages at `/examples/{lang}/{mode}/{topic}/`, with a seven-chapter sidebar and Tutorial / Vanilla JavaScript / React navigation. Framework integration lives in the separate `cytoscape-integration.md` guide and short notes at the end of each chapter.
+
+`src/components/tutorials/` owns the native React playgrounds and shared viewer. `public/tutorials/vanilla/` owns the bilingual standalone HTML. `prepare:tutorials` generates small source manifests, raw source files and local Cytoscape/layout bundles from workspace dependencies before development, typechecking, content checking and builds. Preview / Code tabs preserve the live graph while switching views. Code view fetches the selected source file on demand and provides open-file and copy actions. Generated bundles, licences, source manifests and raw source files are ignored by Git. No CDN requests are needed for the playgrounds. `check:tutorials` detects source-display drift.
+
+After changing a tutorial, run the content check, typecheck, example checks and the production build. In the browser, check the tutorial-to-demo links, Preview / Code state preservation, source-file loading and copying, native element edits, all optional layouts, native graph analysis without changing element counts, JSON export, and phone widths. Use `NEXT_PUBLIC_BASE_PATH=/cytocausal` for the production-path regression check.
+
+## Document commands
+
+`commands.md` documents the first command interface. Standalone `cytocausal` demos are available for `elements`, `events` and `data`; their actual React source lives in `src/components/tutorials/framework/CommandsExample.tsx` and is included in the generated source manifest. Other chapters retain the native React/vanilla modes. Editing and undo history are shared through a Core document, while Provider selection and camera state remain local to each view.

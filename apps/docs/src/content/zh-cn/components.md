@@ -1,8 +1,8 @@
 ---
-title: "组件"
+title: "组合界面"
 ---
 
-# 组件
+# 组合界面
 
 `CausalWorkspace` 用一行代码提供完整界面。其中每一部分也都是可以单独使用的组件。
 
@@ -26,14 +26,14 @@ import "@cytocausal/react/styles.css";
 
 | 属性 | 默认值 | 作用 |
 | :--- | :--- | :--- |
-| `dataset` | 必需 | 要显示的图 |
+| `dataset` / `document` | 二选一 | 只读数据，或共享的可编辑文档 |
 | `title` | 无 | 侧边栏顶部的文字 |
 | `labels` | 英文 | 要替换的文字 |
 | `themes` | `lightTheme`、`darkTheme` | 浅色和深色[主题](/zh-cn/theming/) |
 | `styleOptions` | 无 | `createCausalStyle` 的选项 |
 | `layout` | 自动 | 所有节点都有位置时使用已保存的位置，否则自动布局 |
 | `layouts`、`initialLayout` | 无、第一个 | 可供选择的具名布局，取代 `layout`。工作区会显示切换按钮，分享的链接会保留所选布局 |
-| `maxSelected` | `2` | 可同时选中的节点数。点击选中一个；在环形菜单中选择 ⤳ 可以加入第二个节点，并列出两者之间的路径 |
+| `maxSelected` | `Infinity` | 可同时选中的节点数上限。点击选中一个；环形菜单可以向当前选择中添加节点 |
 | `scheme` | 跟随系统 | 指定 `light` 或 `dark`，并隐藏切换按钮 |
 | `initialVersion`、`initialSelected` | 第一个快照、无 | 初始状态 |
 | `shareInUrl` | `true` | 把版本和选中项保存在页面地址中，打开链接时恢复同样的视图 |
@@ -41,7 +41,7 @@ import "@cytocausal/react/styles.css";
 
 请把 `labels`、`themes` 和 `styleOptions` 定义在组件外部，让它们在多次渲染之间保持不变。
 
-节点超过 60 个时，工作区只列出最多 6 个节点的回路，因为完整列表可能非常庞大。数量后面的 `+` 表示可能还有更多。传入 `loopOptions`（比如 `{ maxLength: 8, limit: 200 }`）可以自己设定上限。
+通过 `loopSettings` 配置回路面板的标题、说明、最大回路长度与结果上限。未指定时，初始上限为 4 个节点、1000 条结果；运行中的面板可调整搜索范围。应用可以覆盖默认配置，例如 starter 使用不限制长度的初始范围。详见[因果分析](/zh-cn/causal-analysis/)。
 
 ## 自选组件
 
@@ -217,3 +217,5 @@ export function EditableGraph({ dataset, onChange }: {
 使用 starter 的仅客户端加载边界。`initialDataset` 只初始化编辑器内部文档，不是受控属性；后续加载使用 ref 的 `replaceDataset`。编辑、撤销、重做后，`onChange` 返回独立文档副本，由宿主决定如何保存。编辑器不使用 localStorage 或文件对话框。
 
 通过 `header`、`toolbar` 和 `footer` 添加应用控件。首版使用英文标签和浅色主题，暂不暴露独立的无界面创作 hooks。约定见 [React API](/zh-cn/api-react/)。运行 starter 后访问 `/editor`；源码位于 `apps/starter/src/components/EditorExample.tsx`。
+
+[可运行的组合示例](/zh-cn/example-compose/)

@@ -1,0 +1,58 @@
+.cy-tutorial { --tutorial-border: #b7b7af; border: 1px solid var(--tutorial-border); border-radius: 8px; margin: 1.5rem 0; padding: 1rem; min-width: 0; }
+.cy-tutorial [hidden] { display: none !important; }
+.tutorial-controls { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .75rem; align-items: center; }
+.tutorial-controls label { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.cy-tutorial :is(select, button, input) { font: inherit; border: 1px solid var(--tutorial-border); border-radius: 4px; padding: .35rem .6rem; background: transparent; color: inherit; }
+.cy-tutorial button { cursor: pointer; min-height: 34px; }
+.cy-tutorial button:hover { background: #fbc92b; color: #20201b; }
+.cy-tutorial :is(button, select, input):focus-visible { outline: 2px solid #a87900; outline-offset: 3px; }
+.tutorial-note { font-size: .85rem; opacity: .8; margin: .75rem 0; }
+.cy-tutorial iframe { width: 100%; border: 0; display: block; }
+.tutorial-sources { margin: 1rem 0; min-width: 0; }
+.tutorial-sources summary { cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+.tutorial-sources details { margin: .8rem 0; }
+.tutorial-sources pre { max-height: 480px; overflow: auto; padding: 1rem; border: 1px solid #b7b7af; font-size: .8rem; }
+.react-demo { font-size: .875rem; line-height: 1.6; }
+.react-demo .example-sections { display: grid; gap: 1rem; }
+.react-demo .example-section { min-width: 0; padding: 1rem; border: 1px solid #b7b7af; border-radius: 6px; }
+.react-demo .graph-canvas { background: white; border-radius: 4px; overflow: hidden; }
+.react-demo :is(h2,h3) { font-size: 1rem; margin: .75rem 0; font-weight: 600; }
+.react-demo :is(pre, textarea) { max-width: 100%; }
+.react-demo .grid { display: grid; }
+.react-demo .flex { display: flex; flex-wrap: wrap; }
+.react-demo .flex-wrap { flex-wrap: wrap; }
+.react-demo .grid-cols-1 { grid-template-columns: minmax(0,1fr); }
+.react-demo .gap-2 { gap: .5rem; }
+.react-demo .gap-4 { gap: 1rem; }
+.react-demo .gap-6 { gap: 1.5rem; }
+.react-demo .p-1 { padding: .25rem; }
+.react-demo .p-4 { padding: 1rem; }
+.react-demo .mb-2 { margin-bottom: .5rem; }
+.react-demo .mb-4 { margin-bottom: 1rem; }
+.react-demo .mb-6 { margin-bottom: 1.5rem; }
+.react-demo .mt-4 { margin-top: 1rem; }
+.react-demo .space-y-2 > * + * { margin-top: .5rem; }
+.react-demo .space-y-4 > * + * { margin-top: 1rem; }
+.react-demo :is(.text-sm,.text-xs) { font-size: .8125rem; }
+.react-demo :is(.font-medium,.font-semibold) { font-weight: 600; }
+.react-demo .font-mono { font-family: ui-monospace, monospace; }
+.react-demo .w-full { width: 100%; }
+.react-demo :is(.overflow-auto,.overflow-y-auto) { overflow: auto; }
+.react-demo .whitespace-pre { white-space: pre; }
+.react-demo .whitespace-pre-wrap { white-space: pre-wrap; }
+.react-demo .list-disc { list-style-type: disc; padding-left: 1.25rem; }
+.react-demo .border { border: 1px solid #b7b7af; }
+.react-demo :is(.rounded,.rounded-md) { border-radius: 4px; }
+.react-demo .h-\[200px\] { height: 200px; }
+.react-demo .h-\[400px\] { height: 400px; }
+@media (min-width: 800px) { .react-demo .md\:grid-cols-2 { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (min-width: 1400px) { .react-demo .lg\:grid-cols-3 { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media (max-width: 600px) { .cy-tutorial { padding: .5rem; } .react-demo .example-section { padding: .5rem; } }
+
+.react-demo .hidden { display: none; }
+
+.commands-toolbar { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0; }
+.commands-graph { height: 460px; border: 1px solid #b7b7af; border-radius: 6px; overflow: hidden; }
+.commands-graph > .cc-graph { height: 100%; min-height: 0; }
+.commands-example textarea { width: 100%; display: block; padding: .75rem; font: 13px/1.5 ui-monospace,monospace; }
+.commands-summary { font-size: .85rem; }
