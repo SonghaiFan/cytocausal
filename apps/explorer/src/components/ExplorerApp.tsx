@@ -82,7 +82,8 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
   // Read when the filter changes, not as a reason to run it
   const shownLayout = useRef<LayoutOptions>(layout);
   shownLayout.current = layout;
-  const firstFilter = useRef(true);
+  // The filter last laid out, so that restyling or a new instance keeps the user's view
+  const laidOutFilter = useRef(loopsOnly);
 
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const inScope = useCallback(
@@ -107,13 +108,11 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
     refreshLabels(instance);
     // A computed layout is worked out again for what's left, so the loops sit close together.
     // The original positions come from the data, so those only need fitting to the screen
-    const current = shownLayout.current;
-    if (!firstFilter.current && current.name !== "preset") {
-      instance.emit("cytocausal-layout-request");
-    } else {
-      fit();
+    if (laidOutFilter.current !== loopsOnly) {
+      laidOutFilter.current = loopsOnly;
+      if (shownLayout.current.name !== "preset") instance.emit("cytocausal-layout-request");
+      else fit();
     }
-    firstFilter.current = false;
     keepSelected((id) => inScope(nodeById.get(id)!));
   }, [loopsOnly, inScope, nodeById, cy, fit, keepSelected, theme, instanceCount]);
 
@@ -182,13 +181,6 @@ function Explorer({ zoom, onZoomChange }: { zoom: ZoomMode; onZoomChange: (mode:
             <a href="https://arxiv.org/abs/2009.07758">GLUCOSE</a>. Each node is an abstract event,
             and each edge a causal relation judged by annotators.
           </p>
-          {dataset.id === "access-sample" && (
-            <p>
-              This is a sample of the most central events, with up to five descriptions each. The
-              full benchmark is{" "}
-              <a href="https://github.com/isVy08/ACCESS">available on request</a>.
-            </p>
-          )}
           <p>
             Node size shows directed betweenness centrality: bigger nodes sit on more of the causal
             paths through the network.

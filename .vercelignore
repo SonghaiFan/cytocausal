@@ -5,4 +5,3 @@
 **/test-results
 **/playwright-report
 **/.env*
-apps/explorer/public/dataset.full.json

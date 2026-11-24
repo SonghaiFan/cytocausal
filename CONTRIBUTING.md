@@ -36,7 +36,7 @@ Use the [documentation audience guide](docs/maintenance/documentation.md) to cho
 
 ## Data
 
-Datasets have their own terms, so read [DATA.md](DATA.md) first. Don't commit the full ACCESS benchmark: `apps/explorer/public/dataset.json` must stay a sample, and a test checks this.
+Datasets have their own terms, so read [DATA.md](DATA.md) first.
 
 ## npm packages
 
