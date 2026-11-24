@@ -13,8 +13,8 @@
   <a href="https://cytocausal.songhai.site/en/">Documentation</a> ·
   <a href="https://cytocausal.songhai.site/en/showcase/">Showcase</a> ·
   <a href="https://cytocausal-studio.songhai.site">Studio</a> ·
-  <a href="https://cytocausal.songhai.site/zh-cn/">中文文档</a> ·
-  <a href="#get-started">Get started</a>
+  <a href="#get-started">Get started</a> ·
+  <a href="README.zh-CN.md">中文</a>
 </p>
 
 ![Perspectiva uses cytocausal to compare versions of a causal graph](apps/docs/public/images/perspectiva-compare.png)
