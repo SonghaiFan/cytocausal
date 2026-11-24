@@ -134,7 +134,7 @@ Code and documentation use the [MIT license](LICENSE). Datasets and the logo hav
   <a href="https://aethel.songhai.site"><img src=".github/brand/series/aethel.svg" width="32" height="32" alt="Aethel" title="Aethel" /></a>
 </p>
 
-<p align="center"><sub>cytocausal is part of the Frank series of visualisation projects.</sub></p>
+<p align="center"><sub>cytocausal is part of the Frank series.</sub></p>
 
 <p align="right">
   <picture>

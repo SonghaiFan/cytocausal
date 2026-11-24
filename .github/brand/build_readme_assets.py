@@ -1,56 +1,84 @@
-"""Build the shared Frank README assets. Run from the repo root: python3 .github/brand/build_readme_assets.py .github/brand cytocausal (needs the sibling frank/ repos)."""
-import re, sys, pathlib
-F = pathlib.Path("/Users/songhaifan/Developer/frank")
-out = pathlib.Path(sys.argv[1]); (out / "series").mkdir(parents=True, exist_ok=True)
+"""Build the shared Frank README assets into <repo>/.github/brand.
 
-def inner(path):
-    s = path.read_text()
+Usage, from the frank/ folder that holds all six repos:
+    python3 <repo>/.github/brand/build_readme_assets.py <repo>
+
+Writes lockup-light.svg / lockup-dark.svg (README hero), frank-signature-light/dark.svg
+and series/<project>.svg (footer tiles). Sources are each project's own brand files.
+"""
+import re, sys, pathlib
+
+F = pathlib.Path(__file__).resolve().parents[3]
+repo = sys.argv[1].strip("/")
+out = F / repo / ".github/brand"
+(out / "series").mkdir(parents=True, exist_ok=True)
+
+
+def inner(source):
+    s = source if isinstance(source, str) else source.read_text()
     vb = re.search(r'viewBox="([^"]+)"', s).group(1)
     body = re.sub(r"^.*?<svg[^>]*>|</svg>\s*$", "", s, flags=re.S)
-    body = re.sub(r"<title>.*?</title>", "", body, flags=re.S)
-    return vb, body
+    return vb, re.sub(r"<title>.*?</title>", "", body, flags=re.S)
 
-def tile(name, title, bg, src, pad, ink_stroke):
-    vb, body = inner(src)
+
+def tile(name, title, bg, source, pad, edge):
+    vb, body = inner(source)
     box = 256 - 2 * pad
-    edge = {True: "#1f1e1b", "light": "#f4efe6"}.get(ink_stroke)
-    stroke = f' stroke="{edge}" stroke-opacity="{0.14 if ink_stroke is True else 0.28}" stroke-width="4"' if edge else ""
-    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img"><title>{title}</title>'
-           f'<rect x="2" y="2" width="252" height="252" rx="56" fill="{bg}"{stroke}/>'
-           f'<svg x="{pad}" y="{pad}" width="{box}" height="{box}" viewBox="{vb}" preserveAspectRatio="xMidYMid meet">{body}</svg></svg>\n')
-    (out / "series" / f"{name}.svg").write_text(svg)
+    stroke = {"ink": ' stroke="#1f1e1b" stroke-opacity="0.14" stroke-width="4"',
+              "paper": ' stroke="#f4efe6" stroke-opacity="0.28" stroke-width="4"'}.get(edge, "")
+    (out / "series" / f"{name}.svg").write_text(
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img"><title>{title}</title>'
+        f'<rect x="2" y="2" width="252" height="252" rx="56" fill="{bg}"{stroke}/>'
+        f'<svg x="{pad}" y="{pad}" width="{box}" height="{box}" viewBox="{vb}">{body}</svg></svg>\n')
 
-def strip_bg(path, tmpname):
-    # use a tile's foreground only (drop its own background rect)
-    s = re.sub(r"<rect[^>]*/>", "", path.read_text(), count=1)
-    p = out / tmpname; p.write_text(s); return p
 
-vd = F / "visdelta/website/components/logo.tsx"
-g = re.search(r"(<g transform.*?</g>)", vd.read_text(), re.S).group(1)
-vdsvg = out / "_vd.svg"; vdsvg.write_text(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="12 44 232 167">{g}</svg>')
+def without_bg(path):  # a favicon's foreground only
+    return re.sub(r"<rect[^>]*/>", "", (F / path).read_text(), count=1)
 
-syz = out / "_syz.svg"; syz.write_text((F / "syuze/public/brand/syuze-mark.svg").read_text())
-tile("syuze", "syuze 叙仄", "#f4f1ea", syz, 70, True)
-tile("news-metro", "News Metro", "#ffffff", F / "news-metro/src/app/icon.svg", 60, True)
-tile("ttng", "ttng", "#ffffff", F / "narrative-graph/apps/web/public/brand/ttng-icon.svg", 30, True)
-tile("visdelta", "VisDelta", "#ffffff", vdsvg, 52, True)
-tile("cytocausal", "cytocausal", "#FBC92B", strip_bg(F / "cytocausal/apps/docs/public/favicon.svg", "_cc.svg"), 0, False)
-tile("aethel", "Aethel", "#141414", strip_bg(F / "aethel/explorer_app/public/favicon.svg", "_ae.svg"), 0, "light")
-for p in out.glob("_*.svg"): p.unlink()
+
+vd_g = re.search(r"(<g transform.*?</g>)", (F / "visdelta/website/components/logo.tsx").read_text(), re.S).group(1)
+vd_mark = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="12 44 232 167">{vd_g}</svg>'
+
+tile("syuze", "syuze 叙仄", "#f4f1ea", F / "syuze/public/brand/syuze-mark.svg", 70, "ink")
+tile("news-metro", "News Metro", "#ffffff", F / "news-metro/src/app/icon.svg", 60, "ink")
+tile("ttng", "ttng", "#ffffff", F / "narrative-graph/apps/web/public/brand/ttng-icon.svg", 30, "ink")
+tile("visdelta", "VisDelta", "#ffffff", vd_mark, 52, "ink")
+tile("cytocausal", "cytocausal", "#FBC92B", without_bg("cytocausal/apps/docs/public/favicon.svg"), 0, None)
+tile("aethel", "Aethel", "#141414", without_bg("aethel/explorer_app/public/favicon.svg"), 0, "paper")
 
 sig = (F / "news-metro/public/frank-signature.svg").read_text()
 (out / "frank-signature-light.svg").write_text(sig)
 (out / "frank-signature-dark.svg").write_text(sig.replace("#171916", "#f4efe6"))
 
-# cytocausal lockup: mark (100.8) + 24 gap + wordmark (386.35 x 84), vertically centred
-if len(sys.argv) > 2 and sys.argv[2] == "cytocausal":
-    b = F / "cytocausal/apps/docs/public/brand"
-    mvb, mark = inner(b / "mark.svg")
-    for theme, wm in (("light", "wordmark.svg"), ("dark", "wordmark-dark.svg")):
-        wvb, word = inner(b / wm)
-        w = 100.8 + 24 + 386.35
-        (out / f"lockup-{theme}.svg").write_text(
-            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w:.2f} 100.8" role="img"><title>cytocausal</title>'
+
+def recolour(path, old, new):
+    return (F / path).read_text().replace(old, new)
+
+
+def cytocausal_lockup(wordmark):
+    b = "cytocausal/apps/docs/public/brand/"
+    mvb, mark = inner(F / b / "mark.svg")
+    wvb, word = inner(F / b / wordmark)
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 511.15 100.8" role="img"><title>cytocausal</title>'
             f'<svg width="100.8" height="100.8" viewBox="{mvb}">{mark}</svg>'
             f'<svg x="124.8" y="8.4" width="386.35" height="84" viewBox="{wvb}">{word}</svg></svg>\n')
-print(sorted(str(p.relative_to(out)) for p in out.rglob("*.svg")))
+
+
+kit = "output/brand-kit/lockups/"
+lockups = {
+    "syuze": lambda: ((F / f"syuze/{kit}syuze-lockup-horizontal-mono-1f1e1b.svg").read_text(),
+                      recolour(f"syuze/{kit}syuze-lockup-horizontal-mono-1f1e1b.svg", "#1f1e1b", "#f4f1ea")),
+    "news-metro": lambda: ((F / f"news-metro/{kit}newsmetro-lockup-horizontal-black.svg").read_text(),
+                           (F / f"news-metro/{kit}newsmetro-lockup-horizontal-white.svg").read_text()),
+    "narrative-graph": lambda: ((F / "narrative-graph/apps/web/public/brand/ttng-wordmark.svg").read_text(),
+                                recolour("narrative-graph/apps/web/public/brand/ttng-wordmark.svg", "#1a1a1a", "#ffffff")),
+    "visdelta": lambda: ((F / f"visdelta/{kit}visdelta-lockup-horizontal.svg").read_text(),
+                         (F / f"visdelta/{kit}visdelta-lockup-horizontal-reversed.svg").read_text()),
+    "cytocausal": lambda: (cytocausal_lockup("wordmark.svg"), cytocausal_lockup("wordmark-dark.svg")),
+    "aethel": lambda: ((F / f"aethel/{kit}aethel-lockup.svg").read_text(),
+                       (F / f"aethel/{kit}aethel-lockup-light.svg").read_text()),
+}
+light, dark = lockups[repo]()
+(out / "lockup-light.svg").write_text(light)
+(out / "lockup-dark.svg").write_text(dark)
+print(f"{repo}: wrote {sorted(str(p.relative_to(out)) for p in out.rglob('*.svg'))}")
