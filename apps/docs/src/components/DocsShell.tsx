@@ -37,7 +37,7 @@ export async function DocsShell({ lang, children }: { lang: Language; children: 
               <LocaleSwitch lite />
             </Navbar>
           }
-          footer={<Footer>cytocausal</Footer>}
+          footer={<Footer><span style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between", gap: 16 }}><span>cytocausal</span><span role="img" aria-label="Frank" style={{ display: "block", width: 48, height: 20, background: "currentColor", opacity: 0.7, mask: `url(${assetPath("/brand/frank-signature.svg")}) center / contain no-repeat`, WebkitMask: `url(${assetPath("/brand/frank-signature.svg")}) center / contain no-repeat` }} /></span></Footer>}
           pageMap={await getPageMap(`/${lang}`)}
           i18n={locales}
           search={<Search placeholder={chinese ? "搜索文档…" : "Search docs…"} />}
