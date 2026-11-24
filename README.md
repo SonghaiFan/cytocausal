@@ -1,14 +1,25 @@
-<p><img src="apps/docs/public/brand/mark.svg" width="72" height="72" alt="Causal sunburst icon" /> <picture><source media="(prefers-color-scheme: dark)" srcset="apps/docs/public/brand/wordmark-dark.svg" /><img src="apps/docs/public/brand/wordmark.svg" width="276" height="60" alt="cytocausal" /></picture></p>
+<h1 align="center">
+  <a href="https://cytocausal.songhai.site/en/">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset=".github/brand/lockup-dark.svg" />
+      <img src=".github/brand/lockup-light.svg" width="340" alt="cytocausal" />
+    </picture>
+  </a>
+</h1>
 
-# cytocausal
+<p align="center"><b>A React library for causal graph interfaces, built on Cytoscape.js.</b></p>
 
-**A React library for causal graph interfaces, built on Cytoscape.js.**
-
-Build React interfaces where people can explore causes and effects, trace the evidence behind a relationship, and compare how a model changes. Use the complete workspace or compose your own interface from its components.
-
-[Documentation](https://cytocausal.songhai.site/en/) · [Showcase](https://cytocausal.songhai.site/en/showcase/) · [Draw a graph](https://cytocausal-studio.songhai.site) · [中文文档](https://cytocausal.songhai.site/zh-cn/)
+<p align="center">
+  <a href="https://cytocausal.songhai.site/en/">Documentation</a> ·
+  <a href="https://cytocausal.songhai.site/en/showcase/">Showcase</a> ·
+  <a href="https://cytocausal-studio.songhai.site">Studio</a> ·
+  <a href="https://cytocausal.songhai.site/zh-cn/">中文文档</a> ·
+  <a href="#get-started">Get started</a>
+</p>
 
 ![Perspectiva uses cytocausal to compare versions of a causal graph](apps/docs/public/images/perspectiva-compare.png)
+
+Build React interfaces where people can explore causes and effects, trace the evidence behind a relationship, and compare how a model changes. Use the complete workspace or compose your own interface from its components.
 
 ## Built for causal graphs
 
@@ -111,3 +122,23 @@ Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 Code and documentation use the [MIT license](LICENSE). Datasets and the logo have separate terms: see [DATA.md](DATA.md).
+
+<br />
+
+<p align="center">
+  <a href="https://syuze.songhai.site"><img src=".github/brand/series/syuze.svg" width="32" height="32" alt="syuze" title="syuze 叙仄" /></a>&nbsp;
+  <a href="https://news-metro.songhai.site"><img src=".github/brand/series/news-metro.svg" width="32" height="32" alt="News Metro" title="News Metro" /></a>&nbsp;
+  <a href="https://narrative-graph.songhai.site"><img src=".github/brand/series/ttng.svg" width="32" height="32" alt="ttng" title="ttng" /></a>&nbsp;
+  <a href="https://visdelta.songhai.site"><img src=".github/brand/series/visdelta.svg" width="32" height="32" alt="VisDelta" title="VisDelta" /></a>&nbsp;
+  <a href="https://cytocausal.songhai.site"><img src=".github/brand/series/cytocausal.svg" width="32" height="32" alt="cytocausal" title="cytocausal" /></a>&nbsp;
+  <a href="https://aethel.songhai.site"><img src=".github/brand/series/aethel.svg" width="32" height="32" alt="Aethel" title="Aethel" /></a>
+</p>
+
+<p align="center"><sub>cytocausal is part of the Frank series.</sub></p>
+
+<p align="right">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/brand/frank-signature-dark.svg" />
+    <img src=".github/brand/frank-signature-light.svg" width="72" alt="Frank" />
+  </picture>
+</p>
