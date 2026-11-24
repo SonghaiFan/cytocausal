@@ -26,6 +26,10 @@ const guides = [
   "scale-performance",
   "case-perspectiva",
   "case-explorer",
+  "commands",
+  "cytoscape-integration",
+  "cytoscape-basics",
+  ...["setup", "elements", "layouts", "styles", "events", "algorithms", "data"].map((topic) => `cytoscape-basics/${topic}`),
 ];
 
 const sidebarLink = (page: Page, href: string) =>
@@ -63,7 +67,10 @@ for (const lang of languages) {
     for (const href of links) {
       const response = await context.request.get(href);
       expect(response.status(), href).toBe(200);
-      if (!/\.[a-z0-9]+$/i.test(href) && href !== `${base}/`) expect(new URL(response.url()).pathname, href).toMatch(new RegExp(`^${base}/${lang}/`));
+      if (!/\.[a-z0-9]+$/i.test(href) && href !== `${base}/`) {
+        const prefix = href.startsWith(`${base}/examples/`) ? `${base}/examples/${lang}/` : `${base}/${lang}/`;
+        expect(new URL(response.url()).pathname.startsWith(prefix), href).toBe(true);
+      }
     }
     expect(errors).toEqual([]);
   });

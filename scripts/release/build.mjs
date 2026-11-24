@@ -89,7 +89,7 @@ for (const name of config.packages) {
     }[name],
     license: "MIT", author: "Songhai Fan",
     repository: { type: "git", url: "git+https://github.com/SonghaiFan/cytocausal.git", directory: "packages/" + name },
-    homepage: "https://songhaifan.github.io/cytocausal/en/",
+    homepage: "https://cytocausal.songhai.site/en/",
     bugs: { url: "https://github.com/SonghaiFan/cytocausal/issues" },
     keywords: ["causal-graph", "cytoscape", "visualization", ...(name === "react" ? ["react"] : [])],
     exports, main: "./dist/index.js", types: "./dist/index.d.ts",

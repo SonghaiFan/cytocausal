@@ -20,3 +20,6 @@ out/
 
 # Compiled npm staging packages and tarballs
 .release/
+
+# Local inspection and screenshot artifacts
+/output/

@@ -6,7 +6,7 @@
 
 Build React interfaces where people can explore causes and effects, trace the evidence behind a relationship, and compare how a model changes. Use the complete workspace or compose your own interface from its components.
 
-[Documentation](https://songhaifan.github.io/cytocausal/en/) · [Showcase](https://songhaifan.github.io/cytocausal/en/showcase/) · [Draw a graph](https://cytocausal-studio.vercel.app) · [中文文档](https://songhaifan.github.io/cytocausal/zh-cn/)
+[Documentation](https://cytocausal.songhai.site/en/) · [Showcase](https://cytocausal.songhai.site/en/showcase/) · [Draw a graph](https://cytocausal-studio.songhai.site) · [中文文档](https://cytocausal.songhai.site/zh-cn/)
 
 ![Perspectiva uses cytocausal to compare versions of a causal graph](apps/docs/public/images/perspectiva-compare.png)
 

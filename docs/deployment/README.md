@@ -1,9 +1,9 @@
 # Production deployment
 
-- Library site: https://songhaifan.github.io/cytocausal/
-- Studio: https://cytocausal-studio.vercel.app
-- Perspectiva: https://cytocausal-perspectiva.vercel.app
-- Explorer: https://cytocausal-explorer.vercel.app
+- Library site: https://cytocausal.songhai.site/
+- Studio: https://cytocausal-studio.songhai.site
+- Perspectiva: https://cytocausal-perspectiva.songhai.site
+- Explorer: https://cytocausal-explorer.songhai.site
 
 ## GitHub Pages
 
@@ -12,10 +12,10 @@ GitHub Pages is built from `main` by `.github/workflows/pages.yml`. Every push c
 Build from the repository root:
 
 ```sh
-NEXT_PUBLIC_BASE_PATH=/cytocausal \
-NEXT_PUBLIC_STUDIO_URL=https://cytocausal-studio.vercel.app \
-NEXT_PUBLIC_PERSPECTIVA_URL=https://cytocausal-perspectiva.vercel.app \
-NEXT_PUBLIC_EXPLORER_URL=https://cytocausal-explorer.vercel.app \
+NEXT_PUBLIC_BASE_PATH= \
+NEXT_PUBLIC_STUDIO_URL=https://cytocausal-studio.songhai.site \
+NEXT_PUBLIC_PERSPECTIVA_URL=https://cytocausal-perspectiva.songhai.site \
+NEXT_PUBLIC_EXPLORER_URL=https://cytocausal-explorer.songhai.site \
 npm run build -w @cytocausal/docs
 ```
 
@@ -25,7 +25,7 @@ To publish, commit and push to `main`, then check the **Deploy library site to G
 
 Three projects use the same repository with root directories `apps/studio`, `apps/perspectiva`, and `apps/explorer`. All use Node 22, `npm install`, `npm run build`, and include source files outside the root directory so workspace packages resolve.
 
-`NEXT_PUBLIC_DOCS_URL` is `https://songhaifan.github.io/cytocausal/en/` for Studio, and `https://songhaifan.github.io/cytocausal` for the cases (which append their chapter path).
+`NEXT_PUBLIC_DOCS_URL` is `https://cytocausal.songhai.site/en/` for Studio, and `https://cytocausal.songhai.site` for the cases (which append their chapter path).
 
 The projects are linked to `SonghaiFan/cytocausal`; pushes to `main` deploy committed source to production. For a manual deployment of the current checkout, use the Vercel CLI. `.vercelignore` excludes environment files, build artifacts, and Explorer's non-public full dataset. Run from the repository root with the appropriate project ID:
 

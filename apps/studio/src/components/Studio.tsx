@@ -4,7 +4,7 @@ import { CausalEditor, type CausalEditorApi, type EditorNodeStyle } from "@cytoc
 import type { CausalDataset } from "@cytocausal/core";
 import { emptyDataset, parseDataset, STORAGE_KEY } from "../model.ts";
 
-const docs = process.env.NEXT_PUBLIC_DOCS_URL || "https://songhaifan.github.io/cytocausal/en/";
+const docs = process.env.NEXT_PUBLIC_DOCS_URL || "https://cytocausal.songhai.site/en/";
 const NODE_STYLE_KEY = "cytocausal-studio-node-style";
 const download = (dataset: CausalDataset) => {
   const url = URL.createObjectURL(new Blob([JSON.stringify(dataset, null, 2)], { type: "application/json" }));

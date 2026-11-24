@@ -6,4 +6,4 @@ Part of [cytocausal](https://github.com/SonghaiFan/cytocausal), a React library 
 
 This alpha uses ESM and requires a modern JavaScript runtime. It analyses supplied relationships; it does not infer or establish causality.
 
-[Data model and API](https://songhaifan.github.io/cytocausal/en/api-core/) · [MIT license](https://github.com/SonghaiFan/cytocausal/blob/main/LICENSE)
+[Data model and API](https://cytocausal.songhai.site/en/api-core/) · [MIT license](https://github.com/SonghaiFan/cytocausal/blob/main/LICENSE)

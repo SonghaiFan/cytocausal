@@ -6,4 +6,4 @@ Uses your Cytoscape installation as a peer dependency. This alpha is tested with
 
 For the complete React exploration and authoring interface, use @cytocausal/react. Ships ESM JavaScript and TypeScript declarations.
 
-[Integration API](https://songhaifan.github.io/cytocausal/en/api-cytoscape/) · [Project](https://github.com/SonghaiFan/cytocausal)
+[Integration API](https://cytocausal.songhai.site/en/api-cytoscape/) · [Project](https://github.com/SonghaiFan/cytocausal)
