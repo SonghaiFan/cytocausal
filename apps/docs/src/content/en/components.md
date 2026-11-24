@@ -151,7 +151,7 @@ export function MyGraph({ dataset }: { dataset: CausalDataset }) {
 }
 ```
 
-`GraphView` only needs `dataset` and `snapshotId`. `layout`, `stylesheet` and `positionCache` have defaults. `apps/explorer` and `apps/perspectiva` are built this way.
+`GraphView` only needs `dataset` and `snapshotId`. `layout`, `stylesheet` and `positionCache` have defaults. [ACCESS](https://github.com/SonghaiFan/access) and [Perspectiva](https://github.com/SonghaiFan/perspectiva) are built this way.
 
 ## Export the graph
 

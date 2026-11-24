@@ -127,7 +127,7 @@ export const App = ({ dataset }) => <CausalWorkspace dataset={dataset} layouts={
 
 `relayout(cy, layout)` 能在任何图上做同样的事。它只对可见的节点布局，所以筛选器隐藏了一部分节点之后，可以单独为剩下的节点布局。被隐藏的节点保持原位，等筛选取消后再出现。
 
-Causal Explorer 提供了四种布局：原始位置、针对当前节点的力导向布局、按中心性排列的同心圆，以及从左到右的流向布局。
+ACCESS Explorer 提供了四种布局：原始位置、针对当前节点的力导向布局、按中心性排列的同心圆，以及从左到右的流向布局。
 
 ## 局限
 

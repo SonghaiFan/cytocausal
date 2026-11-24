@@ -95,7 +95,7 @@ export function Explorer({ dataset }: { dataset: CausalDataset }) {
 
 ## 两张图
 
-每个 hook 控制一张图。做对比时，为每张图使用一个 hook，并通过 `CompareView` 的 `onReady` 连接，它还会传入快照 ID。`apps/perspectiva` 就是这样做的。
+每个 hook 控制一张图。做对比时，为每张图使用一个 hook，并通过 `CompareView` 的 `onReady` 连接，它还会传入快照 ID。[Perspectiva](https://github.com/SonghaiFan/perspectiva) 就是这样做的。
 
 ### 布局加载
 

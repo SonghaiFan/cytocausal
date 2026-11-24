@@ -151,7 +151,7 @@ export function MyGraph({ dataset }: { dataset: CausalDataset }) {
 }
 ```
 
-`GraphView` 只需要 `dataset` 和 `snapshotId`，`layout`、`stylesheet` 和 `positionCache` 都有默认值。`apps/explorer` 和 `apps/perspectiva` 就是这样构建的。
+`GraphView` 只需要 `dataset` 和 `snapshotId`，`layout`、`stylesheet` 和 `positionCache` 都有默认值。[ACCESS](https://github.com/SonghaiFan/access) 和 [Perspectiva](https://github.com/SonghaiFan/perspectiva) 就是这样构建的。
 
 ## 导出图片
 

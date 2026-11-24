@@ -57,7 +57,7 @@ Use `CausalProvider`, `CausalGraph` and individual panels when you want to assem
 
 ## Get started
 
-Use Node.js 22.18 or later. Packages currently live in this source workspace and are marked private; there is no published npm installation workflow yet.
+Use Node.js 22.18 or later. Compiled packages are available as versioned tarballs in [GitHub Releases](https://github.com/SonghaiFan/cytocausal/releases/tag/v0.1.0-alpha.1). They are not yet published on npm. The source workspaces remain private packages for local development.
 
 ```sh
 git clone https://github.com/SonghaiFan/cytocausal.git
@@ -78,10 +78,10 @@ Open `http://localhost:3200/en/` or `http://localhost:3200/zh-cn/`.
 
 ## See it in use
 
-| Application | What it demonstrates | Run locally |
+| Application | What it demonstrates | Repository and live app |
 | --- | --- | --- |
-| [Perspectiva](apps/docs/src/content/en/case-perspectiva.mdx) | Comparing causal loop diagrams from participatory workshops, tracing terms and combining perspectives | `npm run dev:perspectiva` → port 3100 |
-| [Causal Explorer](apps/docs/src/content/en/case-explorer.mdx) | Searching an event network, reading source descriptions and exploring causes, effects and loops | `npm run dev:explorer` → port 3101 |
+| [Perspectiva](apps/docs/src/content/en/case-perspectiva.mdx) | Comparing causal loop diagrams from participatory workshops, tracing terms and combining perspectives | [Independent repo](https://github.com/SonghaiFan/perspectiva) · [Live app](https://perspectiva.songhai.site) |
+| [ACCESS Explorer](apps/docs/src/content/en/case-explorer.mdx) | Searching an event network, reading source descriptions and exploring causes, effects and loops | [Independent repo](https://github.com/SonghaiFan/access) · [Live app](https://access.songhai.site) |
 
 The [showcase](apps/docs/src/content/en/showcase.mdx) uses a small fictional dataset to demonstrate the workspace, styles, comparison and individual panels. Run the docs site to interact with it.
 
@@ -94,7 +94,7 @@ The [showcase](apps/docs/src/content/en/showcase.mdx) uses a small fictional dat
 
 ## Development and status
 
-The library, starter and examples are under active development. Studio is an initial browser-local editor; standalone package distribution remains future work. See [the project plan](docs/PLAN.md).
+The library, starter and examples are under active development. Studio is an initial browser-local editor; versioned standalone packages are distributed through GitHub Releases. See [the project plan](docs/PLAN.md).
 
 | Command | Purpose |
 | --- | --- |
@@ -104,7 +104,7 @@ The library, starter and examples are under active development. Studio is an ini
 | `npm run build` | Build all apps |
 | `npm run test:e2e` | Browser tests after a build; requires Chrome |
 
-For deployed apps, set `NEXT_PUBLIC_STUDIO_URL`, `NEXT_PUBLIC_PERSPECTIVA_URL` and `NEXT_PUBLIC_EXPLORER_URL` on the docs, and `NEXT_PUBLIC_DOCS_URL` on the apps. Otherwise launch links use local servers. See the [deployment guide](docs/deployment/README.md) for GitHub Pages and the three Vercel projects.
+For deployed apps, set `NEXT_PUBLIC_STUDIO_URL`, `NEXT_PUBLIC_PERSPECTIVA_URL` and `NEXT_PUBLIC_EXPLORER_URL` on the docs, and `NEXT_PUBLIC_DOCS_URL` on the apps. Case app links default to their public domains. See the [deployment guide](docs/deployment/README.md) for GitHub Pages and the three Vercel projects.
 
 Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
 

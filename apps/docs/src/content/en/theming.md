@@ -94,7 +94,7 @@ export function Page({ children }: { children: ReactNode }) {
 | :--- | :--- | :--- |
 | `magnify` | 4 times bigger, like a photo | A small diagram read whole, with labels inside nodes, such as Perspectiva |
 | `balanced` | 2 times bigger, by the square root of the zoom, as Sigma.js does | Somewhere between |
-| `spread` | The same size on screen, while nodes move apart | A dense network people zoom into to separate crowded nodes, such as Causal Explorer |
+| `spread` | The same size on screen, while nodes move apart | A dense network people zoom into to separate crowded nodes, such as ACCESS Explorer |
 
 ```ts
 import { createCausalStyle, lightTheme } from "@cytocausal/cytoscape";
@@ -104,7 +104,7 @@ export const stylesheet = createCausalStyle(lightTheme, { node: "dot", link: "st
 
 The default is `spread` with `managedLabels`, and `magnify` otherwise. Managed labels keep their text a constant size in every mode, so it stays readable.
 
-Cytoscape sizes everything in model units, so `spread` and `balanced` need the size written for each zoom. `keepConstantSize(cy)` does that on every zoom step, so marks don't swell and snap back. `keepLabelsReadable`, and `readableLabels` in `useCausalGraph`, turn it on for you. Causal Explorer has a switch for comparing the three.
+Cytoscape sizes everything in model units, so `spread` and `balanced` need the size written for each zoom. `keepConstantSize(cy)` does that on every zoom step, so marks don't swell and snap back. `keepLabelsReadable`, and `readableLabels` in `useCausalGraph`, turn it on for you. ACCESS Explorer has a switch for comparing the three.
 
 Use the same zoom mode for nodes, links and labels to preserve their relative visual weight.
 

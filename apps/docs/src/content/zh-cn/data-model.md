@@ -8,7 +8,7 @@ title: "数据模型"
 
 cytocausal 用同一种结构保存所有因果图，因此同样的视图和分析既能用于小型工作坊图，也能用于大型事件网络。类型定义在 `@cytocausal/core` 中，这个包不含 UI 代码，也没有任何依赖，所以在 Node 和 Worker 中同样可以运行。
 
-| 概念 | 含义 | Perspectiva | Causal Explorer |
+| 概念 | 含义 | Perspectiva | ACCESS Explorer |
 | :--- | :--- | :--- | :--- |
 | `CausalDataset` | 一张图及其各个版本 | 一位参与者 | 整个网络 |
 | `Snapshot` | 图的一个版本 | V1、final | 一个快照 |

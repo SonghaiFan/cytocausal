@@ -2,8 +2,8 @@
 
 - Library site: https://cytocausal.songhai.site/
 - Studio: https://cytocausal-studio.songhai.site
-- Perspectiva: https://cytocausal-perspectiva.songhai.site
-- Explorer: https://cytocausal-explorer.songhai.site
+- Perspectiva: https://perspectiva.songhai.site
+- Explorer: https://access.songhai.site
 
 ## GitHub Pages
 
@@ -14,8 +14,8 @@ Build from the repository root:
 ```sh
 NEXT_PUBLIC_BASE_PATH= \
 NEXT_PUBLIC_STUDIO_URL=https://cytocausal-studio.songhai.site \
-NEXT_PUBLIC_PERSPECTIVA_URL=https://cytocausal-perspectiva.songhai.site \
-NEXT_PUBLIC_EXPLORER_URL=https://cytocausal-explorer.songhai.site \
+NEXT_PUBLIC_PERSPECTIVA_URL=https://perspectiva.songhai.site \
+NEXT_PUBLIC_EXPLORER_URL=https://access.songhai.site \
 npm run build -w @cytocausal/docs
 ```
 
@@ -23,11 +23,20 @@ To publish, commit and push to `main`, then check the **Deploy library site to G
 
 ## Vercel
 
-Three projects use the same repository with root directories `apps/studio`, `apps/perspectiva`, and `apps/explorer`. All use Node 22, `npm install`, `npm run build`, and include source files outside the root directory so workspace packages resolve.
+Studio uses `SonghaiFan/cytocausal` with root directory `apps/studio`, Node 22, `npm install`, `npm run build`, and source files outside the root enabled for workspace packages.
+
+ACCESS and Perspectiva are independent applications:
+
+| Vercel project | Repository | Root | Install | Build |
+| --- | --- | --- | --- | --- |
+| access | SonghaiFan/access | repository root | `npm ci` | `npm run build` |
+| perspectiva | SonghaiFan/perspectiva | repository root | `npm ci` | `npm run build` |
+
+Both use Node 22 and versioned Cytocausal GitHub Release dependencies with lockfile integrity. They do not require source files outside the project root. The existing Vercel project IDs and previous domain aliases are retained.
 
 `NEXT_PUBLIC_DOCS_URL` is `https://cytocausal.songhai.site/en/` for Studio, and `https://cytocausal.songhai.site` for the cases (which append their chapter path).
 
-The projects are linked to `SonghaiFan/cytocausal`; pushes to `main` deploy committed source to production. For a manual deployment of the current checkout, use the Vercel CLI. `.vercelignore` excludes environment files, build artifacts, and Explorer's non-public full dataset. Run from the repository root with the appropriate project ID:
+Each project follows `main` in its own repository; pushes deploy committed source to production. For a manual deployment of the current checkout, use the Vercel CLI. `.vercelignore` excludes environment files and build artifacts. Run from the repository root with the appropriate project ID:
 
 ```sh
 VERCEL_ORG_ID=team_PFsO3L7gyf94GAVgLRWFOS26 \
@@ -39,6 +48,6 @@ vercel deploy --prod --yes --scope songhaifans-projects
 | --- | --- |
 | Studio | prj_xenbDaNDg8fDLDYeGigbeQTjPytu |
 | Perspectiva | prj_gPVQADKZkIGNVDUznXtFkW8y8xBf |
-| Explorer | prj_CUvDQcDfaW1SWMy9GcXKchU3fg70 |
+| ACCESS | prj_CUvDQcDfaW1SWMy9GcXKchU3fg70 |
 
 After publishing, confirm that each production deployment references the pushed commit. Manual CLI deployments should use a clean checkout of that commit. Studio currently persists graph data in the current browser only; JSON export is the portable backup.

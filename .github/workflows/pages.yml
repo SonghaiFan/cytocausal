@@ -26,8 +26,8 @@ jobs:
         env:
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
           NEXT_PUBLIC_STUDIO_URL: https://cytocausal-studio.songhai.site
-          NEXT_PUBLIC_PERSPECTIVA_URL: https://cytocausal-perspectiva.songhai.site
-          NEXT_PUBLIC_EXPLORER_URL: https://cytocausal-explorer.songhai.site
+          NEXT_PUBLIC_PERSPECTIVA_URL: https://perspectiva.songhai.site
+          NEXT_PUBLIC_EXPLORER_URL: https://access.songhai.site
       - uses: actions/upload-pages-artifact@v4
         with:
           path: apps/docs/out

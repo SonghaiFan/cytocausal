@@ -95,7 +95,7 @@ Node details and evidence appear in the sidebar. Without a sidebar, use `renderN
 
 ## Two graphs
 
-Each hook controls one graph. For a comparison, use one hook per graph and connect them through `onReady` on `CompareView`, which passes the snapshot id as well. `apps/perspectiva` does this.
+Each hook controls one graph. For a comparison, use one hook per graph and connect them through `onReady` on `CompareView`, which passes the snapshot id as well. [Perspectiva](https://github.com/SonghaiFan/perspectiva) does this.
 
 ### Layout loading
 

@@ -163,8 +163,8 @@ test("the showcase runs live demos in both languages", async ({ page }) => {
 
 test("the docs link to both example apps", async ({ page }) => {
   for (const [guide, url, name] of [
-    ["case-perspectiva", process.env.NEXT_PUBLIC_PERSPECTIVA_URL ?? "http://localhost:3100", "Open the app"],
-    ["case-explorer", process.env.NEXT_PUBLIC_EXPLORER_URL ?? "http://localhost:3101", "Open the app"],
+    ["case-perspectiva", process.env.NEXT_PUBLIC_PERSPECTIVA_URL ?? "https://perspectiva.songhai.site", "Open the app"],
+    ["case-explorer", process.env.NEXT_PUBLIC_EXPLORER_URL ?? "https://access.songhai.site", "Open the app"],
   ] as const) {
     await page.goto(`${base}/en/${guide}/`);
     await expect(page.locator("article").getByRole("link", { name })).toHaveAttribute(

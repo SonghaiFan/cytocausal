@@ -89,7 +89,7 @@ The fix is to not remove leftovers when interrupted. They stay in the graph for 
 
 ### Test the interruptions
 
-Each of these bugs looked correct on screen, or only appeared with rapid clicking. Test what you can't see: after rapid switching, check that nothing is still animating, nothing is half-faded, and positions match the first visit. `apps/perspectiva/e2e/graph.spec.ts` does this for every dataset.
+Each of these bugs looked correct on screen, or only appeared with rapid clicking. Test what you can't see: after rapid switching, check that nothing is still animating, nothing is half-faded, and positions match the first visit. [`e2e/graph.spec.ts` in Perspectiva](https://github.com/SonghaiFan/perspectiva/blob/main/e2e/graph.spec.ts) does this for every dataset.
 
 
 ## Source: scale-performance.md

@@ -59,11 +59,15 @@ Perspectiva 发表于 *Out of the Loop: Enhancing Documentation and Transparency
 
 ## 运行
 
+应用位于[独立仓库](https://github.com/SonghaiFan/perspectiva)，通过依赖安装固定版本的 Cytocausal 库包。
+
 ```sh
-npm install
-npm run dev:perspectiva
+git clone https://github.com/SonghaiFan/perspectiva.git
+cd perspectiva
+npm ci
+npm run dev
 ```
 
 打开 `http://localhost:3100`。添加 `?dataset=expert_9` 选择数据集，添加 `?debug=1` 显示数据集选择器。
 
-构建文档时设置 `NEXT_PUBLIC_PERSPECTIVA_URL` 和 `NEXT_PUBLIC_EXPLORER_URL`，**打开应用**按钮就会指向已部署的应用。不设置时按钮打开本地服务，所以要先启动应用。
+构建文档时设置 `NEXT_PUBLIC_PERSPECTIVA_URL` 和 `NEXT_PUBLIC_EXPLORER_URL`，**打开应用**按钮就会指向已部署的应用。案例按钮默认打开公开域名；测试本地服务时可覆盖这些地址。

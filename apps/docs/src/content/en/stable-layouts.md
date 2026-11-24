@@ -127,7 +127,7 @@ Layouts retain their spacing instead of shrinking to the previous layout’s bou
 
 `relayout(cy, layout)` does the same on any graph. It lays out only visible nodes, so after a filter hides some, the rest can be laid out on their own. Hidden nodes keep their place for when the filter is cleared.
 
-Causal Explorer offers four: its original positions, a force layout for the nodes shown, rings by centrality, and a left-to-right flow.
+ACCESS Explorer offers four: its original positions, a force layout for the nodes shown, rings by centrality, and a left-to-right flow.
 
 ## Limits
 

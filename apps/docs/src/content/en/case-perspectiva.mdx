@@ -59,11 +59,15 @@ Perspectiva was published as *Out of the Loop: Enhancing Documentation and Trans
 
 ## Run it
 
+This application lives in its [own repository](https://github.com/SonghaiFan/perspectiva) and installs versioned Cytocausal packages as dependencies.
+
 ```sh
-npm install
-npm run dev:perspectiva
+git clone https://github.com/SonghaiFan/perspectiva.git
+cd perspectiva
+npm ci
+npm run dev
 ```
 
 Open `http://localhost:3100`. Add `?dataset=expert_9` to choose a dataset, and `?debug=1` to show the dataset selector.
 
-Set `NEXT_PUBLIC_PERSPECTIVA_URL` and `NEXT_PUBLIC_EXPLORER_URL` when building the docs to point the **Open the app** buttons at deployed apps. Without them, the buttons open the local servers, so start the app first.
+Set `NEXT_PUBLIC_PERSPECTIVA_URL` and `NEXT_PUBLIC_EXPLORER_URL` when building the docs to point the **Open the app** buttons at deployed apps. The case buttons default to the public app domains; override them to test local servers.

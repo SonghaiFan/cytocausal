@@ -94,7 +94,7 @@ export function Page({ children }: { children: ReactNode }) {
 | :--- | :--- | :--- |
 | `magnify` | 变大 4 倍，像放大照片 | 整体浏览、标签在节点内部的小型图，比如 Perspectiva |
 | `balanced` | 按缩放的平方根变大 2 倍，与 Sigma.js 相同 | 两者之间 |
-| `spread` | 屏幕尺寸不变，只有节点之间的距离被拉开 | 需要放大来分开拥挤节点的密集网络，比如 Causal Explorer |
+| `spread` | 屏幕尺寸不变，只有节点之间的距离被拉开 | 需要放大来分开拥挤节点的密集网络，比如 ACCESS Explorer |
 
 ```ts
 import { createCausalStyle, lightTheme } from "@cytocausal/cytoscape";
@@ -104,7 +104,7 @@ export const stylesheet = createCausalStyle(lightTheme, { node: "dot", link: "st
 
 使用 `managedLabels` 时默认为 `spread`，否则为 `magnify`。在任何模式下，托管标签的文字都保持固定大小，以便阅读。
 
-Cytoscape 的所有尺寸都以模型单位计算，所以 `spread` 和 `balanced` 需要在每次缩放时写入对应的尺寸。`keepConstantSize(cy)` 会在每一步缩放时完成这件事，标记不会先变大再弹回原样。`keepLabelsReadable` 以及 `useCausalGraph` 的 `readableLabels` 会自动开启它。Causal Explorer 提供了一个切换按钮，可以对比这三种模式。
+Cytoscape 的所有尺寸都以模型单位计算，所以 `spread` 和 `balanced` 需要在每次缩放时写入对应的尺寸。`keepConstantSize(cy)` 会在每一步缩放时完成这件事，标记不会先变大再弹回原样。`keepLabelsReadable` 以及 `useCausalGraph` 的 `readableLabels` 会自动开启它。ACCESS Explorer 提供了一个切换按钮，可以对比这三种模式。
 
 节点、连线和标签应使用一致的缩放模式，以保持相对视觉比例。
 

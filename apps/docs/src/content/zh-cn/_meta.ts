@@ -32,7 +32,7 @@ export default {
   "api-cytoscape": "Cytoscape API",
   "--cases": { type: "separator", title: "应用案例" },
   "case-perspectiva": "Perspectiva",
-  "case-explorer": "Causal Explorer",
+  "case-explorer": "ACCESS Explorer",
   "--cytoscape": { type: "separator", title: "Cytoscape.js" },
   "cytoscape-basics": { title: "Cytoscape.js", display: "children" },
   "--project": { type: "separator", title: "项目" },

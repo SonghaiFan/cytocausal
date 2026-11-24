@@ -32,7 +32,7 @@ Run it in a script or on a server. Explorer does this when its data is imported,
 
 Betweenness centrality finds nodes that sit on many shortest paths. Ignoring direction counts paths that causes can't actually travel along.
 
-Causal Explorer's original node sizes ignored direction. Recalculating them along edge direction changed the picture:
+ACCESS Explorer's original node sizes ignored direction. Recalculating them along edge direction changed the picture:
 
 | Measure | Undirected | Directed |
 | :--- | :--- | :--- |
