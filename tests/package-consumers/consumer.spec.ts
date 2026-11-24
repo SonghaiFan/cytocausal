@@ -9,6 +9,7 @@ for (const [name, url] of Object.entries(JSON.parse(process.env.CYTOCAUSAL_CONSU
       const Original = window.Worker;
       const report = (window as any).__workerReport = { urls: [], results: [], errors: [] };
       window.Worker = class extends Original {
+        terminated = false;
         constructor(url: string | URL, options?: WorkerOptions) {
           super(url, options); report.urls.push(String(url));
           this.addEventListener("message", event => {
@@ -16,8 +17,13 @@ for (const [name, url] of Object.entries(JSON.parse(process.env.CYTOCAUSAL_CONSU
             if (event.data.positions) report.results.push("layout");
             if (event.data.result) report.results.push("loops");
           });
-          this.addEventListener("error", event => report.errors.push({ url: String(url), message: event.message || event.type }));
+          this.addEventListener("error", event => {
+            // Turbopack can report an aborted importScripts request after terminate().
+            // Only failures from a live job indicate a broken packed worker.
+            if (!this.terminated) report.errors.push({ url: String(url), message: event.message || event.type });
+          });
         }
+        terminate() { this.terminated = true; super.terminate(); }
       };
     });
     await page.goto(url);
